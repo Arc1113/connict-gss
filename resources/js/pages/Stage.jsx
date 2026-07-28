@@ -9,17 +9,15 @@ const IDLE_STATE = {
     presentation: null,
 };
 
-function liveLabel(state) {
-    return state === 'connected' ? 'Live' : 'Syncing';
-}
-
 export default function Stage({ ceremony }) {
     const [stageState, setStageState] = useState(IDLE_STATE);
-    const [connectionState, setConnectionState] = useState('connecting');
-    const [audioEnabled, setAudioEnabled] = useState(false);
+    const [hasLoaded, setHasLoaded] = useState(false);
     const versionRef = useRef(0);
     const audioRef = useRef(null);
-    const previousConnectionRef = useRef('connecting');
+    const audioEnabledRef = useRef(false);
+    const stageStateRef = useRef(IDLE_STATE);
+    const hasConnectedRef = useRef(false);
+    const reconnectPendingRef = useRef(false);
 
     const stopAudio = useCallback(() => {
         if (audioRef.current) {
@@ -33,7 +31,7 @@ export default function Stage({ ceremony }) {
         async (presentation) => {
             stopAudio();
 
-            if (!audioEnabled || !presentation?.audio_url) {
+            if (!audioEnabledRef.current || !presentation?.audio_url) {
                 return;
             }
 
@@ -47,10 +45,10 @@ export default function Stage({ ceremony }) {
                 audioRef.current = null;
             }
         },
-        [audioEnabled, stopAudio],
+        [stopAudio],
     );
 
-    const reconcile = useCallback(async () => {
+    const reconcile = useCallback(async (markLoaded = false) => {
         try {
             const { data } = await requestJson('/stage/state');
             const nextState = data.state ?? IDLE_STATE;
@@ -59,6 +57,10 @@ export default function Stage({ ceremony }) {
             setStageState(nextState);
         } catch {
             setStageState((current) => current);
+        } finally {
+            if (markLoaded) {
+                setHasLoaded(true);
+            }
         }
     }, []);
 
@@ -67,7 +69,7 @@ export default function Stage({ ceremony }) {
         let channel;
 
         async function connect() {
-            await reconcile();
+            await reconcile(true);
 
             if (cancelled || !ceremony) {
                 return;
@@ -76,8 +78,6 @@ export default function Stage({ ceremony }) {
             const echo = getEcho();
 
             if (!echo) {
-                setConnectionState('unavailable');
-
                 return;
             }
 
@@ -137,18 +137,51 @@ export default function Stage({ ceremony }) {
     }, [ceremony, reconcile, stopAudio]);
 
     useEffect(() => {
-        const stopObserving = observeEchoConnection((current) => {
-            const previous = previousConnectionRef.current;
-            previousConnectionRef.current = current;
-            setConnectionState(current);
+        stageStateRef.current = stageState;
+    }, [stageState]);
 
-            if (current === 'connected' && previous !== 'connecting') {
-                void reconcile();
+    useEffect(() => {
+        const stopObserving = observeEchoConnection((current) => {
+            if (current === 'connected') {
+                if (reconnectPendingRef.current) {
+                    void reconcile();
+                }
+
+                hasConnectedRef.current = true;
+                reconnectPendingRef.current = false;
+
+                return;
+            }
+
+            if (hasConnectedRef.current) {
+                reconnectPendingRef.current = true;
             }
         });
 
         return stopObserving;
     }, [reconcile]);
+
+    useEffect(() => {
+        const enableAudio = () => {
+            if (audioEnabledRef.current) {
+                return;
+            }
+
+            audioEnabledRef.current = true;
+
+            if (stageStateRef.current.presentation?.audio_url) {
+                void playAudio(stageStateRef.current.presentation);
+            }
+        };
+
+        window.addEventListener('pointerdown', enableAudio, { once: true });
+        window.addEventListener('keydown', enableAudio, { once: true });
+
+        return () => {
+            window.removeEventListener('pointerdown', enableAudio);
+            window.removeEventListener('keydown', enableAudio);
+        };
+    }, [playAudio]);
 
     useEffect(() => {
         if (stageState.presentation) {
@@ -158,53 +191,29 @@ export default function Stage({ ceremony }) {
         }
     }, [playAudio, stageState.presentation, stopAudio]);
 
-    async function enableAudio() {
-        setAudioEnabled(true);
-
-        if (stageState.presentation?.audio_url) {
-            stopAudio();
-            const audio = new Audio(stageState.presentation.audio_url);
-            audio.preload = 'auto';
-            audioRef.current = audio;
-
-            try {
-                await audio.play();
-            } catch {
-                audioRef.current = null;
-            }
-        }
-    }
-
     const presentation = stageState.presentation;
+    const displayName = presentation?.display_name?.trim() || 'Graduate';
+    const program = presentation?.program?.trim();
+    const major = presentation?.major?.trim();
+    const honors = presentation?.honors?.trim();
+    const stageStatus = hasLoaded ? (presentation ? 'presented' : 'idle') : 'loading';
 
     return (
         <>
             <Head title="Ceremony Stage" />
 
-            <main className="stage-page">
-                <div className="stage-status" aria-live="polite">
-                    <span
-                        className={
-                            connectionState === 'connected'
-                                ? 'stage-live-dot'
-                                : 'stage-sync-dot'
-                        }
-                        aria-hidden="true"
-                    />
-                    {liveLabel(connectionState)}
-                </div>
-
-                {!audioEnabled && (
-                    <button
-                        className="stage-audio-enable"
-                        type="button"
-                        onClick={enableAudio}
+            <main className="stage-page" data-stage-status={stageStatus}>
+                {!hasLoaded ? (
+                    <section
+                        className="stage-loading"
+                        role="status"
+                        aria-live="polite"
+                        aria-labelledby="stage-loading-title"
                     >
-                        Enable ceremony audio
-                    </button>
-                )}
-
-                {presentation ? (
+                        <p>{ceremony?.name ?? 'Graduation Ceremony'}</p>
+                        <h1 id="stage-loading-title">Preparing ceremony display</h1>
+                    </section>
+                ) : presentation ? (
                     <section
                         className="stage-presentation"
                         aria-labelledby="graduate-name"
@@ -219,28 +228,22 @@ export default function Stage({ ceremony }) {
                         <p className="stage-ceremony-name">
                             {ceremony?.name ?? 'Graduation Ceremony'}
                         </p>
-                        <h1 id="graduate-name">{presentation.display_name}</h1>
-                        {presentation.program && (
-                            <p className="stage-program">
-                                {presentation.program}
-                            </p>
+                        <h1 id="graduate-name">{displayName}</h1>
+                        {program && (
+                            <p className="stage-program">{program}</p>
                         )}
-                        {presentation.major && (
-                            <p className="stage-major">
-                                Major in {presentation.major}
-                            </p>
+                        {major && (
+                            <p className="stage-major">Major in {major}</p>
                         )}
-                        {presentation.honors && (
-                            <p className="stage-honors">
-                                {presentation.honors}
-                            </p>
+                        {honors && (
+                            <p className="stage-honors">{honors}</p>
                         )}
                     </section>
                 ) : (
                     <section className="stage-idle" aria-labelledby="stage-title">
                         <p>{ceremony?.name ?? 'Graduation Ceremony'}</p>
                         <h1 id="stage-title">Welcome, graduates</h1>
-                        <span>Awaiting the next presentation</span>
+                        <span>Awaiting the next graduate</span>
                     </section>
                 )}
             </main>

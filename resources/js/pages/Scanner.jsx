@@ -4,48 +4,165 @@ import { observeEchoConnection } from '../lib/echo';
 import { requestJson } from '../lib/http';
 
 const INITIAL_FEEDBACK = {
+    status: 'ready',
     tone: 'neutral',
-    title: 'Ready to scan',
-    message: 'Scan a graduate QR code or enter a token manually.',
+    title: 'Ready for the next graduate',
+    message: 'Scan the QR code. If needed, enter the token and choose Process scan.',
 };
 
-function connectionLabel(state) {
+const REJECTION_FEEDBACK = {
+    invalid_token: {
+        title: 'QR code not recognized',
+        message: 'Check that the correct QR code is visible, then scan it again.',
+    },
+    duplicate_active: {
+        title: 'Graduate is already on stage',
+        message: 'Do not scan again. Wait for the stage operator to finish the current presentation.',
+    },
+    student_ineligible: {
+        title: 'Graduate is not eligible',
+        message: 'Do not continue with this QR code. Ask the ceremony administrator to verify the graduate record.',
+    },
+    ceremony_inactive: {
+        title: 'Ceremony is not accepting scans',
+        message: 'Stop scanning. Ask an administrator to resume the ceremony, then reload this screen.',
+    },
+    already_completed: {
+        title: 'Presentation already completed',
+        message: 'Do not scan again. Ask the stage operator if the graduate needs to be presented another time.',
+    },
+    stage_busy: {
+        title: 'Stage is still occupied',
+        message: 'Wait until the current presentation is cleared, then scan this QR code again.',
+    },
+    unauthorized: {
+        title: 'Scanner access expired',
+        message: 'Return to operations and sign in again before processing another scan.',
+    },
+};
+
+function ceremonyUnavailableFeedback(ceremonyStatus) {
+    if (ceremonyStatus === 'multiple_active_ceremonies') {
+        return {
+            status: 'ceremony_inactive',
+            tone: 'rejected',
+            title: 'Scanner stopped',
+            message: 'More than one ceremony is active. Ask an administrator to correct the ceremony status before scanning.',
+        };
+    }
+
+    return {
+        status: 'ceremony_inactive',
+        tone: 'rejected',
+        title: 'Scanner stopped',
+        message: 'No active ceremony is available. Ask an administrator to activate the ceremony before scanning.',
+    };
+}
+
+function rejectionFeedback(status, fallbackMessage) {
+    const content = REJECTION_FEEDBACK[status];
+
+    return {
+        status,
+        tone: 'rejected',
+        title: content?.title ?? 'Scan not accepted',
+        message:
+            content?.message ??
+            fallbackMessage ??
+            'Check the graduate record, then follow the ceremony recovery procedure.',
+    };
+}
+
+function realtimeStatus(state) {
     if (state === 'connected') {
-        return 'Live connection ready';
+        return {
+            label: 'Live updates connected',
+            detail: 'Stage updates are available.',
+            tone: 'ready',
+        };
+    }
+
+    if (state === 'reconnected') {
+        return {
+            label: 'Live updates reconnected',
+            detail: 'The stage will recover the latest saved state.',
+            tone: 'ready',
+        };
     }
 
     if (state === 'connecting') {
-        return 'Connecting to live updates';
+        return {
+            label: 'Connecting to live updates',
+            detail: 'HTTP scanning remains available.',
+            tone: 'checking',
+        };
     }
 
-    return 'Live connection recovering';
+    return {
+        label: 'Live updates disconnected',
+        detail: 'Keep using HTTP scans. The stage will recover after reconnection.',
+        tone: 'warning',
+    };
+}
+
+function serverStatus(state) {
+    if (state === 'checking') {
+        return {
+            label: 'Server request in progress',
+            detail: 'Do not scan another QR code yet.',
+            tone: 'checking',
+        };
+    }
+
+    if (state === 'unavailable') {
+        return {
+            label: 'Server request failed',
+            detail: 'No scan was confirmed. Check the local server connection.',
+            tone: 'danger',
+        };
+    }
+
+    return {
+        label: 'Server available',
+        detail: 'Scan validation is ready.',
+        tone: 'ready',
+    };
 }
 
 export default function Scanner({ ceremony, ceremonyStatus }) {
     const inputRef = useRef(null);
+    const submissionLockRef = useRef(false);
+    const hasConnectedRef = useRef(false);
+    const reconnectPendingRef = useRef(false);
     const [token, setToken] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [ceremonyAccepting, setCeremonyAccepting] = useState(Boolean(ceremony));
     const [connectionState, setConnectionState] = useState('connecting');
-    const [feedback, setFeedback] = useState(
-        ceremony
-            ? INITIAL_FEEDBACK
-            : {
-                  tone: 'rejected',
-                  title: 'Scanner unavailable',
-                  message:
-                      ceremonyStatus === 'multiple_active_ceremonies'
-                          ? 'Multiple active ceremonies require administrator correction.'
-                          : 'No active ceremony is configured.',
-              },
-    );
+    const [serverState, setServerState] = useState('available');
+    const [feedback, setFeedback] = useState(ceremony ? INITIAL_FEEDBACK : ceremonyUnavailableFeedback(ceremonyStatus));
     const [lastAccepted, setLastAccepted] = useState(null);
+    const canScan = Boolean(ceremony) && ceremonyAccepting;
 
     useEffect(() => {
         inputRef.current?.focus();
 
         const refocus = () => inputRef.current?.focus();
         window.addEventListener('focus', refocus);
-        const stopObserving = observeEchoConnection(setConnectionState);
+        const stopObserving = observeEchoConnection((current) => {
+            if (current === 'connected') {
+                setConnectionState(reconnectPendingRef.current ? 'reconnected' : 'connected');
+                hasConnectedRef.current = true;
+                reconnectPendingRef.current = false;
+
+                return;
+            }
+
+            if (hasConnectedRef.current) {
+                reconnectPendingRef.current = true;
+            }
+
+            setConnectionState(current);
+        });
 
         return () => {
             window.removeEventListener('focus', refocus);
@@ -56,7 +173,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
     async function submitScan(event) {
         event.preventDefault();
 
-        if (submitting || !ceremony) {
+        if (submissionLockRef.current || !canScan) {
             return;
         }
 
@@ -64,20 +181,24 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
 
         if (!submittedToken) {
             setFeedback({
+                status: 'empty_input',
                 tone: 'rejected',
                 title: 'Nothing scanned',
-                message: 'Scan a QR code or enter a token before submitting.',
+                message: 'Place the cursor in the scan field, scan the QR code, then try again.',
             });
             inputRef.current?.focus();
 
             return;
         }
 
+        submissionLockRef.current = true;
         setSubmitting(true);
+        setServerState('checking');
         setFeedback({
+            status: 'processing',
             tone: 'neutral',
-            title: 'Checking scan',
-            message: 'Validating against the active ceremony…',
+            title: 'Processing scan',
+            message: 'Wait for confirmation before scanning another graduate.',
         });
 
         try {
@@ -86,31 +207,51 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 body: JSON.stringify({ token: submittedToken }),
             });
 
+            setServerState('available');
+
             if (data.status === 'accepted') {
-                setFeedback({
-                    tone: 'accepted',
-                    title: 'Accepted',
-                    message: data.broadcast_delivered
-                        ? `${data.student.display_name} is now on stage.`
-                        : `${data.student.display_name} was saved. The stage will recover from server state.`,
-                });
-                setLastAccepted(data.student.display_name);
+                const displayName = data.student?.display_name?.trim();
+
+                if (!displayName) {
+                    setFeedback({
+                        status: 'missing_student_information',
+                        tone: 'warning',
+                        title: 'Scan saved — information incomplete',
+                        message: 'Ask the stage operator to verify the graduate display before continuing.',
+                    });
+                    setLastAccepted('Graduate information unavailable');
+                } else {
+                    setFeedback({
+                        status: 'accepted',
+                        tone: 'accepted',
+                        title: 'Successful scan',
+                        message: data.broadcast_delivered
+                            ? `${displayName} is ready on the stage display.`
+                            : `${displayName} was saved while live delivery was unavailable. The stage will recover from server state.`,
+                    });
+                    setLastAccepted(displayName);
+                }
             } else {
+                if (data.status === 'ceremony_inactive') {
+                    setCeremonyAccepting(false);
+                }
+
                 setFeedback({
-                    tone: 'rejected',
-                    title: data.status.replaceAll('_', ' '),
-                    message: data.message,
+                    ...rejectionFeedback(data.status, data.message),
                 });
             }
         } catch {
+            setServerState('unavailable');
             setFeedback({
+                status: 'request_failed',
                 tone: 'rejected',
-                title: 'Server unavailable',
-                message: 'The scan was not confirmed. Reconnect and scan again.',
+                title: 'Scan not confirmed',
+                message: 'Check the local server connection. When it is restored, scan the same QR code again.',
             });
         } finally {
             setToken('');
             setSubmitting(false);
+            submissionLockRef.current = false;
             window.requestAnimationFrame(() => inputRef.current?.focus());
         }
     }
@@ -119,29 +260,59 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
         <>
             <Head title="Scanner" />
 
-            <main
-                className="scanner-page"
-                onClick={() => inputRef.current?.focus()}
-            >
+            <main className="scanner-page">
                 <section className="scanner-shell" aria-labelledby="scanner-heading">
                     <header className="scanner-header">
                         <div>
-                            <p className="foundation-eyebrow">Scanner station</p>
-                            <h1 id="scanner-heading">Graduate check-in</h1>
-                            <p>{ceremony?.name ?? 'Ceremony unavailable'}</p>
+                            <p className="scanner-kicker">Scanner readiness</p>
+                            <h1 id="scanner-heading">
+                                {submitting ? 'Processing scan' : canScan ? 'Ready for the next graduate' : 'Scanner stopped'}
+                            </h1>
+                            <p>
+                                {ceremony?.name ?? 'No active ceremony'}
+                                <span aria-hidden="true"> · </span>
+                                <strong
+                                    className={
+                                        canScan
+                                            ? 'ceremony-status-active'
+                                            : 'ceremony-status-inactive'
+                                    }
+                                >
+                                    {canScan ? 'Active' : 'Paused or inactive'}
+                                </strong>
+                            </p>
                         </div>
                         <Link className="secondary-action" href="/dashboard">
-                            Dashboard
+                            Return to operations
                         </Link>
                     </header>
 
-                    <div
-                        className={`connection-pill connection-${connectionState}`}
-                        role="status"
-                    >
-                        <span aria-hidden="true" />
-                        {connectionLabel(connectionState)}
-                    </div>
+                    <ul className="scanner-system-status" aria-label="Scanner service status">
+                        {[
+                            {
+                                detail: submitting
+                                    ? 'Input is locked until confirmation.'
+                                    : canScan
+                                      ? 'USB and keyboard input are ready.'
+                                      : 'Reload after the ceremony is resumed.',
+                                label: submitting ? 'Scanner processing' : canScan ? 'Scanner ready' : 'Scanner unavailable',
+                                tone: submitting ? 'checking' : canScan ? 'ready' : 'danger',
+                            },
+                            serverStatus(serverState),
+                            realtimeStatus(connectionState),
+                        ].map((status) => (
+                            <li key={status.label}>
+                                <span
+                                    className={`status-marker status-marker-${status.tone}`}
+                                    aria-hidden="true"
+                                />
+                                <span>
+                                    <strong>{status.label}</strong>
+                                    <small>{status.detail}</small>
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
 
                     <form className="scanner-form" onSubmit={submitScan}>
                         <label htmlFor="scan-token">
@@ -155,40 +326,40 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                             onChange={(event) => setToken(event.target.value)}
                             autoComplete="off"
                             autoCapitalize="characters"
+                            autoFocus
+                            inputMode="text"
                             maxLength={128}
-                            readOnly={submitting || !ceremony}
+                            readOnly={submitting || !canScan}
+                            spellCheck="false"
                             aria-describedby="scanner-help"
                         />
-                        <p id="scanner-help">
-                            The USB scanner should send Enter automatically.
-                        </p>
                         <button
                             className="primary-action scanner-submit"
                             type="submit"
-                            disabled={submitting || !ceremony}
+                            disabled={submitting || !canScan}
                         >
-                            {submitting ? 'Checking…' : 'Submit scan'}
+                            {submitting ? 'Processing…' : 'Process scan'}
                         </button>
+                        <p id="scanner-help">
+                            USB scanners normally submit with Enter. Keyboard entry remains available.
+                        </p>
                     </form>
 
                     <section
                         className={`scan-feedback scan-feedback-${feedback.tone}`}
-                        aria-live="assertive"
+                        data-feedback-status={feedback.status}
+                        role={feedback.tone === 'neutral' ? 'status' : 'alert'}
+                        aria-live={feedback.tone === 'neutral' ? 'polite' : 'assertive'}
                         aria-atomic="true"
                     >
+                        <p className="scan-feedback-label">Current scan result</p>
                         <strong>{feedback.title}</strong>
                         <p>{feedback.message}</p>
                     </section>
 
-                    <dl className="scanner-summary">
-                        <div>
-                            <dt>Last accepted</dt>
-                            <dd>{lastAccepted ?? 'None this session'}</dd>
-                        </div>
-                        <div>
-                            <dt>Input</dt>
-                            <dd>{submitting ? 'Locked during request' : 'Ready'}</dd>
-                        </div>
+                    <dl className="scanner-last-success">
+                        <dt>Last successful graduate</dt>
+                        <dd>{lastAccepted ?? 'No successful scan in this browser session'}</dd>
                     </dl>
                 </section>
             </main>
