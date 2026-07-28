@@ -24,4 +24,13 @@ export default defineConfig([
             sourceType: 'module',
         },
     },
+    {
+        files: ['tests/Support/**/*.mjs'],
+        extends: [js.configs.recommended],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            globals: globals.node,
+            sourceType: 'module',
+        },
+    },
 ]);

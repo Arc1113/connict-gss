@@ -162,6 +162,24 @@ input:focus-visible {
     width: min(46rem, 100%);
 }
 
+.dashboard-operations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border: 1px solid #c9d7e4;
+    border-radius: 0.85rem;
+    background: #f5f9fc;
+}
+
+.operation-feedback {
+    flex-basis: 100%;
+    margin: 0.25rem 0 0;
+    color: #405a72;
+    line-height: 1.5;
+}
+
 .back-link {
     display: inline-block;
     margin-bottom: 2rem;
@@ -280,6 +298,333 @@ input:focus-visible {
     margin-top: 2rem;
 }
 
+.secondary-action:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.scanner-page {
+    min-height: 100vh;
+    padding: clamp(1rem, 4vw, 3rem);
+    background:
+        radial-gradient(circle at top right, rgb(23 107 91 / 12%), transparent 35rem),
+        #eef3f8;
+}
+
+.scanner-shell {
+    width: min(68rem, 100%);
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 2.5rem);
+    border: 1px solid #c6d5e3;
+    border-radius: 1.25rem;
+    background: #ffffff;
+    box-shadow: 0 1.5rem 4rem rgb(29 52 79 / 12%);
+}
+
+.scanner-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+}
+
+.scanner-header h1 {
+    margin: 0;
+    color: #102b49;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    line-height: 1.05;
+}
+
+.scanner-header p:last-child {
+    margin: 0.65rem 0 0;
+    color: #577087;
+}
+
+.connection-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-top: 1.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 999px;
+    color: #385269;
+    background: #edf3f8;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.connection-pill span {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    background: #ca8a04;
+}
+
+.connection-connected span {
+    background: #16805f;
+}
+
+.scanner-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem 1rem;
+    margin-top: 2rem;
+}
+
+.scanner-form label {
+    grid-column: 1 / -1;
+    color: #203e59;
+    font-weight: 750;
+}
+
+.scanner-form input {
+    min-width: 0;
+    min-height: 4.25rem;
+    padding: 0.75rem 1rem;
+    border: 2px solid #89a5bb;
+    border-radius: 0.8rem;
+    color: #102b49;
+    background: #ffffff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: clamp(1rem, 3vw, 1.35rem);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.scanner-form input:read-only {
+    background: #edf2f6;
+}
+
+.scanner-form p {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: #667c90;
+    font-size: 0.85rem;
+}
+
+.scanner-submit {
+    min-width: 10rem;
+}
+
+.scan-feedback {
+    min-height: 11rem;
+    margin-top: 2rem;
+    padding: clamp(1.25rem, 4vw, 2rem);
+    border: 2px solid #cad7e3;
+    border-radius: 1rem;
+    color: #183a57;
+    background: #f4f8fb;
+}
+
+.scan-feedback strong {
+    display: block;
+    font-size: clamp(1.75rem, 6vw, 3rem);
+    line-height: 1.1;
+    text-transform: capitalize;
+}
+
+.scan-feedback p {
+    margin: 0.8rem 0 0;
+    font-size: clamp(1.05rem, 3vw, 1.4rem);
+    line-height: 1.5;
+}
+
+.scan-feedback-accepted {
+    border-color: #50a68a;
+    color: #0c5946;
+    background: #eaf9f4;
+}
+
+.scan-feedback-rejected {
+    border-color: #d66b64;
+    color: #86251f;
+    background: #fff2f1;
+}
+
+.scanner-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0 0;
+}
+
+.scanner-summary div {
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background: #f3f7fa;
+}
+
+.scanner-summary dt {
+    color: #687b8f;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.scanner-summary dd {
+    margin: 0.35rem 0 0;
+    color: #193c59;
+    font-weight: 700;
+}
+
+.stage-page {
+    position: relative;
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    overflow: hidden;
+    padding: clamp(2rem, 6vw, 6rem);
+    color: #ffffff;
+    background:
+        radial-gradient(circle at 50% 10%, rgb(218 181 91 / 22%), transparent 35%),
+        linear-gradient(145deg, #061b31, #0d3657 55%, #09253e);
+}
+
+.stage-page::before,
+.stage-page::after {
+    position: absolute;
+    width: 32rem;
+    height: 32rem;
+    border: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 50%;
+    content: "";
+}
+
+.stage-page::before {
+    top: -18rem;
+    left: -8rem;
+}
+
+.stage-page::after {
+    right: -10rem;
+    bottom: -20rem;
+}
+
+.stage-status {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.5rem;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgb(255 255 255 / 68%);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.stage-live-dot,
+.stage-sync-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: #55d6a7;
+}
+
+.stage-sync-dot {
+    background: #e5bd62;
+}
+
+.stage-audio-enable {
+    position: absolute;
+    top: 1rem;
+    left: 1.25rem;
+    z-index: 3;
+    min-height: 2.4rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid rgb(255 255 255 / 28%);
+    border-radius: 999px;
+    color: #ffffff;
+    background: rgb(1 18 33 / 66%);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.stage-audio-enable:focus-visible {
+    outline: 3px solid #e5bd62;
+    outline-offset: 3px;
+}
+
+.stage-presentation,
+.stage-idle {
+    position: relative;
+    z-index: 1;
+    width: min(88rem, 100%);
+    text-align: center;
+}
+
+.stage-photo {
+    width: clamp(8rem, 18vw, 15rem);
+    aspect-ratio: 1;
+    margin-bottom: 1.5rem;
+    object-fit: cover;
+    border: 0.35rem solid rgb(255 255 255 / 88%);
+    border-radius: 50%;
+    box-shadow: 0 1rem 3rem rgb(0 0 0 / 32%);
+}
+
+.stage-ceremony-name,
+.stage-idle p {
+    margin: 0;
+    color: #e5bd62;
+    font-size: clamp(0.85rem, 2vw, 1.25rem);
+    font-weight: 750;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.stage-presentation h1,
+.stage-idle h1 {
+    max-width: 22ch;
+    margin: 1rem auto 0;
+    overflow-wrap: anywhere;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(3rem, 9vw, 8.5rem);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 0.96;
+    text-wrap: balance;
+}
+
+.stage-program {
+    max-width: 50ch;
+    margin: 1.75rem auto 0;
+    color: rgb(255 255 255 / 91%);
+    font-size: clamp(1.15rem, 3vw, 2.15rem);
+    line-height: 1.35;
+    text-wrap: balance;
+}
+
+.stage-major {
+    margin: 0.55rem 0 0;
+    color: rgb(255 255 255 / 72%);
+    font-size: clamp(1rem, 2vw, 1.45rem);
+}
+
+.stage-honors {
+    display: inline-block;
+    margin: 1.5rem 0 0;
+    padding: 0.6rem 1.2rem;
+    border: 1px solid rgb(229 189 98 / 55%);
+    border-radius: 999px;
+    color: #f5d992;
+    background: rgb(0 0 0 / 12%);
+    font-size: clamp(1rem, 2vw, 1.4rem);
+    font-weight: 750;
+}
+
+.stage-idle span {
+    display: block;
+    margin-top: 1.75rem;
+    color: rgb(255 255 255 / 64%);
+    font-size: clamp(1rem, 2vw, 1.35rem);
+    letter-spacing: 0.05em;
+}
+
 @media (max-width: 36rem) {
     .foundation-page {
         padding: 1rem;
@@ -302,5 +647,26 @@ input:focus-visible {
     .dashboard-actions {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .scanner-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .scanner-form {
+        grid-template-columns: 1fr;
+    }
+
+    .scanner-submit {
+        min-height: 3.5rem;
+    }
+
+    .scanner-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .stage-page {
+        padding-inline: 1.25rem;
     }
 }

@@ -14,6 +14,7 @@ RUN apt-get update \
         bcmath \
         intl \
         mbstring \
+        pcntl \
         pdo_pgsql \
         zip \
     && rm -rf /var/lib/apt/lists/*
@@ -22,4 +23,4 @@ COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 
 WORKDIR /app
 
-EXPOSE 8000
+EXPOSE 8000 8080

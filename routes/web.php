@@ -1,13 +1,17 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\CompleteCurrentPresentationController;
+use App\Http\Controllers\ScanController;
+use App\Http\Controllers\ScannerController;
+use App\Http\Controllers\StageController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'appName' => config('app.name'),
-        'phase' => 'Phase 2',
+        'phase' => 'Phase 3',
         'stack' => [
             'Laravel',
             'React',
@@ -28,6 +32,22 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
+
+    Route::get('/scanner', ScannerController::class)
+        ->middleware('can:operate-scanner')
+        ->name('scanner');
+    Route::post('/scans', [ScanController::class, 'store'])
+        ->name('scans.store');
+
+    Route::get('/stage', [StageController::class, 'show'])
+        ->middleware('can:operate-stage')
+        ->name('stage');
+    Route::get('/stage/state', [StageController::class, 'state'])
+        ->middleware('can:operate-stage')
+        ->name('stage.state');
+    Route::post('/stage/complete-current', CompleteCurrentPresentationController::class)
+        ->middleware('can:operate-stage')
+        ->name('stage.complete-current');
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');

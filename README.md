@@ -1,305 +1,217 @@
 # Graduation Stage System
 
-Status: **Phase 2 — Authentication, Roles, and Core Data Model awaiting human
-approval**
+Status: **Phase 3 — Critical Vertical Slice implemented; awaiting human approval**
 
-The Graduation Stage System is a local-network-only Laravel application that will
-support reliable QR-driven graduation stage operations. Phases 1 and 2 establish
-the single-application foundation, session authentication, role authorization,
-and constrained PostgreSQL domain model.
+The Graduation Stage System is a local-network-only application for reliable,
+QR-driven graduation presentation. Phase 3 proves one complete path:
 
-A public foundation page, login page, and minimal protected dashboard exist.
-Operational ceremony administration, scanning, queue commands, Reverb/Echo, stage
-interfaces, audio, reports, and backup workflows remain intentionally
-unimplemented.
+```text
+USB QR scanner → /scanner → POST /scans → PostgreSQL transaction
+    → post-commit StudentPresented event → Reverb → Echo → /stage
+    → local audio, with GET /stage/state recovery
+```
+
+PostgreSQL is authoritative. WebSockets announce committed changes; they do not
+replace HTTP commands or state retrieval.
 
 ## Approved architecture
 
-- One Laravel application containing React through Inertia.js
-- Vite for local frontend development and production asset compilation
-- PostgreSQL as the only supported authoritative database
-- Session-based web application structure
-- HTTP for later commands and authoritative reads
-- Reverb and Echo reserved for a later approved phase
-- No runtime CDN, hosted font, cloud service, or internet dependency
-- Dedicated local-network deployment across server, scanner, and stage laptops
+- Laravel 13 backend
+- React 19 frontend in the same application
+- Inertia.js 3 integration
+- Vite 8 asset bundler
+- PostgreSQL 16 database
+- Laravel Reverb 1.11 WebSocket server
+- Laravel Echo 2.4 and `pusher-js` 8.6 browser client
+- Session authentication and private broadcast channels
+- HTTP for commands, validation, and authoritative reads
+- Local files for presentation media
+- Server, scanner, and stage laptops on a dedicated local network
+- USB 2D keyboard-wedge QR scanner as the primary scanner
 
-SQLite is not an application or test fallback. The standard Laravel SQLite
-connection remains available in framework configuration, but PostgreSQL is the
-configured default and all executed database checks use PostgreSQL.
+There is no SQLite fallback, polling replacement, cloud runtime service, hosted
+font, CDN, browser speech synthesis, or internet runtime dependency.
 
-## Implemented foundation
+## Phase 3 behavior
 
-- Laravel 13 application scaffolded directly in this repository
-- Inertia Laravel adapter and middleware
-- React entry point and one minimal Inertia page
-- Vite React compilation with local CSS and no externally hosted assets
-- PostgreSQL development and testing databases
-- Session-based login/logout with login throttling and inactive-account rejection
-- Five backed-enum roles with server-enforced baseline gates
-- Nine core domain tables with PostgreSQL checks, foreign keys, indexes, and
-  partial unique indexes
-- Eloquent relationships, enum/date/JSON casts, factories, and development seed
-  data
-- PHPUnit tests, including explicit PostgreSQL test-database verification
-- Laravel Pint and ESLint configuration
-- Project-scoped Docker development services for PHP and PostgreSQL
-- Native PHP/PostgreSQL setup instructions
+The temporary vertical-slice policy is intentionally small:
 
-## Verified versions
+1. Exactly one ceremony must have PostgreSQL status `active`.
+2. A valid, eligible scan immediately becomes `presenting` only when the stage is
+   idle.
+3. A scan never preempts the current graduate.
+4. While a graduate is presenting, another graduate receives `stage_busy`.
+5. A repeat of the active graduate receives `duplicate_active`.
+6. A completed graduate receives `already_completed`.
+7. A stage operator or administrator may complete the current presentation. This
+   marks its queue row `completed`, clears stage state, increments the state
+   version, records an event, and broadcasts the clear after commit.
 
-Verified on 2026-07-28:
+Queue ordering, present-next, selected presentation, skip, return, replay controls,
+mode automation, and advanced recovery remain Phase 7 work.
 
-| Component | Verified version |
-| --- | --- |
-| Host operating system | Ubuntu 24.04.4 LTS |
-| Host PHP | 8.3.6 |
-| Host Composer | 2.7.1 |
-| Docker PHP | 8.3.32 |
-| Docker Composer | 2.10.2 |
-| Laravel framework | 13.23.0 |
-| PostgreSQL | 16.14 |
-| Inertia Laravel adapter | 3.1.1 |
-| Inertia React adapter | 3.6.1 |
-| React / React DOM | 19.2.8 |
-| Node.js | 24.14.0 |
-| npm | 11.9.0 |
-| Vite | 8.1.5 |
-| Laravel Vite plugin | 3.1.3 |
-| ESLint | 10.8.0 |
-| Docker Engine / Compose | 29.6.1 / 2.40.3 |
+## Implemented routes
 
-Laravel 13 requires PHP 8.3 or newer. Node.js must satisfy Vite's supported range;
-the verified Node 24 release does.
+| Route | Purpose | Access |
+| --- | --- | --- |
+| `GET /scanner` | Keyboard-wedge and manual scan UI | Scanner operator, administrator |
+| `POST /scans` | Validate and commit one scan attempt | Scanner operator, administrator |
+| `GET /stage` | Audience presentation display | Stage operator, administrator |
+| `GET /stage/state` | Authoritative safe stage snapshot | Stage operator, administrator |
+| `POST /stage/complete-current` | Minimal completion/clear command | Stage operator, administrator |
+| `GET\|POST /broadcasting/auth` | Private Echo channel authorization | Authorized active session |
 
-## Prerequisites
+The private Echo channel is `private-stage.{ceremonyId}`. It is authorized only
+for stage operators and administrators when exactly one active ceremony exists
+and the channel ID matches it.
 
-### Docker development path
+`POST /scans` returns one of:
 
-- Git
-- PHP 8.3+ and Composer 2 for installing PHP dependencies on the host
-- Node.js 24+ and npm 11+ for the verified frontend workflow
-- Docker Engine with the Compose plugin
+- `accepted` (`201`)
+- `invalid_token` (`422`)
+- `ceremony_inactive` (`409`)
+- `student_ineligible` (`422`)
+- `duplicate_active` (`409`)
+- `already_completed` (`409`)
+- `stage_busy` (`409`)
+- `unauthorized` (`403`)
 
-The PHP application container includes `pdo_pgsql` and the other required PHP
-extensions. PostgreSQL is bound to `127.0.0.1:54329` by default and is not exposed
-to other network devices.
+Every safely processable scan attempt stores a SHA-256 token hash, not the raw
+token. Success events expose only event ID, state version, graduate ID, display
+name, program, major, honors, local photo/audio URL, and presentation time.
 
-### Native development path
+## Runtime processes and ports
 
-Install PostgreSQL 16+, its client tools, and PHP 8.3 with these extensions:
+| Service | Default host port | Exposure |
+| --- | ---: | --- |
+| Laravel HTTP | `8000` | Loopback by default; LAN when explicitly enabled |
+| Reverb WebSocket | `8080` | Loopback by default; LAN when explicitly enabled |
+| PostgreSQL | `54329` | Loopback only |
+| Vite dev server | Vite default | Development only; not required for compiled runtime |
 
-- BCMath
-- Ctype
-- cURL
-- DOM
-- Fileinfo
-- Filter
-- Hash
-- Intl
-- Mbstring
-- OpenSSL
-- PCRE
-- PDO
-- `pdo_pgsql`
-- Session
-- Tokenizer
-- XML
-- Zip
+The required runtime processes are Laravel, PostgreSQL, and Reverb. Phase 3 events
+implement `ShouldBroadcastNow` and are dispatched only after the transaction
+returns, so no queue worker is required.
 
-On Ubuntu 24.04, the missing PostgreSQL pieces are normally installed with:
+## First-time Docker setup
 
-```bash
-sudo apt-get update
-sudo apt-get install postgresql postgresql-client php8.3-pgsql
-```
+Requirements: Docker with Compose, Composer, Node.js/npm, and a browser. Package
+downloads require internet during setup only.
 
-System package installation requires administrator access. Do not substitute
-SQLite if PostgreSQL or `pdo_pgsql` is unavailable.
-
-## First-time setup with Docker
-
-1. Create the ignored local environment file:
+1. Create local environment configuration:
 
    ```bash
    cp .env.example .env
    ```
 
-2. Replace `DB_PASSWORD=change-me` in `.env` with a local development password.
-   Set `GSS_SEED_PASSWORD` to a different local-only password of at least 12
-   characters. Keep `DB_HOST=database` and `DB_PORT=5432` for Docker.
+2. Replace all example secrets in `.env`:
 
-3. Install locked PHP and frontend dependencies:
+   - `DB_PASSWORD`
+   - `GSS_SEED_PASSWORD` with at least 12 characters
+   - `REVERB_APP_KEY`
+   - `REVERB_APP_SECRET`
+
+3. Install the locked dependencies:
 
    ```bash
    composer install
-   npm install
+   npm ci
    ```
 
-4. Build and start the local services:
+4. Generate the Laravel key and build services:
 
    ```bash
-   docker compose up --detach --build
+   php artisan key:generate
+   docker compose build
    ```
 
-   On the first start, PostgreSQL creates both:
-
-   - `graduation_stage_system`
-   - `graduation_stage_system_testing`
-
-5. Generate the local application key:
+5. Start PostgreSQL and Laravel:
 
    ```bash
-   docker compose exec app php artisan key:generate
+   docker compose up -d database app
    ```
 
-6. Run all migrations and create the documented development sample data:
+6. Create a clean development database with Phase 3 sample data:
 
    ```bash
-   docker compose exec app php artisan migrate --seed
-   docker compose exec --env DB_DATABASE=graduation_stage_system_testing app php artisan migrate
+   docker compose exec -T app php artisan migrate:fresh --seed
    ```
 
-7. Compile the production frontend assets:
+7. Compile local production assets and start Reverb:
 
    ```bash
    npm run build
+   docker compose up -d reverb
+   docker compose ps
    ```
 
-8. Open <http://127.0.0.1:8000>.
+Open `http://localhost:8000`. Reverb should be healthy on port `8080`.
 
-Inspect service health with:
+Run destructive `migrate:fresh` commands before starting Reverb, or restart
+Reverb afterward. Reverb observes a database-backed restart marker, so replacing
+the cache table while it is running can intentionally terminate the old process.
 
-```bash
-docker compose ps
-docker compose logs --tail=100 app database
-```
+## Network configuration
 
-Stop the services without deleting PostgreSQL data:
+Reverb has three distinct address concepts:
 
-```bash
-docker compose down
-```
+- `REVERB_SERVER_HOST` / `REVERB_SERVER_PORT`: where the Reverb process listens
+  inside its container.
+- `REVERB_HOST` / `REVERB_PORT`: where Laravel publishes events. Docker uses
+  `reverb:8080`.
+- `VITE_REVERB_HOST` / `VITE_REVERB_PORT`: where the browser connects.
+  `VITE_REVERB_HOST` is empty by default so the client uses
+  `window.location.hostname`; this avoids compiling `localhost` into LAN clients.
 
-The named PostgreSQL volume is intentionally retained.
+### Single-laptop development
 
-## Native PostgreSQL setup
-
-Create a least-privilege local role and separate databases. Replace the sample
-password before running the SQL:
-
-```sql
-CREATE ROLE gss_app LOGIN PASSWORD '<strong-local-password>';
-CREATE DATABASE graduation_stage_system OWNER gss_app;
-CREATE DATABASE graduation_stage_system_testing OWNER gss_app;
-```
-
-For native execution, change these `.env` values:
+Use:
 
 ```dotenv
-DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_DATABASE=graduation_stage_system
-DB_TEST_DATABASE=graduation_stage_system_testing
-DB_USERNAME=gss_app
-DB_PASSWORD=<strong-local-password>
-GSS_SEED_PASSWORD=<different-local-development-password>
+APP_URL=http://localhost:8000
+APP_BIND_HOST=127.0.0.1
+REVERB_ALLOWED_ORIGINS=localhost,127.0.0.1
+VITE_REVERB_HOST=
 ```
 
-Then run:
+### Three-laptop local network
+
+Assign the server laptop a fixed address. For example, if it is
+`192.168.50.10`:
+
+```dotenv
+APP_URL=http://192.168.50.10:8000
+APP_BIND_HOST=0.0.0.0
+REVERB_ALLOWED_ORIGINS=localhost,127.0.0.1,192.168.50.10
+VITE_REVERB_HOST=
+VITE_REVERB_PORT=8080
+VITE_REVERB_SCHEME=http
+```
+
+Then recreate the app and Reverb containers:
 
 ```bash
-php artisan key:generate
-php artisan migrate --seed
-DB_DATABASE=graduation_stage_system_testing php artisan migrate
+docker compose up -d --force-recreate app reverb
 ```
 
-PostgreSQL should listen only on the server/local interfaces required by the
-approved deployment. Do not configure it for public access or expose credentials
-to React.
+From both client laptops, verify:
 
-## Environment configuration
+```text
+http://192.168.50.10:8000/up
+http://192.168.50.10:8000/login
+```
 
-Important environment values:
+Allow inbound TCP `8000` and `8080` only on the dedicated local network. Do not
+expose PostgreSQL. Add the actual server hostname/IP to
+`REVERB_ALLOWED_ORIGINS`; entries are comma-separated hostnames without schemes or
+ports. Rebuild assets only if a `VITE_*` value changes.
 
-| Variable | Purpose | Docker default |
-| --- | --- | --- |
-| `APP_KEY` | Laravel encryption key; generated locally and never committed | Empty in example |
-| `APP_URL` | Development application URL | `http://localhost:8000` |
-| `APP_TIMEZONE` | Application date/time zone | `Asia/Manila` |
-| `DB_CONNECTION` | Laravel database driver | `pgsql` |
-| `DB_HOST` | Database host from the PHP runtime | `database` |
-| `DB_PORT` | PostgreSQL port inside the Compose network | `5432` |
-| `DB_FORWARD_PORT` | Localhost-only forwarded database port | `54329` |
-| `DB_DATABASE` | Development database | `graduation_stage_system` |
-| `DB_TEST_DATABASE` | Testing database initialized by Docker | `graduation_stage_system_testing` |
-| `DB_USERNAME` | Local application database role | `gss_app` |
-| `DB_PASSWORD` | Local secret; must be changed | `change-me` placeholder |
-| `GSS_SEED_PASSWORD` | Password assigned to development-only seeded operators | Empty; required only when seeding |
+The address detected during Phase 3 development was `192.168.223.184`; it is an
+example, not a committed deployment address.
 
-`.env` and other non-example environment files are ignored by Git. Never commit a
-real application key, database password, or production credential.
+## Development accounts and sample tokens
 
-## Authentication and roles
-
-Laravel's built-in `web` guard provides cookie and database-session
-authentication. Login regenerates the session ID; logout invalidates the session
-and regenerates the CSRF token. Login attempts are limited to five per
-email/address key before Laravel temporarily throttles further attempts.
-
-Public registration is disabled. Accounts are created administratively or through
-the development seeder. An inactive account cannot log in; if an authenticated
-account is later deactivated, active-user middleware ends its session on the next
-protected request.
-
-The approved roles and initial gates are:
-
-| Role | Baseline gate |
-| --- | --- |
-| `administrator` | All defined baseline abilities, including `manage-users` |
-| `data_encoder` | `manage-ceremony-data` |
-| `scanner_operator` | `operate-scanner` |
-| `stage_operator` | `operate-stage` |
-| `technical_operator` | `manage-technical-operations` |
-
-These gates are a Phase 2 authorization foundation, not the final permission
-matrix. Laravel enforces them server-side. React receives only the authenticated
-user's ID, name, email, role value/label, and active flag.
-
-## Core database model
-
-Phase 2 adds `ceremonies`, `students`, `devices`, `stage_queue_items`,
-`stage_states`, `scan_logs`, `stage_events`, and `audit_logs`, and extends
-`users` with `role` and `is_active`.
-
-Important relationships include ceremony-to-students, ceremony-to-queue-items,
-one stage state per ceremony, student-to-queue/scan records, optional operator and
-device references on operational records, and preserved audit/event actors through
-nullable foreign keys.
-
-PostgreSQL enforces:
-
-- globally unique QR tokens;
-- ceremony-scoped unique student and sequence numbers;
-- valid roles, ceremony statuses, presentation modes, eligibility values, queue
-  statuses, stage display/audio states, scan results, and device states;
-- at most one active queue row per ceremony/student, where active means `waiting`,
-  `ready`, `presenting`, or `announced`;
-- at most one `presenting` row per ceremony;
-- one stage-state row per ceremony; and
-- ceremony-scoped queue, stage-state, event, and scan references, plus positive
-  sequence/queue-position checks.
-
-Eligibility values (`pending`, `eligible`, `ineligible`) and the minimal technical
-stage display/audio values are provisional until the institution approves their
-final workflow vocabularies.
-
-## Development seed data
-
-Set `GSS_SEED_PASSWORD` in the ignored `.env` before seeding. The seeder rejects
-missing values or values shorter than 12 characters. It creates or updates these
-local-only accounts, all using that environment-controlled password:
+`php artisan migrate:fresh --seed` creates active local-only accounts:
 
 | Email | Role |
 | --- | --- |
@@ -309,169 +221,115 @@ local-only accounts, all using that environment-controlled password:
 | `stage@example.test` | Stage operator |
 | `technical@example.test` | Technical operator |
 
-It also creates one prepared sample ceremony, five fictional sample students, and
-one idle stage state. It intentionally creates no queue items.
+All use the untracked `GSS_SEED_PASSWORD`; no password is stored in this
+repository.
 
-Run or rerun the seeder:
+The active sample ceremony contains:
 
-```bash
-docker compose exec app php artisan db:seed
-```
+| Graduate | Manual Phase 3 token | Audio fixture |
+| --- | --- | --- |
+| Amara Santos | `GSS-PHASE3-A7K9M2Q4` | `student-01.wav` |
+| Benicio Reyes | `GSS-PHASE3-B8L3N5R7` | `student-02.wav` |
+| Clarisse Mendoza | `GSS-PHASE3-C4P6S8V2` | `student-03.wav` |
+| Dario Navarro | `GSS-PHASE3-D9T5W7Y3` | `student-04.wav` |
+| Elena Alexandria-Cassandra Villanueva | `GSS-PHASE3-E2H6J8X4` | Intentionally missing |
 
-Reset the development database and seed from scratch only when discarding its
-current local data is intended:
+The four WAVs in `public/media/phase3/audio` are short local test tones, not final
+pronunciation audio. The fifth record verifies that missing audio does not crash
+or expose an error on the audience display.
 
-```bash
-docker compose exec app php artisan migrate:fresh --seed
-```
+## Manual vertical-slice check
 
-Refresh the isolated testing database without seed data:
+Use separate browser profiles so scanner and stage sessions do not replace each
+other.
 
-```bash
-docker compose exec --env DB_DATABASE=graduation_stage_system_testing app php artisan migrate:fresh
-```
+1. Sign in as `stage@example.test`, open `/stage`, and select **Enable ceremony
+   audio** once.
+2. Sign in as `scanner@example.test` in another profile and open `/scanner`.
+3. Scan or enter the first sample token and press Enter.
+4. Confirm immediate scanner acceptance and live stage presentation.
+5. Refresh `/stage`; the same committed graduate must return through
+   `GET /stage/state`.
+6. From the stage operator dashboard, complete the current presentation.
+7. Scan the second token and confirm the stage changes only after completion.
+8. Re-scan the active token and verify `duplicate_active`.
+9. Scan a different token while busy and verify `stage_busy`.
+10. Stop Reverb with `docker compose stop reverb`, complete or scan as applicable,
+    and confirm PostgreSQL state still commits. Start it again with
+    `docker compose start reverb`; the stage must reconnect and reconcile through
+    HTTP.
 
-## Application and frontend commands
+Repeat on the physical three-laptop setup before ceremony use. This development
+environment cannot certify the USB scanner, projector/LED wall, venue sound
+system, firewall, or three separate physical devices.
 
-Docker application server:
+## Automated verification
 
-```bash
-docker compose up --detach app database
-```
-
-Vite development server:
-
-```bash
-npm run dev
-```
-
-The browser remains at <http://127.0.0.1:8000>; Laravel detects Vite's development
-server while it is running.
-
-Native combined development server, after native PostgreSQL and `pdo_pgsql` are
-configured:
-
-```bash
-composer run dev
-```
-
-Production asset build:
-
-```bash
-npm run build
-```
-
-The Vite development server is for development only and must not run during a
-ceremony.
-
-## Tests and quality checks
-
-Run backend tests inside the PHP container so the verified PostgreSQL driver and
-testing database are used:
+Run database tests inside the PHP container because the host PHP installation may
+not include `pdo_pgsql`:
 
 ```bash
-docker compose exec app php artisan test
-```
-
-The PHPUnit configuration forces `DB_CONNECTION=pgsql` and
-`DB_DATABASE=graduation_stage_system_testing`. A feature test also queries
-`current_database()` so SQLite cannot silently satisfy the suite.
-
-Run formatting and linting:
-
-```bash
+docker compose exec -T app php artisan test
 vendor/bin/pint --test
 npm run lint
-```
-
-Apply automatic formatting when intended:
-
-```bash
-vendor/bin/pint
-npm run lint:fix
-```
-
-Useful verification commands:
-
-```bash
-composer validate --strict --no-check-publish
-composer audit
-npm audit --audit-level=high
-docker compose exec app php artisan about
-docker compose exec app php artisan route:list
-docker compose exec app php artisan db:show --database=pgsql
-```
-
-## Common setup problems
-
-### `could not find driver`
-
-The PHP runtime lacks `pdo_pgsql`. Use the provided PHP container or install the
-native PHP PostgreSQL extension. Confirm with:
-
-```bash
-php -m | grep -i pgsql
-```
-
-### PostgreSQL connection refused
-
-- Docker: use `DB_HOST=database` and `DB_PORT=5432`.
-- Native PHP: use `DB_HOST=127.0.0.1` and the native PostgreSQL port.
-- Confirm Docker health with `docker compose ps`.
-- Confirm native readiness with `pg_isready`.
-
-### Testing database does not exist
-
-The Docker init script creates it only when the PostgreSQL volume is first
-initialized. For an existing native/older development cluster, create
-`graduation_stage_system_testing` explicitly and make `gss_app` its owner.
-
-### Seeder reports that `GSS_SEED_PASSWORD` is missing
-
-Add a local-only password of at least 12 characters to the ignored `.env`:
-
-```dotenv
-GSS_SEED_PASSWORD=<strong-local-development-password>
-```
-
-Do not place a production password in `.env.example`, the seeder, documentation,
-or source control.
-
-### `No application encryption key has been specified`
-
-Run:
-
-```bash
-docker compose exec app php artisan key:generate
-```
-
-Use `php artisan key:generate` for native execution.
-
-### Vite manifest not found
-
-Install frontend dependencies and either build assets or run the development
-server:
-
-```bash
-npm install
 npm run build
+composer audit
+npm audit
+docker compose config --quiet
 ```
 
-### Local port conflict
+The Phase 3 tests include HTTP/access checks, all scan outcomes, scan-log and
+payload privacy checks, post-transaction event ordering, rollback behavior,
+private-channel authorization, stage refresh/completion, and separate-process
+PostgreSQL races.
 
-Set `APP_FORWARD_PORT` or `DB_FORWARD_PORT` in `.env` to unused localhost ports,
-then recreate the affected Compose service.
+An optional live Chromium check exercises two authenticated browser profiles,
+private-channel delivery, local audio playback events, refresh recovery, and a
+deliberate Reverb stop/restart:
 
-## Project documentation
+```bash
+docker compose stop reverb
+docker compose exec -T app php artisan migrate:fresh --seed --force
+docker compose start reverb
+node tests/Support/phase3-browser-check.mjs
+```
 
-- [Requirements baseline](docs/requirements.md)
-- [Architecture baseline](docs/architecture.md)
-- [AI-agent development playbook](Graduation_Stage_System_AI_Agent_Development_Playbook.md)
+This check requires Google Chrome at `/usr/bin/google-chrome`, resets the local
+development database, temporarily stops Reverb, completes its sample
+presentations, and writes review screenshots to `/tmp`. Never run it against a
+ceremony database or during live operations.
+
+## Troubleshooting
+
+- **WebSocket stays disconnected:** verify `reverb` is healthy, TCP `8080` is
+  reachable, the page hostname is in `REVERB_ALLOWED_ORIGINS`, and the browser is
+  not using a build containing an old `VITE_*` value.
+- **Laravel commits but the stage does not change:** retrieve `/stage/state`,
+  restart Reverb, then refresh/reconnect the stage. A broadcast failure does not
+  roll back committed business state.
+- **Channel authorization returns 403:** use a stage-operator or administrator
+  session, confirm the account is active, and confirm exactly one active ceremony
+  exists.
+- **Every scan reports ceremony unavailable:** query/fix ceremony status; zero or
+  multiple active ceremonies are deliberately rejected.
+- **A scan reports stage busy:** complete the current presentation from the
+  authorized dashboard. Phase 3 never preempts.
+- **No sound:** click **Enable ceremony audio**, confirm the selected record has a
+  local audio path, and check the stage laptop/output device. Missing audio is a
+  safe visual-only presentation.
+- **Docker still binds to loopback after `.env` changes:** recreate the app and
+  Reverb containers.
+- **Host tests report `could not find driver`:** run PHPUnit in the Docker app
+  container.
 
 ## Phase boundary
 
-Phase 2 provides authentication, role authorization, and the constrained domain
-foundation only. It does not provide ceremony/student CRUD, scanner endpoints,
-queue commands, QR generation, CSV import, Reverb, Echo, stage interfaces, audio,
-reports, backup automation, heartbeat networking, or deployment configuration.
-Phase 3 may begin only after explicit human approval.
+Phase 3 does not add ceremony/student CRUD, CSV import, QR generation, activation
+UI, device credentials, a general queue, present-next/selected, reorder, skip,
+return, replay/mute controls, reporting, audit UI, backups, deployment automation,
+or final media preparation. Those features remain deferred to their approved
+phases, especially the full queue and mode behavior in Phase 7.
+
+See [requirements](docs/requirements.md) and
+[architecture](docs/architecture.md) for the normative Phase 3 contract. Do not
+begin Phase 4 until Phase 3 receives explicit human approval.

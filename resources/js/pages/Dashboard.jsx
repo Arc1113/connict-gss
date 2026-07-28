@@ -1,8 +1,28 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+import { requestJson } from '../lib/http';
 
 export default function Dashboard() {
     const { auth } = usePage().props;
     const user = auth.user;
+    const abilities = auth.abilities;
+    const [completion, setCompletion] = useState(null);
+    const [completing, setCompleting] = useState(false);
+
+    async function completeCurrent() {
+        setCompleting(true);
+
+        try {
+            const { data } = await requestJson('/stage/complete-current', {
+                method: 'POST',
+            });
+            setCompletion(data.message);
+        } catch {
+            setCompletion('The server could not confirm the action.');
+        } finally {
+            setCompleting(false);
+        }
+    }
 
     return (
         <>
@@ -11,13 +31,14 @@ export default function Dashboard() {
             <main className="dashboard-page">
                 <section className="dashboard-card" aria-labelledby="dashboard-heading">
                     <div>
-                        <p className="foundation-eyebrow">Phase 2 protected area</p>
+                        <p className="foundation-eyebrow">Phase 3 operations</p>
                         <h1 id="dashboard-heading" className="auth-title">
-                            Authentication confirmed
+                            Operational dashboard
                         </h1>
                         <p className="auth-copy">
-                            This minimal page verifies the authenticated Inertia
-                            boundary. Operational interfaces are not part of this phase.
+                            Open the interface authorized for this account. The
+                            completion action is the only stage control included in
+                            the Phase 3 vertical slice.
                         </p>
                     </div>
 
@@ -39,6 +60,41 @@ export default function Dashboard() {
                             <dd>{user.is_active ? 'Active' : 'Inactive'}</dd>
                         </div>
                     </dl>
+
+                    {(abilities.operate_scanner || abilities.operate_stage) && (
+                        <div className="dashboard-operations">
+                            {abilities.operate_scanner && (
+                                <Link className="primary-action" href="/scanner">
+                                    Open scanner
+                                </Link>
+                            )}
+                            {abilities.operate_stage && (
+                                <>
+                                    <Link
+                                        className="primary-action"
+                                        href="/stage"
+                                    >
+                                        Open audience stage
+                                    </Link>
+                                    <button
+                                        className="secondary-action"
+                                        type="button"
+                                        onClick={completeCurrent}
+                                        disabled={completing}
+                                    >
+                                        {completing
+                                            ? 'Completing…'
+                                            : 'Complete current presentation'}
+                                    </button>
+                                </>
+                            )}
+                            {completion && (
+                                <p className="operation-feedback" role="status">
+                                    {completion}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     <div className="dashboard-actions">
                         <Link className="secondary-action" href="/">
