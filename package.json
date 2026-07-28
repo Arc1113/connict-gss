@@ -1,0 +1,27 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite",
+        "lint": "eslint resources/js",
+        "lint:fix": "eslint resources/js --fix"
+    },
+    "dependencies": {
+        "@inertiajs/react": "^3.6.1",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.0",
+        "@vitejs/plugin-react": "^6.0.0",
+        "concurrently": "^9.0.1",
+        "eslint": "^10.8.0",
+        "eslint-plugin-react-hooks": "^7.0.0",
+        "eslint-plugin-react-refresh": "^0.5.0",
+        "globals": "^17.0.0",
+        "laravel-vite-plugin": "^3.1",
+        "vite": "^8.0.0"
+    }
+}

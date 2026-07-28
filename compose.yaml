@@ -1,0 +1,49 @@
+name: graduation-stage-system
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        command:
+            - php
+            - artisan
+            - serve
+            - --host=0.0.0.0
+            - --port=8000
+        depends_on:
+            database:
+                condition: service_healthy
+        environment:
+            DB_HOST: database
+            DB_PORT: 5432
+            HOME: /tmp
+        ports:
+            - "127.0.0.1:${APP_FORWARD_PORT:-8000}:8000"
+        user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+        volumes:
+            - .:/app
+        working_dir: /app
+
+    database:
+        image: postgres:16-alpine
+        environment:
+            POSTGRES_DB: "${DB_DATABASE:-graduation_stage_system}"
+            POSTGRES_PASSWORD: "${DB_PASSWORD:?Set DB_PASSWORD in .env}"
+            POSTGRES_TEST_DB: "${DB_TEST_DATABASE:-graduation_stage_system_testing}"
+            POSTGRES_USER: "${DB_USERNAME:-gss_app}"
+        healthcheck:
+            test:
+                - CMD-SHELL
+                - "pg_isready -U ${DB_USERNAME:-gss_app} -d ${DB_DATABASE:-graduation_stage_system}"
+            interval: 2s
+            timeout: 5s
+            retries: 15
+        ports:
+            - "127.0.0.1:${DB_FORWARD_PORT:-54329}:5432"
+        volumes:
+            - postgres-data:/var/lib/postgresql/data
+            - ./docker/postgres/init-testing-database.sh:/docker-entrypoint-initdb.d/10-testing-database.sh:ro
+
+volumes:
+    postgres-data:
