@@ -18,7 +18,8 @@ class ExampleTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Welcome')
                 ->where('appName', 'Graduation Stage System')
-                ->where('phase', 'Phase 1')
+                ->where('phase', 'Phase 2')
+                ->where('auth.user', null)
                 ->where('stack', [
                     'Laravel',
                     'React',

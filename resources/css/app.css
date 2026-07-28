@@ -65,6 +65,10 @@ select {
     line-height: 1.7;
 }
 
+.foundation-actions {
+    margin-top: 1.5rem;
+}
+
 .foundation-stack {
     display: flex;
     flex-wrap: wrap;
@@ -93,6 +97,189 @@ select {
     line-height: 1.6;
 }
 
+.primary-action,
+.secondary-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.7rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.primary-action {
+    color: #ffffff;
+    background: #176b5b;
+}
+
+.primary-action:hover {
+    background: #115548;
+}
+
+.primary-action:focus-visible,
+.secondary-action:focus-visible,
+.back-link:focus-visible,
+input:focus-visible {
+    outline: 3px solid rgb(23 107 91 / 28%);
+    outline-offset: 2px;
+}
+
+.primary-action:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.secondary-action {
+    border-color: #b7c7d8;
+    color: #214462;
+    background: #f8fbfd;
+}
+
+.auth-page,
+.dashboard-page {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    padding: 2rem;
+}
+
+.auth-card,
+.dashboard-card {
+    width: min(32rem, 100%);
+    padding: clamp(1.75rem, 6vw, 3rem);
+    border: 1px solid #cbd8e6;
+    border-radius: 1.25rem;
+    background: #ffffff;
+    box-shadow: 0 1.5rem 4rem rgb(29 52 79 / 12%);
+}
+
+.dashboard-card {
+    width: min(46rem, 100%);
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 2rem;
+    color: #315b78;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.auth-title {
+    margin: 0;
+    color: #102b49;
+    font-size: clamp(2rem, 7vw, 2.75rem);
+    line-height: 1.1;
+}
+
+.auth-copy {
+    margin: 1rem 0 0;
+    color: #5b6f83;
+    line-height: 1.65;
+}
+
+.auth-form {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: 2rem;
+}
+
+.form-field {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.form-field label {
+    color: #233f5c;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.form-field input {
+    width: 100%;
+    min-height: 2.85rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid #afc1d3;
+    border-radius: 0.6rem;
+    color: #132238;
+    background: #ffffff;
+}
+
+.form-field input[aria-invalid="true"] {
+    border-color: #b42318;
+}
+
+.form-error {
+    margin: 0;
+    color: #b42318;
+    font-size: 0.85rem;
+}
+
+.checkbox-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    color: #4b6075;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.checkbox-field input {
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.1rem;
+    accent-color: #176b5b;
+}
+
+.auth-submit {
+    width: 100%;
+}
+
+.account-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    margin: 2rem 0 0;
+    overflow: hidden;
+    border: 1px solid #d6e0ea;
+    border-radius: 0.85rem;
+    background: #d6e0ea;
+}
+
+.account-summary div {
+    padding: 1rem;
+    background: #f8fbfd;
+}
+
+.account-summary dt {
+    color: #687b8f;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.account-summary dd {
+    margin: 0.4rem 0 0;
+    overflow-wrap: anywhere;
+    color: #183a57;
+    font-weight: 650;
+}
+
+.dashboard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 2rem;
+}
+
 @media (max-width: 36rem) {
     .foundation-page {
         padding: 1rem;
@@ -101,5 +288,19 @@ select {
     .foundation-card {
         padding: 2rem 1.5rem;
         border-radius: 1rem;
+    }
+
+    .auth-page,
+    .dashboard-page {
+        padding: 1rem;
+    }
+
+    .account-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-actions {
+        align-items: stretch;
+        flex-direction: column;
     }
 }

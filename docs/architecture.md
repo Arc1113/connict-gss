@@ -1,6 +1,7 @@
 # Graduation Stage System Architecture
 
-Document status: **Approved Phase 0 baseline with Phase 1 foundation recorded**
+Document status: **Approved Phase 0/1 baseline with Phase 2 foundation awaiting
+approval**
 
 Last updated: 2026-07-28
 
@@ -32,10 +33,12 @@ rationale, impact analysis, and human approval before implementation.
 
 ## 3. Current repository baseline
 
-Phase 1 initialized a Laravel 13 application directly in this repository. The
-foundation includes React through Inertia, Vite, PostgreSQL configuration,
-standard Laravel framework migrations, a minimal `/` integration page, PHPUnit,
-Pint, ESLint, and local development documentation.
+Phase 1 initialized a Laravel 13 application directly in this repository. Phase 2
+adds Laravel session authentication, inactive-account enforcement, five
+backed-enum roles, server-side gates, the required PostgreSQL domain tables,
+Eloquent relationships, factories, controlled development seed data, and focused
+tests. The frontend contains only a public foundation page, login page, and
+minimal protected dashboard.
 
 The host environment has PHP 8.3.6, Composer 2.7.1, Node.js 24.14.0, and npm
 11.9.0. Because host PostgreSQL tools and PHP PostgreSQL extensions are not
@@ -43,9 +46,9 @@ available, the verified development environment uses project-scoped Docker
 services with PHP 8.3.32, `pdo_pgsql`, and PostgreSQL 16.14. This is a development
 packaging decision, not a change to the approved runtime architecture.
 
-The foundation contains no business-specific migration, role implementation,
-ceremony or graduate model, scanner/stage interface, Reverb/Echo setup, media
-workflow, report, or backup feature.
+The foundation contains no ceremony or graduate administration interface,
+scanner endpoint, queue command, scanner/stage interface, Reverb/Echo setup, media
+workflow, report, backup feature, heartbeat service, or deployment automation.
 
 ## 4. System context and device architecture
 
@@ -119,6 +122,18 @@ Laravel owns:
 - audit, scan, and stage-event recording; and
 - later backup/restore orchestration where approved.
 
+Phase 2 uses the built-in `web` session guard and Eloquent user provider. Login
+requires email, password, and active account status; successful login regenerates
+the session. Logout and forced inactive-account removal invalidate the session and
+regenerate its CSRF token. A rate limiter protects login attempts. Public
+registration and API-token authentication are absent.
+
+Authorization is centralized in Laravel gates rather than React. A backed role
+enum represents the five approved roles. Administrators receive the defined
+baseline abilities globally, operational roles receive only their initial
+functional ability, and inactive users receive none. The final permission matrix
+will refine these gates in the phase that implements each protected operation.
+
 Controllers should remain thin. Non-trivial stage workflows should be placed in
 focused action or service classes only when their implementation phase requires
 them. Empty placeholder classes are not part of this baseline.
@@ -158,6 +173,20 @@ PostgreSQL is the source of truth for:
 Important invariants require both application checks and database constraints.
 Transactions, row locking, indexes, and conditional unique constraints will be
 selected in the appropriate data/workflow phases.
+
+Phase 2 implements the nine required entities. Standard foreign keys express
+ownership; nullable user/device/student references preserve operational history
+when an optional actor or referenced record is removed. Ceremony deletion
+cascades preparation-only students and stage state, while queue and stage-event
+history restrict destructive parent deletion.
+
+PostgreSQL check constraints enforce enum-backed values. Composite unique
+constraints protect ceremony-scoped student numbers and sequence numbers, while a
+global unique index protects QR tokens. Partial unique indexes enforce one active
+queue row per ceremony/student and one presenting queue row per ceremony. One
+stage-state row is allowed per ceremony. Composite foreign keys prevent
+cross-ceremony student/queue references; PostgreSQL's column-specific `ON DELETE
+SET NULL` preserves scan history and ceremony context when a student is deleted.
 
 ### 6.4 Reverb and Echo
 
@@ -241,6 +270,12 @@ The intended defenses are:
 - an explicit stage-state version used for client reconciliation; and
 - server-side idempotency/duplicate rules in addition to disabled UI submission.
 
+The Phase 2 partial index defines active queue rows as `waiting`, `ready`,
+`presenting`, or `announced`; terminal rows are `completed`, `skipped`, or
+`cancelled`. This is a persistence boundary, not a completed transition policy.
+Phase 3 and Phase 7 must still define transactions, locking, commands, duplicate
+responses, and legal transitions.
+
 The exact duplicate window, idempotency key strategy, queue ordering algorithm,
 and transition table remain open requirements.
 
@@ -301,6 +336,11 @@ Passwords use Laravel's standard hashing. QR values are opaque random tokens.
 Invalid raw QR values are hashed or omitted from permanent logs where practical.
 Destructive operations require authorization, confirmation, and audit.
 
+Inertia receives only the authenticated user's ID, name, email, enum role
+value/label, and active flag. Passwords, remember tokens, device key hashes, QR
+tokens, and database credentials are not shared. Development seed passwords come
+only from the untracked `GSS_SEED_PASSWORD` setting.
+
 The local TLS decision, session duration, device-credential model, password
 policy, backup encryption, data retention, and credential rotation are unresolved
 security decisions.
@@ -350,11 +390,10 @@ The playbook's `app/Actions`, events, requests, policies, services, and
 `resources/js` page/component structure are directional, not placeholders to
 create in advance.
 
-Phase 1 created only the framework foundation and a public integration-proof React
-page. Authentication and roles remain Phase 2 work. Scanner, Reverb/Echo, and
-stage implementation begin with the Phase 3 vertical slice. Later administration,
-import, QR, queue, media, audit, deployment, and rehearsal features remain gated
-by their phases.
+Phase 2 adds the domain and authentication foundation without creating future
+feature modules. Scanner, Reverb/Echo, and stage implementation begin with the
+Phase 3 vertical slice. Later administration, import, QR, queue, media, audit
+interfaces, deployment, and rehearsal features remain gated by their phases.
 
 ## 15. Architecture risks
 
@@ -372,6 +411,8 @@ by their phases.
 | Personal data exposed to stage/events/logs | Minimize payloads, restrict channels, hash tokens, and separate operator/audience views |
 | Operator error under ceremony pressure | Persist queue/events, authorize controls, use confirmation and safe recovery transitions |
 | Unresolved scale and recovery targets | Obtain counts, latency, RPO, and RTO before performance/deployment acceptance |
+| Provisional eligibility/display/audio vocabularies | Keep enum/check values explicit and revise them through a reviewed migration before dependent workflows |
+| Seed credentials copied into source control | Require an untracked environment value and reject missing/short seed passwords |
 
 ## 16. Confirmed decisions and unresolved decisions
 
@@ -408,7 +449,8 @@ The complete question list is maintained in
 
 ## 17. Architecture acceptance
 
-The Phase 0 architecture baseline was approved on 2026-07-28. Phase 1 records the
-framework and local development foundation without changing the approved
-application, database, real-time, or device architecture. Every later phase
-remains subject to its own acceptance and human approval.
+The Phase 0 architecture baseline was approved on 2026-07-28 and Phase 1 was
+subsequently approved. Phase 2 records the authentication, authorization, and
+PostgreSQL domain foundation without changing the approved application,
+real-time, or device architecture. Every later phase remains subject to its own
+acceptance and human approval.

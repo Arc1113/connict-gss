@@ -1,6 +1,7 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 0 baseline approved; later-phase decisions remain open**
+Document status: **Phase 0 and Phase 1 approved; Phase 2 foundation awaiting
+approval; later-phase decisions remain open**
 
 Last updated: 2026-07-28
 
@@ -44,8 +45,8 @@ separate applications unless a later architecture change is explicitly approved.
 
 ## 3. Users and roles
 
-The baseline role set comes from the playbook. The detailed permission matrix
-remains an approval item.
+The baseline role set is implemented as the backed `UserRole` enum. The detailed
+permission matrix remains an approval item.
 
 | Role | Intended responsibility |
 | --- | --- |
@@ -55,10 +56,21 @@ remains an approval item.
 | `stage_operator` | Control queue presentation, replay/stop audio, skip or complete graduates, and recover from presentation mistakes |
 | `technical_operator` | Monitor local services/devices, support startup and recovery, manage approved backup/restore operations |
 
+Phase 2 defines server-side gates matching those initial responsibilities:
+`manage-users`, `manage-ceremony-data`, `operate-scanner`, `operate-stage`, and
+`manage-technical-operations`. Administrators receive all defined baseline
+abilities. Each operational role receives its corresponding ability only.
+Inactive users receive no gate access.
+
 Every state-changing request must be authenticated and authorized for the
 operator's role. Whether the audience-only stage display uses a user session, a
 restricted device identity, or both is unresolved. The local network must not be
 treated as sufficient authorization by itself.
+
+Authentication uses Laravel's built-in session guard, database sessions, CSRF
+protection, login throttling, session regeneration after login, and session
+invalidation on logout. Public registration is disabled. An inactive user cannot
+log in or retain access through an existing session.
 
 ## 4. Core domain and lifecycle
 
@@ -216,8 +228,8 @@ undo behavior must follow defined state transitions and be recorded.
 
 ## 7. Data requirements
 
-The final schema will be implemented in Phase 2 and may refine names while
-preserving these concepts.
+The Phase 2 schema implements these concepts in PostgreSQL. Workflow transitions
+and later administration interfaces remain outside this phase.
 
 ### 7.1 Required entities and data
 
@@ -233,6 +245,12 @@ preserving these concepts.
 | Devices | Name, type, credential/key representation, network address when needed, last seen time, status |
 | Audit logs | Actor, action, entity type/id, safe old/new values, network address, timestamp |
 
+The implemented tables are `users`, `ceremonies`, `students`,
+`stage_queue_items`, `stage_states`, `scan_logs`, `stage_events`, `devices`, and
+`audit_logs`. Invalid scans may omit ceremony and student references and store
+only a SHA-256 token hash plus limited diagnostic text. Device credentials, when
+later provisioned, are represented by a hash rather than a raw key.
+
 ### 7.2 Required integrity rules
 
 Application validation and PostgreSQL constraints must work together to enforce:
@@ -247,8 +265,23 @@ Application validation and PostgreSQL constraints must work together to enforce:
 - transactionally consistent stage state, queue state, and operational logs; and
 - indexes for QR lookup, active ceremony, queue order/status, and event/log lookup.
 
-The concrete PostgreSQL mechanism for conditional uniqueness and concurrency will
-be designed and tested in Phase 2/Phase 7.
+Phase 2 implements two PostgreSQL partial unique indexes:
+
+- one active queue item per ceremony/student when status is `waiting`, `ready`,
+  `presenting`, or `announced`; and
+- one `presenting` queue item per ceremony.
+
+Terminal queue rows (`completed`, `skipped`, and `cancelled`) remain historical and
+do not prevent a later active row. The final duplicate/requeue policy and
+transition service remain Phase 3/Phase 7 decisions.
+
+PostgreSQL check constraints also enforce approved role, ceremony, presentation,
+and queue values. Until the institution approves final vocabularies, Phase 2 uses
+`pending`, `eligible`, and `ineligible` for eligibility; `idle` and `graduate` for
+display mode; and `stopped`, `playing`, `paused`, and `failed` for audio state.
+Composite foreign keys prevent queue, stage-state, stage-event, and scan records
+from referencing a student or queue item from another ceremony. Deleting a student
+preserves its scan history and known ceremony while nulling the student reference.
 
 ### 7.3 QR and token handling
 
@@ -352,6 +385,11 @@ Whether local HTTP is sufficient on the isolated venue network or local TLS is
 required remains a security decision. The decision must account for login and
 device credentials traversing the network.
 
+Development-only accounts are created by an idempotent seeder. Their common
+password must come from the untracked `GSS_SEED_PASSWORD` environment variable,
+must be at least 12 characters, and is never stored in committed code or
+documentation. Seeded email addresses use the reserved `.test` domain.
+
 ## 11. Reliability and performance requirements
 
 - Multi-record stage changes use database transactions.
@@ -431,6 +469,13 @@ These assumptions allow planning but require confirmation where indicated:
     project environment, but must be explicitly approved during Phase 1.
 12. Interface language is initially English unless the institution requests
     localization.
+13. Email is the Phase 2 login identifier because it is supported by the existing
+    Laravel user schema; public self-registration remains disabled.
+14. Existing pre-Phase-2 users receive `data_encoder` during migration as a
+    one-time least-privilege compatibility value. All future users must explicitly
+    specify a role.
+15. Eligibility and minimal stage display/audio vocabularies are provisional and
+    must be confirmed before related workflow interfaces are implemented.
 
 ## 15. Unresolved questions and required decisions
 
@@ -488,3 +533,15 @@ implementation agent to choose silently.
 Phase 0 was approved on 2026-07-28. The unresolved business and ceremony-policy
 decisions are explicitly deferred and do not block the Phase 1 project foundation.
 They remain binding decision gates for their applicable later phases.
+
+## 17. Phase 2 implementation boundary
+
+Phase 1 was approved and Phase 2 implements session authentication, five roles,
+server-side baseline gates, the nine required PostgreSQL entities, constraints,
+indexes, relationships, factories, and development seed data.
+
+Phase 2 does not resolve or implement scanner processing, queue transitions,
+ceremony activation, public registration, user/ceremony/student administration
+pages, CSV import, QR generation, media handling, Reverb/Echo, stage display or
+controls, reporting, backup/restore, device heartbeat, or venue deployment. Those
+remain gated by later approved phases.

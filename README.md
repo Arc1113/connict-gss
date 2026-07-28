@@ -1,15 +1,17 @@
 # Graduation Stage System
 
-Status: **Phase 1 — Project Bootstrap and Development Environment awaiting human
+Status: **Phase 2 — Authentication, Roles, and Core Data Model awaiting human
 approval**
 
 The Graduation Stage System is a local-network-only Laravel application that will
-support reliable QR-driven graduation stage operations. Phase 1 establishes the
-single-application Laravel, React, Inertia.js, Vite, and PostgreSQL foundation.
+support reliable QR-driven graduation stage operations. Phases 1 and 2 establish
+the single-application foundation, session authentication, role authorization,
+and constrained PostgreSQL domain model.
 
-Only a minimal `/` integration page exists. Authentication, roles, ceremonies,
-graduates, scanning, queues, Reverb/Echo, stage interfaces, audio, reports, and
-backup workflows remain intentionally unimplemented.
+A public foundation page, login page, and minimal protected dashboard exist.
+Operational ceremony administration, scanning, queue commands, Reverb/Echo, stage
+interfaces, audio, reports, and backup workflows remain intentionally
+unimplemented.
 
 ## Approved architecture
 
@@ -26,14 +28,19 @@ SQLite is not an application or test fallback. The standard Laravel SQLite
 connection remains available in framework configuration, but PostgreSQL is the
 configured default and all executed database checks use PostgreSQL.
 
-## Phase 1 foundation
+## Implemented foundation
 
 - Laravel 13 application scaffolded directly in this repository
 - Inertia Laravel adapter and middleware
 - React entry point and one minimal Inertia page
 - Vite React compilation with local CSS and no externally hosted assets
 - PostgreSQL development and testing databases
-- Standard Laravel user/session, cache, and job migrations only
+- Session-based login/logout with login throttling and inactive-account rejection
+- Five backed-enum roles with server-enforced baseline gates
+- Nine core domain tables with PostgreSQL checks, foreign keys, indexes, and
+  partial unique indexes
+- Eloquent relationships, enum/date/JSON casts, factories, and development seed
+  data
 - PHPUnit tests, including explicit PostgreSQL test-database verification
 - Laravel Pint and ESLint configuration
 - Project-scoped Docker development services for PHP and PostgreSQL
@@ -119,7 +126,8 @@ SQLite if PostgreSQL or `pdo_pgsql` is unavailable.
    ```
 
 2. Replace `DB_PASSWORD=change-me` in `.env` with a local development password.
-   Keep `DB_HOST=database` and `DB_PORT=5432` for Docker.
+   Set `GSS_SEED_PASSWORD` to a different local-only password of at least 12
+   characters. Keep `DB_HOST=database` and `DB_PORT=5432` for Docker.
 
 3. Install locked PHP and frontend dependencies:
 
@@ -145,10 +153,10 @@ SQLite if PostgreSQL or `pdo_pgsql` is unavailable.
    docker compose exec app php artisan key:generate
    ```
 
-6. Run the baseline migrations:
+6. Run all migrations and create the documented development sample data:
 
    ```bash
-   docker compose exec app php artisan migrate
+   docker compose exec app php artisan migrate --seed
    docker compose exec --env DB_DATABASE=graduation_stage_system_testing app php artisan migrate
    ```
 
@@ -196,13 +204,14 @@ DB_DATABASE=graduation_stage_system
 DB_TEST_DATABASE=graduation_stage_system_testing
 DB_USERNAME=gss_app
 DB_PASSWORD=<strong-local-password>
+GSS_SEED_PASSWORD=<different-local-development-password>
 ```
 
 Then run:
 
 ```bash
 php artisan key:generate
-php artisan migrate
+php artisan migrate --seed
 DB_DATABASE=graduation_stage_system_testing php artisan migrate
 ```
 
@@ -212,7 +221,7 @@ to React.
 
 ## Environment configuration
 
-Important Phase 1 values:
+Important environment values:
 
 | Variable | Purpose | Docker default |
 | --- | --- | --- |
@@ -227,9 +236,100 @@ Important Phase 1 values:
 | `DB_TEST_DATABASE` | Testing database initialized by Docker | `graduation_stage_system_testing` |
 | `DB_USERNAME` | Local application database role | `gss_app` |
 | `DB_PASSWORD` | Local secret; must be changed | `change-me` placeholder |
+| `GSS_SEED_PASSWORD` | Password assigned to development-only seeded operators | Empty; required only when seeding |
 
 `.env` and other non-example environment files are ignored by Git. Never commit a
 real application key, database password, or production credential.
+
+## Authentication and roles
+
+Laravel's built-in `web` guard provides cookie and database-session
+authentication. Login regenerates the session ID; logout invalidates the session
+and regenerates the CSRF token. Login attempts are limited to five per
+email/address key before Laravel temporarily throttles further attempts.
+
+Public registration is disabled. Accounts are created administratively or through
+the development seeder. An inactive account cannot log in; if an authenticated
+account is later deactivated, active-user middleware ends its session on the next
+protected request.
+
+The approved roles and initial gates are:
+
+| Role | Baseline gate |
+| --- | --- |
+| `administrator` | All defined baseline abilities, including `manage-users` |
+| `data_encoder` | `manage-ceremony-data` |
+| `scanner_operator` | `operate-scanner` |
+| `stage_operator` | `operate-stage` |
+| `technical_operator` | `manage-technical-operations` |
+
+These gates are a Phase 2 authorization foundation, not the final permission
+matrix. Laravel enforces them server-side. React receives only the authenticated
+user's ID, name, email, role value/label, and active flag.
+
+## Core database model
+
+Phase 2 adds `ceremonies`, `students`, `devices`, `stage_queue_items`,
+`stage_states`, `scan_logs`, `stage_events`, and `audit_logs`, and extends
+`users` with `role` and `is_active`.
+
+Important relationships include ceremony-to-students, ceremony-to-queue-items,
+one stage state per ceremony, student-to-queue/scan records, optional operator and
+device references on operational records, and preserved audit/event actors through
+nullable foreign keys.
+
+PostgreSQL enforces:
+
+- globally unique QR tokens;
+- ceremony-scoped unique student and sequence numbers;
+- valid roles, ceremony statuses, presentation modes, eligibility values, queue
+  statuses, stage display/audio states, scan results, and device states;
+- at most one active queue row per ceremony/student, where active means `waiting`,
+  `ready`, `presenting`, or `announced`;
+- at most one `presenting` row per ceremony;
+- one stage-state row per ceremony; and
+- ceremony-scoped queue, stage-state, event, and scan references, plus positive
+  sequence/queue-position checks.
+
+Eligibility values (`pending`, `eligible`, `ineligible`) and the minimal technical
+stage display/audio values are provisional until the institution approves their
+final workflow vocabularies.
+
+## Development seed data
+
+Set `GSS_SEED_PASSWORD` in the ignored `.env` before seeding. The seeder rejects
+missing values or values shorter than 12 characters. It creates or updates these
+local-only accounts, all using that environment-controlled password:
+
+| Email | Role |
+| --- | --- |
+| `admin@example.test` | Administrator |
+| `encoder@example.test` | Data encoder |
+| `scanner@example.test` | Scanner operator |
+| `stage@example.test` | Stage operator |
+| `technical@example.test` | Technical operator |
+
+It also creates one prepared sample ceremony, five fictional sample students, and
+one idle stage state. It intentionally creates no queue items.
+
+Run or rerun the seeder:
+
+```bash
+docker compose exec app php artisan db:seed
+```
+
+Reset the development database and seed from scratch only when discarding its
+current local data is intended:
+
+```bash
+docker compose exec app php artisan migrate:fresh --seed
+```
+
+Refresh the isolated testing database without seed data:
+
+```bash
+docker compose exec --env DB_DATABASE=graduation_stage_system_testing app php artisan migrate:fresh
+```
 
 ## Application and frontend commands
 
@@ -326,6 +426,17 @@ The Docker init script creates it only when the PostgreSQL volume is first
 initialized. For an existing native/older development cluster, create
 `graduation_stage_system_testing` explicitly and make `gss_app` its owner.
 
+### Seeder reports that `GSS_SEED_PASSWORD` is missing
+
+Add a local-only password of at least 12 characters to the ignored `.env`:
+
+```dotenv
+GSS_SEED_PASSWORD=<strong-local-development-password>
+```
+
+Do not place a production password in `.env.example`, the seeder, documentation,
+or source control.
+
 ### `No application encryption key has been specified`
 
 Run:
@@ -359,7 +470,8 @@ then recreate the affected Compose service.
 
 ## Phase boundary
 
-Phase 1 provides only the reproducible framework foundation and integration proof.
-Phase 2 may begin only after human approval. No role authorization, domain models,
-business migrations, scanner, stage, queue, audio, Reverb, Echo, report, or backup
-feature is included here.
+Phase 2 provides authentication, role authorization, and the constrained domain
+foundation only. It does not provide ceremony/student CRUD, scanner endpoints,
+queue commands, QR generation, CSV import, Reverb, Echo, stage interfaces, audio,
+reports, backup automation, heartbeat networking, or deployment configuration.
+Phase 3 may begin only after explicit human approval.
