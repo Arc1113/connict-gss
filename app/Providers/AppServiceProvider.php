@@ -3,7 +3,13 @@
 namespace App\Providers;
 
 use App\Enums\UserRole;
+use App\Models\AuditLog;
+use App\Models\Ceremony;
+use App\Models\Student;
 use App\Models\User;
+use App\Policies\AuditLogPolicy;
+use App\Policies\CeremonyPolicy;
+use App\Policies\StudentPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(Ceremony::class, CeremonyPolicy::class);
+        Gate::policy(Student::class, StudentPolicy::class);
+        Gate::policy(AuditLog::class, AuditLogPolicy::class);
+
         Gate::before(function (User $user): ?bool {
             if (! $user->is_active) {
                 return false;

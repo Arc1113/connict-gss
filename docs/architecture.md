@@ -1,6 +1,6 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 3 critical vertical slice awaiting human approval**
+Document status: **Phase 4 administration architecture implemented**
 
 Last updated: 2026-07-28
 
@@ -15,16 +15,16 @@ The approved architecture has not changed.
 
 ## 2. Current stack
 
-| Layer | Implementation | Phase 3 responsibility |
+| Layer | Implementation | Current responsibility |
 | --- | --- | --- |
-| Backend | Laravel 13.23 / PHP 8.3 | Sessions, gates, validation, transactions, state API |
-| Frontend | React 19 through Inertia 3 | Scanner operator UI and audience display |
+| Backend | Laravel 13.23 / PHP 8.3 | Sessions, policies, validation, transactions, CRUD, state API |
+| Frontend | React 19 through Inertia 3 | Administration, scanner operator UI, and audience display |
 | Build | Vite 8 | Local development and compiled assets |
 | Database | PostgreSQL 16 | Sole source of business truth and concurrency arbiter |
 | WebSocket server | Laravel Reverb 1.11 | Local committed-event transport |
 | Browser client | Laravel Echo 2.4 + `pusher-js` 8.6 | Private subscription and reconnect signals |
 | Scanner | USB 2D keyboard wedge | Types opaque QR token into `/scanner` |
-| Media | Local public paths | Phase 3 tone fixtures and optional presentation media |
+| Media | Local public paths | Tone fixtures and managed Phase 4 graduate uploads |
 | Packaging | Docker Compose | Reproducible app, Reverb, and PostgreSQL processes |
 
 No Redis, queue worker, polling loop, separate SPA/API application, SQLite,
@@ -126,6 +126,12 @@ service.
 
 Controllers do not implement the state machine.
 
+Phase 4 adds `AdminDashboardController`, `CeremonyController`,
+`StudentController`, and `AuditLogController`. They authorize policies, shape
+purpose-built Inertia props, apply bounded query filters/pagination, and delegate
+writes. `SaveCeremonyRequest` and `SaveStudentRequest` normalize and validate the
+complete form contracts, including scoped uniqueness and actual file types.
+
 ### 6.2 Domain actions
 
 `ScanStudentForPresentation` owns the scan transaction, safe result mapping, scan
@@ -138,6 +144,11 @@ Both catch transport exceptions only after commit, log identifiers and exception
 class without credentials/payloads, and return a delivery flag to the authorized
 operator command response.
 
+`CeremonyAdministration` owns ceremony lifecycle writes, activation locking,
+transition checks, presenting-state protection, audit insertion, and safe
+deletion. `StudentAdministration` owns graduate CRUD, media replacement/removal
+coordination, safe audit diffs, and history-aware deletion.
+
 ### 6.3 State helpers
 
 - `ActiveCeremonyResolver` returns `ready`, `no_active_ceremony`, or
@@ -145,6 +156,10 @@ operator command response.
 - `StageStatePayload` is the one serializer for safe HTTP/broadcast presentation
   fields and relative local media URLs.
 - `ScanAttemptResult` centralizes the public scan response.
+- `StudentMediaStorage` is the only writer/deleter for managed Phase 4 media.
+  It recognizes only `storage/graduates/...` paths for cleanup.
+- `AdministrativeAuditLogger` inserts actor/entity/action/IP and caller-provided
+  safe values without accepting a serialized model.
 
 ### 6.4 Events
 
@@ -210,6 +225,19 @@ Separate-process integration tests start two independent PHP/PostgreSQL
 connections behind a shared barrier. They verify simultaneous valid scans and
 completion racing a scan. Acceptable race order differs, but final persisted
 state is always consistent and has at most one presenting row.
+
+### 8.1 Ceremony administration concurrency
+
+Every Phase 4 ceremony create/update/delete transaction first obtains a fixed
+PostgreSQL transaction-scoped advisory lock, then locks ceremony rows. This
+serializes the empty-table case as well as updates to different ceremony rows.
+Activation checks run only after that lock, so two concurrent requests cannot
+both observe “no active ceremony.” An independent-process test proves one request
+activates and the other receives a validation conflict.
+
+The existing active-ceremony resolver still rejects multiple active rows. That
+defensive path is retained for direct database corruption or legacy data and for
+Phase 3 operational recovery; administration does not rely on ambiguity.
 
 ## 9. Completion transaction
 
@@ -323,6 +351,24 @@ For each event:
 After a disconnected connection returns to connected, the client retrieves HTTP
 state. Refresh therefore restores current state without any event replay system.
 
+### 12.4 Phase 4 administration
+
+All administration pages are Inertia views in the same application:
+
+- `AdminLayout` provides role-aware navigation, identity, logout, and flash
+  feedback;
+- ceremony/graduate forms use `useForm`, field-linked errors, validation summary,
+  pending-submit locks, and multipart method spoofing for file updates;
+- list filters use ordinary GET query strings, so refresh/back/pagination remain
+  understandable;
+- table containers own horizontal overflow at the 1024 px target;
+- QR tokens are password inputs on create/replacement and are never included in
+  list/detail/edit props; and
+- native audio controls coordinate playback so only one preview plays.
+
+The administration UI has no stage commands, queue controls, fake analytics, or
+runtime WebSocket dependency.
+
 ## 13. Audio architecture
 
 The stage keeps at most one browser `Audio` object:
@@ -337,8 +383,22 @@ Four short PCM WAV tones are versioned under
 `public/media/phase3/audio`. They validate delivery/playback plumbing only. One
 sample intentionally has no path.
 
-Final media upload, format validation, pronunciation recording, normalization,
-preloading, replay/mute, and operator warnings are deferred.
+Phase 4 stores validated JPEG/PNG/WebP and MP3/WAV/OGG uploads on Laravel's local
+`public` disk under generated `graduates/photos` and `graduates/audio` names.
+Database paths remain relative, so `StageStatePayload` continues to generate
+same-origin URLs. Replacement is compensating rather than pretending file
+storage is transactional:
+
+```text
+validate → store new file → DB transaction + audit
+    ├─ rollback: delete new file, retain old path/file
+    └─ commit: delete old managed file
+```
+
+The documentation gives provisional clip-duration and loudness preparation
+targets, but the application does not normalize or automatically approve audio.
+Pronunciation recording, server-side normalization, preloading, replay/mute,
+final institutional loudness standards, and operator warnings remain deferred.
 
 ## 14. Failure and recovery
 
@@ -369,7 +429,13 @@ authorized operator/server logs.
 5. **Browser → Reverb:** public application key plus authorized private channel;
    explicit origin hostname allowlist.
 6. **Audience display:** purpose-built safe data only.
-7. **Media:** local relative paths, no external URL generation.
+7. **Administration:** session + active middleware + Ceremony/Student/AuditLog
+   policies; hidden links never substitute for server authorization.
+8. **Media:** generated local relative paths under the public storage link, no
+   original filename or external URL generation; only managed prefixes are
+   eligible for cleanup.
+9. **Audit:** same-transaction, administrator-only history with purpose-built
+   allowlisted values rather than serialized request/model data.
 
 Raw scanned tokens are hashed in operational logs. Reverb/DB credentials and
 development passwords remain in the ignored `.env`.
@@ -398,6 +464,25 @@ temporary headless Chromium profiles through the actual compiled application and
 deliberately restarts Reverb; it is restricted to a freshly seeded development
 database.
 
+Phase 4 adds PostgreSQL-backed tests for:
+
+- the guest and five-role administration authorization matrix;
+- ceremony/graduate CRUD, validation recovery, scoped/global uniqueness,
+  search/filter/sort/pagination, and query preservation;
+- ceremony transition, presenting-state, deletion, and simultaneous-activation
+  protections;
+- graduate history-aware deletion and reviewed-name/hidden-token preservation;
+- actual media validation, generated paths, replacement/removal cleanup, and
+  local preview URLs;
+- redacted audit contents and administrator-only audit history; and
+- uploaded-media compatibility with the unchanged Phase 3 stage serializer and
+  presented event.
+
+`tests/Support/phase4-browser-check.mjs` drives an authenticated administrator
+through the compiled administration routes at the required viewports and checks
+overflow, focus, long content, missing media, audio preview, validation/no-result
+states, and role denial without adding a browser test package.
+
 ## 17. Phase boundary and future architecture
 
 Phase 3 deliberately has no durable waiting-queue workflow. A scan is either the
@@ -405,15 +490,14 @@ current presentation or a conflict. Phase 7 must define and implement the full
 queue transition graph and both presentation modes without bypassing the
 transaction, version, event, or recovery principles established here.
 
-Still deferred:
+Still deferred after Phase 4:
 
-- administration and import modules;
-- activation and ceremony lifecycle controls;
+- CSV import/export and preflight;
 - QR generation and custody;
 - device authentication/registration;
 - advanced stage controls and queue commands;
-- final media services;
-- audit/report interfaces;
+- recording, media normalization, and production approval workflow;
+- operational logs/reports and exports;
 - backup/restore and standby;
 - reverse proxy/TLS, production process supervision, firewall policy, kiosk
   automation, and full physical rehearsal.
@@ -432,6 +516,9 @@ Still deferred:
 | Ceremony ambiguity | Reject zero/multiple | Final multi-ceremony policy |
 | Temporary immediate-present rule | Explicit Phase 3 boundary | Phase 7 queue/mode policy |
 | No process supervisor | Compose health/restart commands | Production supervision and startup |
+| Public local media URL | Generated names, controlled LAN, no external origin | Whether production delivery requires a policy-authorized media controller |
+| Upload filesystem/DB split | Store-first compensation and managed-prefix cleanup | Backup/restore and orphan reconciliation procedure |
+| Media standards | Actual-type and size validation | Final dimensions, duration, loudness, approval, and retention |
 
-The implementation may not advance to Phase 4 until Phase 3 is reviewed and
+The implementation may not advance to Phase 5 until Phase 4 is reviewed and
 approved.

@@ -31,14 +31,13 @@ export default function Dashboard() {
             <main className="dashboard-page">
                 <section className="dashboard-card" aria-labelledby="dashboard-heading">
                     <div>
-                        <p className="foundation-eyebrow">Phase 3 operations</p>
+                        <p className="foundation-eyebrow">Local operations</p>
                         <h1 id="dashboard-heading" className="auth-title">
                             Operational dashboard
                         </h1>
                         <p className="auth-copy">
-                            Open the interface authorized for this account. The
-                            completion action is the only stage control included in
-                            the Phase 3 vertical slice.
+                            Open the operational or data-preparation interface
+                            authorized for this account.
                         </p>
                     </div>
 
@@ -60,6 +59,18 @@ export default function Dashboard() {
                             <dd>{user.is_active ? 'Active' : 'Inactive'}</dd>
                         </div>
                     </dl>
+
+                    {(abilities.view_ceremonies || abilities.view_students) && (
+                        <div className="dashboard-operations">
+                            <Link className="primary-action" href="/admin">
+                                Open data administration
+                            </Link>
+                            <p className="operation-feedback">
+                                Prepare ceremony and graduate records before
+                                operational scanning begins.
+                            </p>
+                        </div>
+                    )}
 
                     {(abilities.operate_scanner || abilities.operate_stage) && (
                         <div className="dashboard-operations">

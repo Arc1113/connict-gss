@@ -1,6 +1,6 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 3 implementation baseline awaiting human approval**
+Document status: **Phase 4 administration contract implemented**
 
 Last updated: 2026-07-28
 
@@ -12,8 +12,8 @@ system must preserve correct ceremony state under duplicate input, simultaneous
 operators, browser refresh, WebSocket interruption, and missing media while
 minimizing exposed personal information.
 
-Phase 3 proves the critical vertical slice only. It does not implement the full
-ceremony product.
+Phase 3 proves the critical vertical slice. Phase 4 adds reliable manual
+ceremony and graduate preparation while preserving that operational workflow.
 
 ## 2. Fixed architecture and device requirements
 
@@ -32,7 +32,7 @@ ceremony product.
   token and terminates it with Enter.
 - The stage laptop drives the projector/LED output and local venue audio.
 
-## 3. Phase 3 roles and access
+## 3. Roles and access
 
 | Function | Allowed roles |
 | --- | --- |
@@ -40,13 +40,20 @@ ceremony product.
 | `/stage`, `GET /stage/state` | `stage_operator`, `administrator` |
 | `POST /stage/complete-current` | `stage_operator`, `administrator` |
 | `private-stage.{ceremonyId}` subscription | Active `stage_operator` or `administrator` session for the sole active ceremony |
+| Administration readiness and ceremony viewing | `data_encoder`, `administrator` |
+| Ceremony create/edit/status/delete | `administrator` |
+| Graduate list/detail/create/edit and local media | `data_encoder`, `administrator` |
+| Graduate deletion | `administrator`, subject to history protection |
+| Administrative audit history | `administrator` |
 
 All access uses Phase 2 session authentication, CSRF protection, active-account
-enforcement, and Laravel gates. Phase 3 does not introduce device keys or token
+enforcement, and Laravel gates/policies. Phase 4 does not introduce device keys or token
 authentication.
 
-React may use server-provided abilities to decide which links to show, but the
-server remains the authorization boundary.
+React may use server-provided abilities to decide which links to show, but every
+controller/form action applies a server policy and the server remains the
+authorization boundary. Data encoders do not inherit scanner, stage, technical,
+user-management, destructive, or audit-history privileges.
 
 ## 4. Active ceremony requirement
 
@@ -56,7 +63,14 @@ Exactly one PostgreSQL ceremony must have status `active`.
 - More than one active ceremony is an operational error.
 - Scanning, stage state, completion, and private-channel authorization must not
   silently choose a ceremony when the state is zero or ambiguous.
-- Phase 3 provides no activation or ceremony-management UI.
+- Phase 4 provides administrator-only activation and ceremony management.
+- Activating a ceremony uses a PostgreSQL transaction-scoped advisory lock and
+  row locks.
+- A request that would create a second active ceremony fails with an actionable
+  validation error. It does not silently deactivate the current ceremony.
+- Event dates never activate ceremonies.
+- Existing zero/multiple handling remains a defensive operational safeguard for
+  corrupted or externally edited data.
 
 Both zero and multiple cases produce a safe `ceremony_inactive` scan response.
 The operator message distinguishes missing from ambiguous configuration without
@@ -338,63 +352,198 @@ Phase 3 is acceptable when all are true:
 18. Physical three-laptop/scanner/projector/audio verification is either completed
     or explicitly deferred with a reproducible checklist.
 
-## 18. MVP and deferred boundaries
+## 18. Phase 4 ceremony and graduate administration
 
-The eventual MVP includes ceremony/student administration, import and validation,
-QR creation/custody, durable queue operation, automatic and controlled modes,
-stage controls, local media, logs/reporting, backup/restore, deployment hardening,
-and rehearsal.
+### 18.1 Routes and list behavior
 
-Phase 3 includes only the critical scan-to-stage slice. Deferred work includes:
+The implemented administration routes are:
 
-- ceremony and student CRUD;
+```text
+/admin
+/admin/ceremonies
+/admin/ceremonies/create
+/admin/ceremonies/{ceremony}
+/admin/ceremonies/{ceremony}/edit
+/admin/students
+/admin/students/create
+/admin/students/{student}
+/admin/students/{student}/edit
+/admin/audit-logs
+```
+
+Ceremony lists support name search, exact status and academic-year filters, and
+15-row pagination with query-string preservation. Graduate lists support name,
+announcement-name, and student-number search; ceremony, college, program,
+eligibility, media readiness, and read-only stage-status filters; sequence/name/
+student-number sorting; and 20-row pagination with query-string preservation.
+Normal list and detail props do not include QR token values.
+
+### 18.2 Ceremony validation and lifecycle
+
+Ceremony forms validate:
+
+- required name, maximum 255 characters;
+- optional consecutive academic-year format such as `2026-2027`;
+- optional venue, maximum 255 characters;
+- optional ISO date input;
+- approved status enum; and
+- `automatic` or `controlled` presentation mode.
+
+New ceremonies may begin as draft, prepared, or active. Supported status
+transitions are deliberately conservative:
+
+| From | Allowed next states |
+| --- | --- |
+| Draft | Prepared, active, archived |
+| Prepared | Draft, active, archived |
+| Active | Paused, completed |
+| Paused | Prepared, active, completed, archived |
+| Completed | Archived |
+| Archived | None |
+
+No ceremony field may change while its stage state references a presenting queue
+item. Activation and completion timestamps are server-owned. Status changes do
+not clear stage state or operational history.
+
+Deletion is permitted only for a draft/prepared/paused ceremony with no
+graduates, queue items, scans, stage events, or stage state. Active, completed,
+and archived ceremonies are protected.
+
+### 18.3 Graduate validation and data preservation
+
+Graduate forms validate:
+
+- an existing ceremony;
+- student number, required and unique within that ceremony;
+- QR token, required on create, globally unique, maximum 128 characters, and
+  normalized to uppercase;
+- required first, last, display, and announcement names;
+- optional middle name and suffix;
+- required program and positive sequence number unique within the ceremony;
+- optional college, major, honors, and pronunciation guide within documented
+  limits; and
+- the approved pending/eligible/ineligible enum.
+
+Separate name fields are persisted exactly as reviewed. Changing first/middle/
+last/suffix does not recompute or overwrite `display_name` or
+`announcement_name`. Editing never returns the current QR token; an empty
+replacement field preserves it.
+
+Graduate deletion is permitted only before any scan, queue, or presentation
+history exists. Phase 4 does not introduce soft deletion.
+
+### 18.4 Local media
+
+Photos accept actual JPEG, PNG, or WebP content up to 5 MB. Audio accepts actual
+MP3, WAV, or OGG content up to 15 MB. Files are stored locally under generated
+collision-resistant paths in:
+
+```text
+storage/app/public/graduates/photos
+storage/app/public/graduates/audio
+```
+
+The database stores a relative `storage/...` path. The local `public/storage`
+link serves that media to administration and stage pages on the dedicated
+network. Replacements store the new file first, commit the database/audit change,
+then delete the previous managed file. A failed transaction removes the new file
+and preserves the former reference. Deletion/removal never deletes legacy or
+unmanaged paths.
+
+The native audio preview pauses and rewinds any other preview before playback.
+Missing photo/audio is an explicit textual readiness state. Phase 4 does not add
+text-to-speech, recording, normalization, cloud storage, or external assets.
+
+The provisional preparation recommendation for reviewed announcement audio is a
+2–10 second clip with excess leading/trailing silence removed, approximately
+−16 LUFS integrated loudness, and a true peak no higher than −1 dBFS. These
+targets are not automatically measured or treated as pronunciation approval.
+The institution must confirm the final standard and review clips on the venue
+sound system.
+
+### 18.5 Audit and privacy
+
+Important ceremony/graduate create, update, lifecycle, media add/replace/remove,
+and allowed deletion actions create an `audit_logs` row in the same transaction
+as the record change. Audit history is administrator-only and read-only.
+
+Stored audit values are purpose-built and allowlisted. They exclude raw QR token
+values, original filenames, media paths/content, passwords, and unnecessary
+identity values. QR/identity editing is represented by changed field names or
+booleans, not secret or prior personal values.
+
+### 18.6 Phase 4 acceptance
+
+- The authorization matrix is enforced by server policies.
+- Search, filters, sorting, pagination, validation recovery, and no-result states
+  work with realistic long data.
+- Concurrent activation requests leave exactly one active ceremony.
+- Presenting state and operational history cannot be silently changed/deleted.
+- Local media upload, replacement, preview, removal, cleanup, and stage payload
+  compatibility work.
+- Administrative audit values are useful and redact secrets/media paths.
+- Phase 3 scanning, post-commit broadcasting, Echo delivery, stage recovery, and
+  concurrency tests remain unchanged and pass.
+- Administration routes are visually inspected at 1440×900, 1366×768, and
+  1024×768.
+
+## 19. MVP and deferred boundaries
+
+The eventual MVP includes the completed ceremony/student administration,
+import/validation, QR creation/custody, durable queue operation, automatic and
+controlled modes, stage controls, local media, logs/reporting, backup/restore,
+deployment hardening, and rehearsal.
+
+Deferred beyond Phase 4:
+
 - CSV import/export and preflight;
 - QR generation, print, regeneration, and custody;
-- activation UI;
+- camera scanning;
 - device registration/authentication;
 - general queue and ordering;
 - present-next/selected, reorder, skip, return, undo, and replay;
-- automatic/controlled mode switching;
-- final photo/audio workflows;
-- report and audit interfaces;
+- automatic/controlled mode execution and switching;
+- recording, normalization, and final media-production workflow;
+- operational scan/stage reports and export;
 - backup/restore and standby tooling;
 - production process supervision, TLS, firewall automation, and kiosk setup; and
 - full physical rehearsal.
 
-## 19. Assumptions and unresolved questions
+## 20. Assumptions and unresolved questions
 
-Phase 3 assumptions:
+Current assumptions:
 
 - Tokens are compared case-insensitively after trim/uppercase normalization.
 - The sole active ceremony and its stage state represent the current operation.
-- A completed graduate cannot be re-presented in this temporary slice.
-- Cancelled/skipped historical rows do not occur because Phase 3 has no commands
-  that create them.
-- Stage and scanner browsers each use an appropriate authenticated account.
+- A completed graduate cannot be re-presented in the temporary Phase 3 slice.
+- Cancelled/skipped historical rows do not occur because current commands do not
+  create them.
+- Stage, scanner, and administration browsers use appropriate authenticated
+  accounts.
 - A fixed server address and TCP `8000`/`8080` are acceptable for development.
-- HTTP is acceptable on a controlled development LAN pending the local TLS
-  decision.
+- HTTP and generated-name public local media are acceptable on a controlled
+  development LAN pending TLS and media-delivery policy.
 
 Still requiring approval:
 
-1. Can more than one ceremony ever be active?
-2. What is the final activation/deactivation authority and workflow?
-3. What are the final duplicate, retry, exception, and manual-override rules?
-4. What triggers automatic mode, and may mode change mid-ceremony?
-5. What is the legal queue transition table for Phase 7?
-6. Are scanner/stage device credentials required in addition to user sessions?
-7. What browser, kiosk, resolution, branding, safe-area, and accessibility rules
-   apply to the stage?
-8. What graduate fields and honors formatting are institutionally approved?
-9. What photo/audio formats, sizes, loudness, duration, pronunciation, and approval
-   process are required?
-10. What fixed IP, hostname, wired/wireless, firewall, TLS, and backup-network
-    design is approved?
-11. What are the expected graduate count, scan burst, latency target, retention,
+1. Can more than one ceremony ever be active, or is the Phase 4 single-active
+   rule permanent?
+2. What are the final duplicate, retry, exception, and manual-override rules?
+3. What triggers automatic mode, and may mode change mid-ceremony?
+4. What is the legal queue transition table for Phase 7?
+5. Are scanner/stage device credentials required in addition to user sessions?
+6. What final browser, kiosk, branding, safe-area, and assistive-technology
+   standards apply?
+7. What graduate fields and honors formatting are institutionally approved?
+8. What final photo dimensions, audio loudness/duration, pronunciation, approval,
+   retention, and protected-delivery process is required?
+9. What fixed IP, hostname, wired/wireless, firewall, TLS, and backup-network
+   design is approved?
+10. What are the expected graduate count, scan burst, latency target, retention,
     privacy notice, RPO, and RTO?
-12. Where will the completion/control view run in the final three-laptop setup?
-13. What backup, restore, standby, UPS, and power-loss process is required?
-14. What physical scanner, projector/LED, and audio hardware is standardized?
+11. Where will the completion/control view run in the final three-laptop setup?
+12. What backup, restore, standby, UPS, and power-loss process is required?
+13. What physical scanner, projector/LED, and audio hardware is standardized?
 
-Phase 4 must not begin until the Phase 3 implementation and these documented
+Phase 5 must not begin until the Phase 4 implementation and these documented
 boundaries are reviewed.

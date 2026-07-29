@@ -3,6 +3,52 @@
 UI changes are recorded by project phase. Functional backend changes belong in
 the main project documentation.
 
+## Phase 4 — Ceremony and Graduate Administration
+
+Status: completed
+Date: 2026-07-28
+
+Completed:
+
+- Added a restrained administration shell with role-aware navigation, current
+  account context, local flash feedback, visible keyboard focus, and no
+  internet-hosted assets.
+- Added `/admin` as a task/readiness page using real ceremony and graduate facts,
+  without decorative metrics or stage controls.
+- Added ceremony list, create, detail, and edit interfaces with name/status/year
+  filters, pagination, explicit lifecycle guidance, activation-blocked
+  validation, and visible deletion protection.
+- Added graduate list, create, detail, and edit interfaces with realistic long
+  content, search, ceremony/college/program/eligibility/media/stage filters,
+  sequence/name/student-number sorting, pagination, missing-media states, and
+  no raw QR value in list/detail/edit props.
+- Added locally stored photo/audio preparation with preview, replacement,
+  removal, actual-type/size guidance, and single-audio playback coordination.
+- Added administrator-only administrative audit history with expandable safe
+  changes; operational logs/reports remain deferred.
+- Preserved the scanner/stage visual and real-time implementations and kept
+  administration responsive at the approved laptop viewports.
+
+Verification:
+
+- Laravel: 85 tests passed with 574 assertions. Phase 4 PostgreSQL coverage
+  includes authorization, CRUD, validation, activation concurrency and
+  completion, protected deletion, awkward and oversized uploads, rollback
+  cleanup, audit redaction, and stage-media compatibility.
+- ESLint and the Vite production build pass.
+- Authenticated Chromium checks passed for `/admin`, ceremony and graduate
+  lists/forms/details, audit history, local media playback, empty and validation
+  states, and data-encoder restrictions at 1440×900, 1366×768, and 1024×768.
+  Evidence is indexed under `docs/evidence/phase-4/`.
+
+Known limitations:
+
+- Venue hardware, assistive-technology certification, final photo/audio
+  production standards, protected production media delivery, and physical
+  three-laptop rehearsal remain explicitly deferred.
+- Phase 4 provides data preparation only; CSV import, QR generation/printing,
+  general queue controls, operational reports, and settings are not present.
+
 ## Phase 3A — Updated Plan Reconciliation and UI/UX Remediation
 
 Status: completed  

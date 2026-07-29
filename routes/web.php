@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\CeremonyController;
+use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CompleteCurrentPresentationController;
 use App\Http\Controllers\ScanController;
@@ -11,7 +15,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'appName' => config('app.name'),
-        'phase' => 'Phase 3',
+        'phase' => 'Phase 4',
         'stack' => [
             'Laravel',
             'React',
@@ -48,6 +52,23 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/stage/complete-current', CompleteCurrentPresentationController::class)
         ->middleware('can:operate-stage')
         ->name('stage.complete-current');
+
+    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::get('/', AdminDashboardController::class)->name('index');
+        Route::get('/audit-logs', AuditLogController::class)->name('audit-logs.index');
+
+        Route::resource('ceremonies', CeremonyController::class);
+
+        Route::delete(
+            '/students/{student}/photo',
+            [StudentController::class, 'destroyPhoto'],
+        )->name('students.photo.destroy');
+        Route::delete(
+            '/students/{student}/audio',
+            [StudentController::class, 'destroyAudio'],
+        )->name('students.audio.destroy');
+        Route::resource('students', StudentController::class);
+    });
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');

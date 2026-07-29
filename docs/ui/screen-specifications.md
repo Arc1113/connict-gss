@@ -176,12 +176,12 @@ the name remains dominant. Missing media does not reserve blank space.
 Phase 7 must confirm controlled/automatic mode behavior, command permissions,
 queue recovery, and destructive-action safeguards before implementation.
 
-## Future administration index — Phase 4
+## Administration index — Phase 4 implemented
 
 | Item | Specification |
 | --- | --- |
 | Route | `/admin` |
-| Primary user/device | Administrator on an operator laptop |
+| Primary user/device | Administrator or data encoder on an operator laptop |
 | Goal | Reach ceremony and graduate data tasks and see blocking readiness issues |
 | Dominant information | Current ceremony readiness and unresolved data problems |
 | Primary action | Open the task that needs attention |
@@ -189,14 +189,16 @@ queue recovery, and destructive-action safeguards before implementation.
 | Prohibited content | Decorative KPIs, trend charts, marketing welcome panel, live stage controls |
 
 Use a compact task list/readiness summary, not an equal card dashboard. Detailed
-status counts must be real database facts and must lead to corrective records.
+status counts are database facts for the selected active/latest ceremony and lead
+to ceremony or graduate records. Administrator-only audit history appears as a
+task link; the data encoder never receives that ability.
 
-## Future ceremony administration — Phase 4
+## Ceremony administration — Phase 4 implemented
 
 | Item | Specification |
 | --- | --- |
 | Route | `/admin/ceremonies` |
-| Primary user/device | Administrator on an operator laptop |
+| Primary user/device | Administrator manages; data encoder has read-only list/detail access |
 | Goal | Create, review, and safely change ceremony configuration |
 | Dominant information | Ceremony identity, date, venue, status, and presentation mode |
 | Primary actions | Add/edit ceremony; activation controls require explicit status rules |
@@ -206,7 +208,14 @@ status counts must be real database facts and must lead to corrective records.
 | Recovery | Preserve entered values on validation failure; never imply activation before confirmation |
 | Prohibited content | Stage operator controls, inline QR tokens, silent status changes |
 
-## Future graduate administration — Phase 4
+Implemented pages are index, create, detail, and edit. The list supports ceremony
+name search, status/year filters, and 15-row pagination. The form fields are name,
+academic year, venue, event date, status, and presentation mode. Activation
+conflicts, invalid transitions, and presenting-state changes return linked field
+errors. Detail makes graduate/queue/scan/event/stage-state deletion protection
+visible. Only administrators see create/edit/delete controls.
+
+## Graduate administration — Phase 4 implemented
 
 | Item | Specification |
 | --- | --- |
@@ -239,8 +248,39 @@ status counts must be real database facts and must lead to corrective records.
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-Phase 4 must define exact form fields, filters, role permissions, pagination,
-and safe media editing before implementation.
+Implemented list filters are ceremony, college, program, eligibility, media
+readiness, and read-only stage status. Search covers reviewed names and student
+number; sorting covers ceremony/sequence, display name, and student number;
+pagination uses 20 rows and preserves filters.
+
+The form uses explicit sections:
+
+1. assignment: ceremony, student number, positive sequence, hidden QR token;
+2. names: separate first/middle/last/suffix plus reviewed display,
+   announcement, and pronunciation fields;
+3. academic/eligibility: college, program, major, honors, eligibility;
+4. local media: JPEG/PNG/WebP photo and MP3/WAV/OGG audio with current preview,
+   replacement, missing state, and explicit removal.
+
+Administrators and data encoders may create/edit and manage media. Only
+administrators may delete, and history blocks deletion. Current QR values never
+appear in page props; edit offers an optional hidden replacement field.
+
+## Administrative audit history — Phase 4 implemented
+
+| Item | Specification |
+| --- | --- |
+| Route | `/admin/audit-logs` |
+| Primary user | Administrator only |
+| Goal | Review important ceremony, graduate, and media changes |
+| Dominant information | Time, actor, action, entity ID, expandable safe before/after values |
+| Filters | Action text and ceremony/graduate entity type |
+| Required states | Results, empty, no matches, access denied |
+| Privacy | No raw QR values, original filenames, media paths/content, passwords, or serialized models |
+| Prohibited content | Operational scan logs, stage events, raw tokens, report charts, edit controls |
+
+This page is administrative change history required by Phase 4. General
+operational log investigation, reporting, and exports remain Phase 9.
 
 ## Future CSV import — Phase 5
 
@@ -271,7 +311,7 @@ mapping, and keep the confirmation action visually separate from file selection.
 | Recovery | Regeneration remains tied to the authoritative stored token; test with physical scanner |
 | Prohibited content | Internet QR service, exposed token text in normal lists, uncontrolled bulk regeneration |
 
-## Future logs and reports — Phase 9
+## Future operational logs and reports — Phase 9
 
 | Item | Specification |
 | --- | --- |
@@ -284,9 +324,10 @@ mapping, and keep the confirmation action visually separate from file selection.
 | Recovery/privacy | Preserve filters; redact QR secrets and avoid audience/student-sensitive excess |
 | Prohibited content | Live stage controls, raw stack traces, raw QR tokens, invented analytics |
 
-The updated playbook does not currently approve a separate `/reports` page.
-Phase 9 must decide whether reporting remains within `/logs` before adding a
-route.
+The Phase 4 `/admin/audit-logs` page does not satisfy operational scan/stage
+investigation. The updated playbook does not currently approve a separate
+`/reports` page. Phase 9 must decide whether reporting remains within `/logs`
+before adding a route.
 
 ## Future settings — Phase 9 or 10, confirmation required
 

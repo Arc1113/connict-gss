@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AuditLog;
+use App\Models\Ceremony;
+use App\Models\Student;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -53,7 +56,17 @@ class HandleInertiaRequests extends Middleware
                 'abilities' => $user === null ? [] : [
                     'operate_scanner' => $user->can('operate-scanner'),
                     'operate_stage' => $user->can('operate-stage'),
+                    'view_ceremonies' => $user->can('viewAny', Ceremony::class),
+                    'manage_ceremonies' => $user->can('create', Ceremony::class),
+                    'view_students' => $user->can('viewAny', Student::class),
+                    'manage_students' => $user->can('create', Student::class),
+                    'delete_students' => $user->isAdministrator(),
+                    'view_audit_logs' => $user->can('viewAny', AuditLog::class),
                 ],
+            ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'warning' => fn () => $request->session()->get('warning'),
             ],
         ];
     }

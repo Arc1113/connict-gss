@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Enums\CeremonyStatus;
+use App\Http\Controllers\Controller;
+use App\Models\Ceremony;
+use App\Models\Student;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class AdminDashboardController extends Controller
+{
+    public function __invoke(Request $request): Response
+    {
+        abort_unless(
+            $request->user()->can('viewAny', Ceremony::class)
+                || $request->user()->can('viewAny', Student::class),
+            403,
+        );
+
+        $activeCeremonies = Ceremony::query()
+            ->where('status', CeremonyStatus::Active)
+            ->orderBy('id')
+            ->get(['id', 'name', 'academic_year', 'event_date', 'status']);
+
+        $referenceCeremony = $activeCeremonies->count() === 1
+            ? $activeCeremonies->first()
+            : Ceremony::query()
+                ->orderByRaw('event_date DESC NULLS LAST')
+                ->orderByDesc('id')
+                ->first(['id', 'name', 'academic_year', 'event_date', 'status']);
+
+        $readiness = null;
+
+        if ($referenceCeremony !== null) {
+            $students = Student::query()->where('ceremony_id', $referenceCeremony->id);
+
+            $readiness = [
+                'total' => (clone $students)->count(),
+                'eligible' => (clone $students)->where('eligibility_status', 'eligible')->count(),
+                'needs_review' => (clone $students)->where('eligibility_status', 'pending')->count(),
+                'missing_photo' => (clone $students)->whereNull('photo_path')->count(),
+                'missing_audio' => (clone $students)->whereNull('audio_path')->count(),
+            ];
+        }
+
+        return Inertia::render('Admin/Index', [
+            'activeCeremonyState' => match ($activeCeremonies->count()) {
+                0 => 'none',
+                1 => 'ready',
+                default => 'conflict',
+            },
+            'referenceCeremony' => $referenceCeremony === null ? null : [
+                'id' => $referenceCeremony->id,
+                'name' => $referenceCeremony->name,
+                'academic_year' => $referenceCeremony->academic_year,
+                'event_date' => $referenceCeremony->event_date?->format('Y-m-d'),
+                'status' => $referenceCeremony->status->value,
+            ],
+            'readiness' => $readiness,
+        ]);
+    }
+}

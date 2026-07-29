@@ -1,9 +1,10 @@
 # Graduation Stage System
 
-Status: **Phase 3 — Critical Vertical Slice implemented; awaiting human approval**
+Status: **Phase 4 — Ceremony and Graduate Administration implemented**
 
 The Graduation Stage System is a local-network-only application for reliable,
-QR-driven graduation presentation. Phase 3 proves one complete path:
+QR-driven graduation presentation. Phase 3 established the complete operational
+path:
 
 ```text
 USB QR scanner → /scanner → POST /scans → PostgreSQL transaction
@@ -13,6 +14,11 @@ USB QR scanner → /scanner → POST /scans → PostgreSQL transaction
 
 PostgreSQL is authoritative. WebSockets announce committed changes; they do not
 replace HTTP commands or state retrieval.
+
+Phase 4 adds authenticated ceremony and graduate preparation without changing
+that path: role-scoped CRUD, search/filter/pagination, safe ceremony lifecycle
+rules, local photo/audio upload and preview, protected deletion, and redacted
+administrative audit history.
 
 ## Approved architecture
 
@@ -50,6 +56,35 @@ The temporary vertical-slice policy is intentionally small:
 Queue ordering, present-next, selected presentation, skip, return, replay controls,
 mode automation, and advanced recovery remain Phase 7 work.
 
+## Phase 4 administration behavior
+
+- Administrators can create, review, edit, activate/pause/complete/archive, and
+  safely delete unused ceremonies; manage graduate records and media; and review
+  administrative audit history.
+- Data encoders can view ceremonies and view/create/edit graduate preparation
+  data and local media. They cannot manage ceremonies, delete graduate records,
+  view audit history, or gain scanner/stage access.
+- Other operational roles cannot access administration routes.
+- Ceremony activation uses a PostgreSQL transaction-scoped advisory lock plus row
+  locks. A second active ceremony is rejected; the system never silently
+  deactivates another ceremony or activates by date.
+- Ceremony changes are blocked while a graduate is presenting. Operational
+  history and stage state protect ceremonies from deletion.
+- Graduate deletion is blocked by scan, queue, or presentation history.
+- QR tokens are normalized and validated but never returned by list/detail/edit
+  page props. Editing uses an optional replacement value.
+- Uploaded JPEG/PNG/WebP photos (maximum 5 MB) and MP3/WAV/OGG audio (maximum
+  15 MB) are stored under `storage/app/public/graduates` with generated names.
+  Replacement commits the database change before removing the former managed
+  file.
+- For reviewed announcement clips, the current preparation recommendation is
+  2–10 seconds, trimmed of excess silence, near −16 LUFS integrated loudness,
+  and no peak above −1 dBFS. This is guidance rather than an approval flag or
+  server-enforced rule; final files still require venue-speaker review.
+- Audit records store actor, action, entity, time, IP, and allowlisted safe
+  changes. Raw QR tokens, original filenames, media paths/content, passwords, and
+  unnecessary identity values are excluded.
+
 ## Implemented routes
 
 | Route | Purpose | Access |
@@ -60,6 +95,20 @@ mode automation, and advanced recovery remain Phase 7 work.
 | `GET /stage/state` | Authoritative safe stage snapshot | Stage operator, administrator |
 | `POST /stage/complete-current` | Minimal completion/clear command | Stage operator, administrator |
 | `GET\|POST /broadcasting/auth` | Private Echo channel authorization | Authorized active session |
+| `GET /admin` | Ceremony readiness and preparation tasks | Administrator, data encoder |
+| `GET /admin/ceremonies` | Search/filter/paginated ceremony list | Administrator, data encoder |
+| `GET /admin/ceremonies/create` | Ceremony form | Administrator |
+| `GET /admin/ceremonies/{ceremony}` | Ceremony detail/history protection | Administrator, data encoder |
+| `GET /admin/ceremonies/{ceremony}/edit` | Ceremony edit/lifecycle form | Administrator |
+| `GET /admin/students` | Search/filter/sort/paginated graduate list | Administrator, data encoder |
+| `GET /admin/students/create` | Graduate and media form | Administrator, data encoder |
+| `GET /admin/students/{student}` | Graduate detail and media preview | Administrator, data encoder |
+| `GET /admin/students/{student}/edit` | Graduate and media edit form | Administrator, data encoder |
+| `GET /admin/audit-logs` | Safe administrative audit history | Administrator |
+
+The corresponding `POST`, `PUT/PATCH`, and `DELETE` resource actions are
+server-authorized. Separate `DELETE /admin/students/{student}/photo` and
+`DELETE /admin/students/{student}/audio` actions remove managed media safely.
 
 The private Echo channel is `private-stage.{ceremonyId}`. It is authorized only
 for stage operators and administrators when exactly one active ceremony exists
@@ -135,6 +184,7 @@ downloads require internet during setup only.
 
    ```bash
    docker compose exec -T app php artisan migrate:fresh --seed
+   docker compose exec -T app php artisan storage:link
    ```
 
 7. Compile local production assets and start Reverb:
@@ -228,9 +278,9 @@ The active sample ceremony contains:
 
 | Graduate | Manual Phase 3 token | Audio fixture |
 | --- | --- | --- |
-| Amara Santos | `GSS-PHASE3-A7K9M2Q4` | `student-01.wav` |
-| Benicio Reyes | `GSS-PHASE3-B8L3N5R7` | `student-02.wav` |
-| Clarisse Mendoza | `GSS-PHASE3-C4P6S8V2` | `student-03.wav` |
+| Ana Marie dela Cruz | `GSS-PHASE3-A7K9M2Q4` | `student-01.wav` |
+| Christopher Emmanuel Villanueva-Santos | `GSS-PHASE3-B8L3N5R7` | `student-02.wav` |
+| Ma. Lourdes P. Reyes | `GSS-PHASE3-C4P6S8V2` | `student-03.wav` |
 | Dario Navarro | `GSS-PHASE3-D9T5W7Y3` | `student-04.wav` |
 | Elena Alexandria-Cassandra Villanueva | `GSS-PHASE3-E2H6J8X4` | Intentionally missing |
 
@@ -263,6 +313,26 @@ Repeat on the physical three-laptop setup before ceremony use. This development
 environment cannot certify the USB scanner, projector/LED wall, venue sound
 system, firewall, or three separate physical devices.
 
+### Manual administration check
+
+1. Sign in as `admin@example.test`, open `/admin`, and review the active-ceremony
+   and data-readiness facts.
+2. Open `/admin/ceremonies`; test search/status/year filters, validation errors,
+   an activation conflict, and a protected delete.
+3. Open `/admin/students`; test realistic long names/programs, all filters,
+   sequence/name sorting, pagination, and no-results recovery.
+4. Add/edit a graduate; confirm duplicate student/sequence/token errors identify
+   the field without exposing an existing token.
+5. Upload and replace a local photo and audio file, play the browser preview,
+   remove each file, and confirm the missing-media state.
+6. Review `/admin/audit-logs`; confirm important actions exist without raw QR
+   values, original filenames, or media paths.
+7. Sign in as `encoder@example.test`; confirm ceremony pages are read-only,
+   graduate create/edit/media work, destructive actions are absent/forbidden,
+   and `/admin/audit-logs` returns 403.
+8. Re-run the Phase 3 scanner/stage flow using an eligible edited graduate and
+   confirm uploaded media resolves from the persisted stage payload.
+
 ## Automated verification
 
 Run database tests inside the PHP container because the host PHP installation may
@@ -282,6 +352,11 @@ The Phase 3 tests include HTTP/access checks, all scan outcomes, scan-log and
 payload privacy checks, post-transaction event ordering, rollback behavior,
 private-channel authorization, stage refresh/completion, and separate-process
 PostgreSQL races.
+
+Phase 4 adds policy/route matrices, ceremony and graduate CRUD/validation,
+search/filter/sort/pagination, activation and concurrent-activation protection,
+presenting-state and deletion safeguards, upload validation and cleanup, audio
+preview paths, audit redaction, and stage-media compatibility tests.
 
 An optional live Chromium check exercises two authenticated browser profiles,
 private-channel delivery, local audio playback events, refresh recovery, and a
@@ -321,15 +396,23 @@ ceremony database or during live operations.
   Reverb containers.
 - **Host tests report `could not find driver`:** run PHPUnit in the Docker app
   container.
+- **Uploaded media returns 404:** run
+  `docker compose exec -T app php artisan storage:link`, verify
+  `storage/app/public` is writable, and keep the generated `storage/...` path in
+  PostgreSQL.
+- **Ceremony activation is blocked:** finish the current presentation, then
+  pause/complete the sole active ceremony before activating another. Activation
+  never occurs automatically.
 
 ## Phase boundary
 
-Phase 3 does not add ceremony/student CRUD, CSV import, QR generation, activation
-UI, device credentials, a general queue, present-next/selected, reorder, skip,
-return, replay/mute controls, reporting, audit UI, backups, deployment automation,
-or final media preparation. Those features remain deferred to their approved
-phases, especially the full queue and mode behavior in Phase 7.
+Phase 4 does not add CSV import, QR generation/printing, camera scanning, device
+credentials, a general queue, present-next/selected, reorder, skip, return,
+replay/mute controls, operational scan/stage reports, backups, deployment
+automation, cloud media, or text-to-speech. Those features remain deferred to
+their approved phases, especially CSV preparation in Phase 5 and the full queue
+and mode behavior in Phase 7.
 
 See [requirements](docs/requirements.md) and
-[architecture](docs/architecture.md) for the normative Phase 3 contract. Do not
-begin Phase 4 until Phase 3 receives explicit human approval.
+[architecture](docs/architecture.md) for the normative Phase 3 and Phase 4
+contracts. Do not begin Phase 5 until Phase 4 receives explicit human approval.

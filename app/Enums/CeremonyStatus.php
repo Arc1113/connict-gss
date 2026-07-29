@@ -10,4 +10,16 @@ enum CeremonyStatus: string
     case Paused = 'paused';
     case Completed = 'completed';
     case Archived = 'archived';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Draft => 'Draft',
+            self::Prepared => 'Prepared',
+            self::Active => 'Active',
+            self::Paused => 'Paused',
+            self::Completed => 'Completed',
+            self::Archived => 'Archived',
+        };
+    }
 }
