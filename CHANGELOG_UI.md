@@ -3,6 +3,28 @@
 UI changes are recorded by project phase. Functional backend changes belong in
 the main project documentation.
 
+## Phase 11 — Full-System Testing and Readiness Sign-Off
+
+Status: completed as CONDITIONAL GO
+Date: 2026-07-30
+
+Completed:
+
+- Added browser rehearsal evidence for scanner, stage-control, audience stage,
+  and administration routes using realistic long names, missing audio, invalid
+  QR, duplicate QR, ineligible graduate, Reverb restart, app restart, and HTTP
+  recovery states.
+- Fixed an admin topbar horizontal-overflow defect found during the Phase 11
+  browser rehearsal by constraining the navigation/account flex layout.
+- Added Phase 11 checklist coverage for full-system rehearsal, software versus
+  hardware evidence, deployment simulation, and final venue-readiness review.
+
+Known limitations:
+
+- Physical USB scanner, three laptops, projected display, printed QR cards,
+  router, and venue audio still require the final human rehearsal before the
+  event can be marked GO.
+
 ## Phase 10 — Local Deployment and Device Setup
 
 Status: completed

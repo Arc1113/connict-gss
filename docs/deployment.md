@@ -1,6 +1,6 @@
 # Local Deployment Runbook
 
-Status: Phase 10 implemented
+Status: Phase 11 software deployment simulation verified
 
 This runbook prepares the Graduation Stage System for an offline local ceremony
 deployment. It uses one Laravel application with React/Inertia production
@@ -8,6 +8,12 @@ assets, PostgreSQL, Reverb, local media, and local backups.
 
 Do not use this runbook for public internet hosting, cloud databases, public DNS,
 or remote storage.
+
+Phase 11 deployment evidence: an isolated `gss-phase11` Docker Compose project
+was built from the deployment image, migrated, started on LAN-style ports, health
+checked, interrupted, recovered, and removed with its disposable volumes. This is
+software deployment evidence only; the real event server, router, and client
+laptops still require physical rehearsal.
 
 ## Deployment architecture
 

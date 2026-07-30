@@ -1,6 +1,6 @@
 # Graduation Stage System
 
-Status: **Phase 9 — Logs, Reports, Backup, Restore, and Operational Recovery implemented**
+Status: **Phase 11 — Full-System Testing and Readiness Sign-Off completed as CONDITIONAL GO**
 
 The Graduation Stage System is a local-network-only application for reliable,
 QR-driven graduation presentation. Phase 3 established the complete operational
@@ -47,6 +47,35 @@ Phase 9 adds safe operational log views, CSV exports, ceremony completion
 summary, local PostgreSQL/media backup, manifest checksums, disposable restore
 verification, and administrator-only operational reset. Backups remain local and
 no browser route can destructively restore over production data.
+
+Phase 10 adds local deployment packaging and device/network setup guidance for
+the approved three-laptop ceremony layout. Phase 11 verifies the release
+candidate through automated tests, browser rehearsal, failure simulation,
+backup/restore verification, and deployment/standby simulation. Software
+readiness is **CONDITIONAL GO** pending the actual USB scanner, three laptops,
+projector/LED display, router, and venue audio rehearsal.
+
+## Phase 11 readiness
+
+Release candidate: `GSS-RC1`
+
+Git commit tested: `872fc3bebce9ce256d8899a438b6567a8e5d600e` plus approved
+Phase 11 verification/documentation changes.
+
+Software checks completed:
+
+- full Laravel suite: 175 tests, 1,741 assertions;
+- Phase 11 readiness tests: 4 tests, 297 assertions;
+- Phase 7 queue concurrency regression: 7 tests, 28 assertions;
+- Pint, ESLint, Composer validation/audit, npm audit, and Vite production build;
+- browser rehearsal across scanner, stage-control, stage, and admin routes;
+- Reverb restart, application restart, PostgreSQL interruption simulation, and
+  HTTP recovery;
+- local backup and disposable restore verification.
+
+Readiness remains conditional because physical hardware and venue checks cannot
+be certified without the real devices. See `docs/event-readiness-report.md`,
+`docs/ceremony-rehearsal.md`, and `docs/event-day-checklist.md`.
 
 ## Phase 9 operational support
 

@@ -1,9 +1,13 @@
 # Operational Recovery Runbook
 
-Status: Phase 9 implemented
+Status: Phase 11 recovery paths rehearsed in software
 
 Use this runbook on the local ceremony network. Do not paste secrets into chat,
 logs, screenshots, or reports.
+
+Phase 11 rehearsed Reverb restart, application restart, HTTP browser recovery,
+and PostgreSQL interruption/recovery in software. Physical recovery drills on the
+final three-device network remain required before event certification.
 
 ## Service restart commands
 

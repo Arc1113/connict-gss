@@ -152,6 +152,19 @@ required viewports.
 - [ ] No deployment script output, terminal, admin page, or backup page appears
       on the audience display.
 
+## Phase 11 rehearsal visual pass
+
+- [ ] Scanner is inspected at 1440×900, 1366×768, and 1024×768.
+- [ ] Stage-control is inspected at 1440×900, 1366×768, and 1024×768.
+- [ ] Stage is inspected at 1920×1080, 1366×768, and reduced-motion 1366×768.
+- [ ] Administration route navigation does not widen the page.
+- [ ] Long names/programs, missing audio, holding, cleared, and recovered states
+      are captured or reviewed.
+- [ ] Audience display stays free of navigation, controls, QR tokens, student
+      numbers, queue data, and technical connection text.
+- [ ] Physical display and venue-audio observations are recorded separately from
+      browser-only evidence.
+
 ## Anti–AI-slop final pass
 
 - [ ] No equal card grid drives hierarchy.

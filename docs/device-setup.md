@@ -1,9 +1,14 @@
 # Device Setup Checklist
 
-Status: Phase 10 implemented
+Status: Phase 11 software browser rehearsal verified; physical devices pending
 
 Use these checklists after the server deployment is prepared. The approved event
 layout is three laptops: server, scanner, and stage.
+
+Phase 11 used separate authenticated browser profiles to simulate the approved
+roles and routes. It did not attach the final USB scanner, projector/LED, venue
+audio, router, or three separate laptops. Complete this checklist physically
+before marking the event GO.
 
 ## Approved browser baseline
 

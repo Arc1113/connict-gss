@@ -1,6 +1,6 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 9 operational logs, reports, backup, restore, and recovery implemented**
+Document status: **Phase 11 software readiness verified; physical readiness pending**
 
 Last updated: 2026-07-30
 
@@ -29,6 +29,9 @@ Phase 9 adds traceable operational log views, safe CSV exports, ceremony
 completion summaries, local PostgreSQL/media backup, backup manifests and
 checksums, disposable restore verification, safe operational reset, and recovery
 documentation.
+Phase 10 adds local deployment packaging and device/network setup guidance.
+Phase 11 verifies the implemented system as a release candidate and separates
+software readiness from physical hardware and venue readiness.
 
 ## 2. Fixed architecture and device requirements
 
@@ -72,6 +75,7 @@ documentation.
 | Ceremony completion summary | `administrator` |
 | Backup status, backup creation, and restore verification | `administrator`, `technical_operator` |
 | Operational reset | `administrator` |
+| Event readiness review and final operational sign-off | Human lead operator, administrator, and technical operator |
 
 All access uses Phase 2 session authentication, CSRF protection, active-account
 enforcement, and Laravel gates/policies. Phase 4 does not introduce device keys or token

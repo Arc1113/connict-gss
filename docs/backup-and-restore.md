@@ -1,9 +1,13 @@
 # Backup and Restore
 
-Status: Phase 9 implemented
+Status: Phase 11 backup and disposable restore verified
 
 The Graduation Stage System backup workflow is local-only. It does not upload to
 cloud storage, email, or any internet service.
+
+Phase 11 verified backup `storage/app/gss-backups/gss-backup-20260730-171515`
+and restored it into a disposable database/media directory. The restore
+verification reported 2 ceremonies, 14 graduates, and 15 media files.
 
 ## Backup contents
 

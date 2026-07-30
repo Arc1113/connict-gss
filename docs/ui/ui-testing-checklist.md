@@ -172,6 +172,24 @@ and results in the phase report.
 - [ ] Three physical devices, router, projector/LED, USB scanner, and venue
       audio are checked before event certification.
 
+## Phase 11 full-system rehearsal
+
+- [ ] Browser rehearsal uses separate authenticated profiles for administrator,
+      encoder, scanner, stage-control, and audience stage.
+- [ ] Scanner, stage-control, and stage use realistic long names, long programs,
+      missing honors, missing audio, duplicate QR, invalid QR, and ineligible
+      graduate states.
+- [ ] Reverb restart and application restart recover through HTTP state
+      retrieval.
+- [ ] PostgreSQL interruption produces safe failures and recovery is verified
+      before scanning resumes.
+- [ ] Administration routes have no horizontal page overflow in the rehearsal
+      viewport.
+- [ ] Export checks confirm QR tokens and storage paths are not exposed.
+- [ ] Browser resource checks show no remote runtime assets.
+- [ ] Physical USB scanner, three laptops, projector/LED, and venue audio are
+      marked separately as hardware/venue evidence, not software evidence.
+
 ## Regression
 
 - [ ] Relevant Laravel tests pass.

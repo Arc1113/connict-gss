@@ -1,6 +1,6 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 9 operational support architecture implemented**
+Document status: **Phase 11 software architecture verified**
 
 Last updated: 2026-07-30
 
@@ -28,9 +28,15 @@ The approved architecture has not changed.
 | QR rendering | BaconQrCode 3.1.1 | Local deterministic SVG from the current PostgreSQL token |
 | Packaging | Docker Compose | Reproducible app, Reverb, and PostgreSQL processes |
 | Backup | Docker-aware local scripts and metadata table | PostgreSQL dump, media copy, manifest, checksum, restore verification |
+| Readiness | Phase 11 test and browser rehearsal harnesses | Software release-candidate verification and evidence capture |
 
 No Redis, queue worker, polling loop, separate SPA/API application, SQLite,
 cloud-storage service, cloud speech service, or runtime CDN is used.
+
+Phase 11 did not change the approved architecture. The verified runtime remains
+HTTP for commands and recovery reads, PostgreSQL for authoritative state,
+post-commit Reverb broadcasts, Echo browser delivery, local media, and
+local-network-only deployment.
 
 ## 3. Physical and network topology
 

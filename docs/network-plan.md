@@ -1,9 +1,14 @@
 # Local Network Plan
 
-Status: Phase 10 implemented
+Status: Phase 11 deployment simulation verified; venue network pending
 
 The Graduation Stage System runs on a dedicated local ceremony network. Internet
 is not required during runtime.
+
+Phase 11 verified a LAN-style deployment simulation on `192.168.1.11` with
+PostgreSQL bound to loopback only. The final venue subnet, router DHCP
+reservation, firewall rules, and client laptop connectivity must still be tested
+on site.
 
 ## Recommended topology
 
