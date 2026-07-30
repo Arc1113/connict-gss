@@ -32,3 +32,4 @@ Thumbs.db
 
 .png
 !docs/evidence/phase-4/*.png
+!docs/evidence/phase-5/*.png

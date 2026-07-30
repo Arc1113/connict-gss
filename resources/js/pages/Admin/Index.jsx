@@ -21,7 +21,7 @@ export default function AdminIndex({
             <Head title="Administration" />
             <PageHeader
                 description="Review ceremony readiness and open the data task that needs attention."
-                eyebrow="Phase 4"
+                eyebrow="Phase 5"
                 title="Ceremony preparation"
             />
 
@@ -113,6 +113,18 @@ export default function AdminIndex({
                             <strong>Graduate records</strong>
                             <small>
                                 Search, validate, and prepare local presentation media.
+                            </small>
+                        </span>
+                        <span aria-hidden="true">→</span>
+                    </Link>
+                )}
+                {abilities.import_students && (
+                    <Link href="/admin/students/import">
+                        <span>
+                            <strong>Import graduate CSV</strong>
+                            <small>
+                                Inspect, map, preview, and atomically create prepared
+                                records.
                             </small>
                         </span>
                         <span aria-hidden="true">→</span>

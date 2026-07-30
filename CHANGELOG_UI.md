@@ -3,6 +3,65 @@
 UI changes are recorded by project phase. Functional backend changes belong in
 the main project documentation.
 
+## Phase 5 — CSV Import and Data Preparation
+
+Status: completed
+Date: 2026-07-29
+
+Completed:
+
+- Added the `/admin/students/import` upload, mapping, server-preview,
+  confirmation, and summary workspace using the existing administration shell
+  and local design tokens.
+- Chose separate step pages over a single long wizard or compressed split
+  workspace so every screen has one dominant decision at the 1024 px minimum.
+- Added semantic progress, explicit ceremony/file/mode context, deterministic
+  mapping samples, required-target errors, visible ignored columns, and 50-row
+  preview pagination.
+- Added text-labeled ready, warning, and blocked row states; long graduate,
+  program, honors, and message wrapping; specific correction guidance; and an
+  acknowledgment-gated atomic confirmation.
+- Added a compact completion summary, ceremony-filtered graduate recovery link,
+  CSV import navigation/task links, and import entries in the safe
+  administrator audit filter.
+- Kept CSV contents and QR tokens out of Inertia props, template output,
+  summaries, and audit details. No external assets, cloud uploads, frontend CSV
+  parser, polling, or new UI library were introduced.
+- Preserved the Phase 3 scanner/stage pages and the Phase 4 ceremony, graduate,
+  and local-media interfaces.
+
+Verification:
+
+- Phase 5 Laravel/unit coverage passes 22 tests with 286 assertions for
+  authorization, owner isolation, parsing/limits, mapping, normalization,
+  conflict states, pagination, expiry, encrypted storage, atomic rollback,
+  internal QR custody, template privacy, and safe audits.
+- The full PostgreSQL repository suite passes 107 tests with 860 assertions,
+  including existing Phase 3 concurrency/recovery and Phase 4 administration
+  coverage.
+- ESLint and the Vite production build pass during implementation.
+- Authenticated Chrome exercised upload, mapping, warning preview, blocked
+  preview, confirmation, summary, graduate retrieval, safe audit, template
+  download, reduced motion, visible focus, and denied scanner access at
+  1440×900, 1366×768, and 1024×768. Evidence is indexed under
+  `docs/evidence/phase-5/`.
+- The existing live Phase 3 browser regression passes private Reverb delivery,
+  HTTP refresh/reconnect recovery, persistence through a Reverb outage, local
+  audio playback, rapid-input protection, and audience-safe output after the
+  Phase 5 changes.
+- The existing Phase 4 administration browser regression also passes local
+  media delivery/playback, audit privacy, role navigation, and the three
+  required laptop viewports with the extended navigation shell.
+
+Known limitations:
+
+- Physical assistive-technology checks, 200% zoom, very large venue data,
+  operator rehearsal, and production LAN throughput require manual review.
+- CSV update/synchronization/export, QR artifact generation/printing, queue
+  controls, reports, and settings remain assigned to future phases.
+- Temporary import completion-summary retention and any later update-mode merge
+  rules still require institutional approval.
+
 ## Phase 4 — Ceremony and Graduate Administration
 
 Status: completed

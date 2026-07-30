@@ -20,13 +20,26 @@ export default function StudentIndex({
             <Head title="Graduate records" />
             <PageHeader
                 actions={
-                    auth.abilities.manage_students && (
-                        <Link
-                            className="admin-button admin-button-primary"
-                            href="/admin/students/create"
-                        >
-                            Add graduate
-                        </Link>
+                    (auth.abilities.import_students ||
+                        auth.abilities.manage_students) && (
+                        <>
+                            {auth.abilities.import_students && (
+                                <Link
+                                    className="admin-button admin-button-secondary"
+                                    href="/admin/students/import"
+                                >
+                                    Import CSV
+                                </Link>
+                            )}
+                            {auth.abilities.manage_students && (
+                                <Link
+                                    className="admin-button admin-button-primary"
+                                    href="/admin/students/create"
+                                >
+                                    Add graduate
+                                </Link>
+                            )}
+                        </>
                     )
                 }
                 description="Find and correct preparation data without exposing QR tokens."

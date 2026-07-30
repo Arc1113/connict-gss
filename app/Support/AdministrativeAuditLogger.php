@@ -28,7 +28,7 @@ final class AdministrativeAuditLogger
             'old_values' => $this->nonEmpty($oldValues),
             'new_values' => $this->nonEmpty($newValues),
             'ip_address' => $ipAddress,
-            'created_at' => now(),
+            'created_at' => now()->utc(),
         ]);
     }
 

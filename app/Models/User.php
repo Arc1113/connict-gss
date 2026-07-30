@@ -58,6 +58,11 @@ class User extends Authenticatable
         return $this->hasMany(AuditLog::class);
     }
 
+    public function studentImports(): HasMany
+    {
+        return $this->hasMany(StudentImport::class);
+    }
+
     public function hasRole(UserRole $role): bool
     {
         return $this->role === $role;

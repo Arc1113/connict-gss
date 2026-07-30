@@ -14,7 +14,8 @@ import { join } from 'node:path';
 import process from 'node:process';
 
 const repositoryPath = process.cwd();
-const applicationUrl = 'http://127.0.0.1:8000';
+const applicationUrl =
+    process.env.GSS_APP_URL ?? 'http://127.0.0.1:8000';
 const chromePath = '/usr/bin/google-chrome';
 const password = readEnvironmentValue('GSS_SEED_PASSWORD');
 const evidencePath = join(repositoryPath, 'docs', 'evidence', 'phase-4');

@@ -60,6 +60,20 @@ required viewports.
 - [ ] HTTP recovered
 - [ ] Cleared
 
+## CSV import states
+
+- [ ] Upload/no file
+- [ ] Mapping with realistic samples
+- [ ] Mapping validation error
+- [ ] Ready rows
+- [ ] Warning rows
+- [ ] Blocked rows with recovery
+- [ ] Long graduate/program/message
+- [ ] Confirmation processing/lock
+- [ ] Completion summary
+- [ ] Expired/failed state or honestly documented automated limitation
+- [ ] Access denied
+
 ## Anti–AI-slop final pass
 
 - [ ] No equal card grid drives hierarchy.

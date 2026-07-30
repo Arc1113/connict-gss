@@ -1,6 +1,6 @@
 # Graduation Stage System
 
-Status: **Phase 4 — Ceremony and Graduate Administration implemented**
+Status: **Phase 5 — CSV Import and Data Preparation implemented**
 
 The Graduation Stage System is a local-network-only application for reliable,
 QR-driven graduation presentation. Phase 3 established the complete operational
@@ -19,6 +19,11 @@ Phase 4 adds authenticated ceremony and graduate preparation without changing
 that path: role-scoped CRUD, search/filter/pagination, safe ceremony lifecycle
 rules, local photo/audio upload and preview, protected deletion, and redacted
 administrative audit history.
+
+Phase 5 adds an owner-bound, create-only CSV preparation workflow. Upload,
+mapping, server-normalized preview, and explicit confirmation are separate HTTP
+steps. PostgreSQL rechecks the complete file and creates all graduates in one
+transaction or creates none.
 
 ## Approved architecture
 
@@ -85,6 +90,35 @@ mode automation, and advanced recovery remain Phase 7 work.
   changes. Raw QR tokens, original filenames, media paths/content, passwords, and
   unnecessary identity values are excluded.
 
+## Phase 5 CSV preparation behavior
+
+- Administrators and data encoders can download a local UTF-8 template and
+  import into a draft, prepared, active, or paused ceremony. Other roles are
+  denied by server policy.
+- CSV input is limited to 2 MiB, 2,000 graduate rows, 40 columns, and 2,000
+  characters per cell. Comma, semicolon, and tab delimiters are detected
+  deterministically; binary/control data, non-UTF-8 input, duplicate/empty
+  headers, ambiguous delimiters, and headers without rows are rejected.
+- Exact, unambiguous header aliases receive mapping suggestions. The operator
+  must map student number, first name, last name, program, sequence number, and
+  eligibility exactly once. Other approved fields are optional; unmapped
+  columns are visibly ignored.
+- Preview is rebuilt on the server from encrypted temporary content and
+  persisted mapping. It displays 50 rows per page with explicit ready, warning,
+  and blocked states, generated-name warnings, structural errors, duplicate
+  identifiers, and current PostgreSQL conflicts.
+- This phase creates new records only. It never updates or synchronizes an
+  existing graduate. The confirm control is absent while any row is blocked.
+- Confirmation obtains a PostgreSQL transaction advisory lock, locks the import,
+  ceremony, and current ceremony graduates, rebuilds the entire preview, then
+  creates every row and its safe audit entry atomically.
+- Every imported graduate receives a server-generated, collision-resistant QR
+  token. The CSV template, mapping, preview, summary, and audit history never
+  expose raw QR values.
+- Temporary CSV content is encrypted through the application key, owner-bound,
+  stored only in PostgreSQL, expires after 30 minutes, and is cleared after a
+  successful import. No public or retained temporary upload file is created.
+
 ## Implemented routes
 
 | Route | Purpose | Access |
@@ -104,6 +138,14 @@ mode automation, and advanced recovery remain Phase 7 work.
 | `GET /admin/students/create` | Graduate and media form | Administrator, data encoder |
 | `GET /admin/students/{student}` | Graduate detail and media preview | Administrator, data encoder |
 | `GET /admin/students/{student}/edit` | Graduate and media edit form | Administrator, data encoder |
+| `GET /admin/students/import` | Select ceremony and inspect local CSV | Administrator, data encoder |
+| `GET /admin/students/import/template` | Download local UTF-8 CSV template | Administrator, data encoder |
+| `POST /admin/students/import/inspect` | Validate and store encrypted temporary import | Administrator, data encoder |
+| `GET /admin/students/import/{import}/mapping` | Review source samples and map columns | Owning administrator/data encoder |
+| `POST /admin/students/import/{import}/preview` | Validate and persist mapping | Owning administrator/data encoder |
+| `GET /admin/students/import/{import}/preview` | Review server-normalized row results | Owning administrator/data encoder |
+| `POST /admin/students/import/{import}/confirm` | Revalidate and atomically create records | Owning administrator/data encoder |
+| `GET /admin/students/import/{import}/summary` | Review safe committed counts | Owning administrator/data encoder |
 | `GET /admin/audit-logs` | Safe administrative audit history | Administrator |
 
 The corresponding `POST`, `PUT/PATCH`, and `DELETE` resource actions are
@@ -333,6 +375,23 @@ system, firewall, or three separate physical devices.
 8. Re-run the Phase 3 scanner/stage flow using an eligible edited graduate and
    confirm uploaded media resolves from the persisted stage payload.
 
+### Manual CSV import check
+
+1. Sign in as `encoder@example.test`, open `/admin/students/import`, and download
+   the template. Confirm it is local, UTF-8 with a BOM, and contains no QR/media
+   fields.
+2. Upload a realistic create-only CSV to the intended ceremony. Review the safe
+   filename, row count, samples, suggestions, required mappings, and ignored
+   columns.
+3. Preview long names/programs, generated display/announcement names, no-honors
+   data, multiple honors, normalized eligibility aliases, and 50-row pagination.
+4. Verify duplicates, invalid eligibility, malformed rows, and conflicts with
+   existing student/sequence numbers are blocked with recovery instructions.
+5. Confirm a valid import only after checking the acknowledgment. Review the
+   completion summary, ceremony-filtered graduate list, and administrator audit.
+6. Confirm no page or audit output exposes a raw QR token or temporary CSV
+   content, and that a second confirmation is forbidden.
+
 ## Automated verification
 
 Run database tests inside the PHP container because the host PHP installation may
@@ -358,6 +417,11 @@ search/filter/sort/pagination, activation and concurrent-activation protection,
 presenting-state and deletion safeguards, upload validation and cleanup, audio
 preview paths, audit redaction, and stage-media compatibility tests.
 
+Phase 5 adds upload/role/ownership matrices, parser and hard-limit coverage,
+mapping validation, normalization and row classification, current-data
+conflicts, pagination, expiry, template privacy, transaction rollback,
+confirmation revalidation, generated-token privacy, and safe import audits.
+
 An optional live Chromium check exercises two authenticated browser profiles,
 private-channel delivery, local audio playback events, refresh recovery, and a
 deliberate Reverb stop/restart:
@@ -367,12 +431,16 @@ docker compose stop reverb
 docker compose exec -T app php artisan migrate:fresh --seed --force
 docker compose start reverb
 node tests/Support/phase3-browser-check.mjs
+node tests/Support/phase5-browser-check.mjs
 ```
 
-This check requires Google Chrome at `/usr/bin/google-chrome`, resets the local
-development database, temporarily stops Reverb, completes its sample
-presentations, and writes review screenshots to `/tmp`. Never run it against a
-ceremony database or during live operations.
+These checks require Google Chrome at `/usr/bin/google-chrome` and must run only
+against disposable seeded development data. The Phase 3 harness temporarily
+stops Reverb and completes sample presentations. The Phase 5 harness creates
+clearly prefixed sample graduates and writes review screenshots under
+`docs/evidence/phase-5/`. Never run either harness against ceremony production
+data or during live operations. Set `GSS_APP_URL` when the local app uses a
+non-default host port.
 
 ## Troubleshooting
 
@@ -403,16 +471,22 @@ ceremony database or during live operations.
 - **Ceremony activation is blocked:** finish the current presentation, then
   pause/complete the sole active ceremony before activating another. Activation
   never occurs automatically.
+- **CSV cannot be inspected:** use UTF-8 with one unique header row, a consistent
+  comma/semicolon/tab delimiter, and the documented size/row/column limits.
+- **Import confirmation is unavailable:** return to mapping or correct the CSV
+  until every required target is mapped once and no preview row is blocked.
+- **Import preview expired:** upload the source again. Temporary content expires
+  after 30 minutes and cannot be recovered from a browser page.
 
 ## Phase boundary
 
-Phase 4 does not add CSV import, QR generation/printing, camera scanning, device
-credentials, a general queue, present-next/selected, reorder, skip, return,
-replay/mute controls, operational scan/stage reports, backups, deployment
-automation, cloud media, or text-to-speech. Those features remain deferred to
-their approved phases, especially CSV preparation in Phase 5 and the full queue
-and mode behavior in Phase 7.
+Phase 5 does not add CSV update/synchronization/export, QR artifact generation or
+printing, camera scanning, device credentials, a general queue,
+present-next/selected, reorder, skip, return, replay/mute controls, operational
+scan/stage reports, backups, deployment automation, cloud media, or
+text-to-speech. Those features remain deferred to their approved phases,
+especially QR preparation in Phase 6 and full queue/mode behavior in Phase 7.
 
 See [requirements](docs/requirements.md) and
-[architecture](docs/architecture.md) for the normative Phase 3 and Phase 4
-contracts. Do not begin Phase 5 until Phase 4 receives explicit human approval.
+[architecture](docs/architecture.md) for the normative Phase 3 through Phase 5
+contracts. Do not begin Phase 6 until Phase 5 receives explicit human approval.

@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import process from 'node:process';
 
 const repositoryPath = process.cwd();
-const applicationUrl = 'http://127.0.0.1:8000';
+const applicationUrl =
+    process.env.GSS_APP_URL ?? 'http://127.0.0.1:8000';
 const chromePath = '/usr/bin/google-chrome';
 const password = readEnvironmentValue('GSS_SEED_PASSWORD');
 const evidencePath = join(repositoryPath, 'docs', 'evidence', 'phase-3a');
@@ -310,10 +311,7 @@ try {
     await captureAt(scanner.client, 'scanner-invalid-1366x768.png', 1366, 768);
     await scanner.client.waitFor('document.activeElement?.id === "scan-token"');
 
-    await scanner.client.setBlockedUrls([
-        '*://127.0.0.1:8000/scans',
-        '*://localhost:8000/scans',
-    ]);
+    await scanner.client.setBlockedUrls([`${applicationUrl}/scans`]);
     await submitScannerToken(scanner.client, 'NOT-A-REAL-QR');
     await scanner.client.waitFor(
         'document.querySelector(".scan-feedback")?.dataset.feedbackStatus === "request_failed"',

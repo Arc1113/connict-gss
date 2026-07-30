@@ -1,8 +1,8 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 4 administration contract implemented**
+Document status: **Phase 5 CSV import contract implemented**
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 ## 1. Objective
 
@@ -14,6 +14,8 @@ minimizing exposed personal information.
 
 Phase 3 proves the critical vertical slice. Phase 4 adds reliable manual
 ceremony and graduate preparation while preserving that operational workflow.
+Phase 5 adds controlled create-only CSV preparation without changing the
+scanner, presentation, event, or recovery contracts.
 
 ## 2. Fixed architecture and device requirements
 
@@ -43,6 +45,7 @@ ceremony and graduate preparation while preserving that operational workflow.
 | Administration readiness and ceremony viewing | `data_encoder`, `administrator` |
 | Ceremony create/edit/status/delete | `administrator` |
 | Graduate list/detail/create/edit and local media | `data_encoder`, `administrator` |
+| CSV template/upload/mapping/preview/confirmation/summary | Owning `data_encoder` or `administrator` |
 | Graduate deletion | `administrator`, subject to history protection |
 | Administrative audit history | `administrator` |
 
@@ -487,16 +490,178 @@ booleans, not secret or prior personal values.
 - Administration routes are visually inspected at 1440×900, 1366×768, and
   1024×768.
 
-## 19. MVP and deferred boundaries
+## 19. Phase 5 CSV import and data preparation
+
+### 19.1 Access, routes, and ownership
+
+The implemented workflow uses these server-authorized routes:
+
+```text
+GET  /admin/students/import
+GET  /admin/students/import/template
+POST /admin/students/import/inspect
+GET  /admin/students/import/{studentImport}/mapping
+POST /admin/students/import/{studentImport}/preview
+GET  /admin/students/import/{studentImport}/preview
+POST /admin/students/import/{studentImport}/confirm
+GET  /admin/students/import/{studentImport}/summary
+```
+
+Administrators and data encoders may begin an import. A temporary import belongs
+to the user who created it; another administrator or data encoder may not view,
+remap, confirm, or summarize it. Guests, inactive accounts, scanner operators,
+stage operators, and technical operators are denied.
+
+Draft, prepared, active, and paused ceremonies may receive prepared records.
+Completed and archived ceremonies are excluded from selection and rejected
+again by request validation and confirmation.
+
+### 19.2 Input contract and limits
+
+- Input must be UTF-8 CSV; one leading UTF-8 BOM is accepted.
+- The supported delimiters are comma, semicolon, and tab. Detection must produce
+  one deterministic winner; ambiguous or single-column input is rejected.
+- Maximum file size is 2 MiB.
+- Maximum data rows is 2,000, excluding the header and blank records.
+- Maximum columns is 40.
+- Maximum header or cell length is 2,000 Unicode characters.
+- Every column has a non-empty header. Headers are unique ignoring
+  capitalization.
+- Quoted delimiters, escaped quotes, CRLF/LF records, Unicode names, and blank
+  lines are handled through PHP's native CSV parser.
+- Binary/NUL content, unsupported control data, non-UTF-8 bytes, an empty file,
+  a header without rows, oversized input, and invalid file types receive safe
+  field-linked errors.
+- Only the basename of the client filename, stripped of control characters and
+  bounded to the database limit, may be retained for operator context.
+
+The downloadable local template contains approved field headers and fictional
+realistic rows. It excludes QR tokens, model IDs, media paths, stage state, and
+other internal values.
+
+### 19.3 Mapping and normalization
+
+Mapping is stored by source-column position. Exact, unambiguous aliases may
+suggest one target; labels such as `name`, `number`, and `status` are not guessed.
+One target may be selected from only one source column.
+
+Required targets are:
+
+- student number;
+- first name;
+- last name;
+- program;
+- sequence number; and
+- eligibility.
+
+Optional approved targets are middle name, suffix, stage display name,
+announcement name, pronunciation guide, college, major, and honors. Every
+unmapped source column is explicitly reported as ignored.
+
+Normalization trims mapped values, converts empty optional values to null,
+removes Unicode whitespace from student numbers, parses a positive whole
+sequence number, and recognizes documented eligibility aliases. Eligibility
+ultimately persists only as `pending`, `eligible`, or `ineligible`.
+
+If display or announcement name is absent but first/last name are valid, the
+server generates it from the mapped name components and produces a visible
+warning. It never silently replaces an explicitly supplied reviewed name.
+
+### 19.4 Server preview and row states
+
+The server reparses encrypted temporary content and applies the persisted mapping
+on every preview. Browser-posted normalized rows or counts are never
+authoritative.
+
+Preview validates the Phase 4 graduate field lengths and enum rules, positive
+sequence numbers, unsupported control characters, malformed column counts,
+duplicate student/sequence numbers within the CSV, and current student/sequence
+conflicts in the destination ceremony. Student-number conflict comparison
+ignores whitespace consistently with import normalization.
+
+Each row is classified with text as:
+
+- `ready` when it has no findings;
+- `warning` when it is valid but includes generated-field or other review
+  warnings; or
+- `blocked` when it has any error.
+
+The preview shows 50 rows per page while retaining whole-file counts. Long names,
+programs, honors, and messages wrap inside a table-owned horizontal container.
+The confirm region is present only when the whole preview has zero blocked rows.
+
+### 19.5 Atomic confirmation and QR custody
+
+Phase 5 supports `create_only` mode. It does not update, merge, upsert,
+synchronize, or delete an existing graduate.
+
+Confirmation requires an explicit acknowledgment checkbox. The server then:
+
+1. begins one PostgreSQL transaction;
+2. obtains a fixed transaction-scoped import advisory lock;
+3. locks the temporary import and verifies owner/expiry/unused state;
+4. locks and revalidates the destination ceremony;
+5. locks current graduates for that ceremony;
+6. reparses and revalidates every row against current PostgreSQL state;
+7. creates every graduate with a server-generated globally unique opaque QR
+   token and a safe per-record audit; and
+8. records a safe completion summary and clears temporary source content.
+
+Any validation conflict, uniqueness race, database exception, or unexpected
+failure rolls back every graduate and completion audit. A safe failed-import
+audit may be written after rollback. A consumed import cannot be confirmed a
+second time.
+
+Raw generated QR tokens are never returned in import Inertia props, template
+content, audit values, or completion summaries.
+
+### 19.6 Temporary data, expiry, audit, and recovery
+
+Temporary state is a PostgreSQL `student_imports` row identified by a random UUID
+route key. It stores owner, ceremony, safe filename, delimiter, headers, mapping,
+row count, expiry, and optional safe summary. Source CSV content uses Laravel's
+encrypted cast and is never written to public storage or a retained temporary
+file.
+
+Unconsumed imports expire 30 minutes after inspection using explicit UTC
+timestamps. An expired page deletes its temporary row and instructs the operator
+to upload again. Successful confirmation nulls the encrypted source content and
+retains only a short-lived safe summary.
+
+Import completion/failure audits include safe mode, ceremony and count metadata,
+filename, timestamps, and reason category. They exclude CSV row values, graduate
+names, student numbers, raw QR values, content, arbitrary paths, and stack
+traces. Only administrators may view audit history.
+
+### 19.7 Phase 5 acceptance
+
+- Upload, mapping, preview, confirmation, and summary are separate HTTP/Inertia
+  steps with server policy and CSRF enforcement.
+- Required formats, limits, malformed input, realistic Unicode/long content,
+  mapping errors, ignored columns, row states, pagination, expiry, and ownership
+  are covered by PostgreSQL-backed tests.
+- Current conflicts are checked at preview and again inside the confirmation
+  transaction.
+- Valid confirmation creates the entire set exactly once; injected mid-import
+  failure creates no graduates and no completion audit.
+- Generated QR values and encrypted CSV content remain absent from browser and
+  audit output.
+- The compiled routes are inspected in Chrome at 1440×900, 1366×768, and
+  1024×768 with visible focus, labels, contained overflow, long content,
+  warning/blocked/summary states, reduced motion, safe template, and role denial.
+- Existing Phase 3 scanner/stage automated and live-browser recovery behavior
+  remains unchanged and passes.
+
+## 20. MVP and deferred boundaries
 
 The eventual MVP includes the completed ceremony/student administration,
 import/validation, QR creation/custody, durable queue operation, automatic and
 controlled modes, stage controls, local media, logs/reporting, backup/restore,
 deployment hardening, and rehearsal.
 
-Deferred beyond Phase 4:
+Deferred beyond Phase 5:
 
-- CSV import/export and preflight;
+- CSV update/synchronization/export;
 - QR generation, print, regeneration, and custody;
 - camera scanning;
 - device registration/authentication;
@@ -509,7 +674,7 @@ Deferred beyond Phase 4:
 - production process supervision, TLS, firewall automation, and kiosk setup; and
 - full physical rehearsal.
 
-## 20. Assumptions and unresolved questions
+## 21. Assumptions and unresolved questions
 
 Current assumptions:
 
@@ -523,6 +688,10 @@ Current assumptions:
 - A fixed server address and TCP `8000`/`8080` are acceptable for development.
 - HTTP and generated-name public local media are acceptable on a controlled
   development LAN pending TLS and media-delivery policy.
+- CSV import is create-only, belongs to one authenticated operator, and expires
+  after 30 minutes.
+- Student and sequence number uniqueness remains ceremony-scoped; generated QR
+  tokens remain globally unique and server-controlled.
 
 Still requiring approval:
 
@@ -544,6 +713,10 @@ Still requiring approval:
 11. Where will the completion/control view run in the final three-laptop setup?
 12. What backup, restore, standby, UPS, and power-loss process is required?
 13. What physical scanner, projector/LED, and audio hardware is standardized?
+14. Should a later phase support CSV update/synchronization, and if so, what
+    immutable identifier and field-level conflict rules are approved?
+15. What retention or immediate-deletion period is approved for completed safe
+    import summaries and import audit metadata?
 
-Phase 5 must not begin until the Phase 4 implementation and these documented
+Phase 6 must not begin until the Phase 5 implementation and these documented
 boundaries are reviewed.

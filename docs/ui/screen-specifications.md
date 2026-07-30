@@ -1,10 +1,11 @@
 # Screen Specifications
 
-Status: Phase 3A foundation  
-Updated: 2026-07-28
+Status: Phase 5 screens implemented
+Updated: 2026-07-29
 
-Only `/scanner` and `/stage` are implemented in Phase 3A. Other specifications
-preserve future intent and are not implementation authorization.
+`/scanner`, `/stage`, Phase 4 administration, and the Phase 5 CSV import
+workspace are implemented. Later specifications preserve future intent and are
+not implementation authorization.
 
 ## Scanner
 
@@ -272,9 +273,9 @@ appear in page props; edit offers an optional hidden replacement field.
 | --- | --- |
 | Route | `/admin/audit-logs` |
 | Primary user | Administrator only |
-| Goal | Review important ceremony, graduate, and media changes |
+| Goal | Review important ceremony, graduate, media, and import changes |
 | Dominant information | Time, actor, action, entity ID, expandable safe before/after values |
-| Filters | Action text and ceremony/graduate entity type |
+| Filters | Action text and ceremony/graduate/import entity type |
 | Required states | Results, empty, no matches, access denied |
 | Privacy | No raw QR values, original filenames, media paths/content, passwords, or serialized models |
 | Prohibited content | Operational scan logs, stage events, raw tokens, report charts, edit controls |
@@ -282,21 +283,109 @@ appear in page props; edit offers an optional hidden replacement field.
 This page is administrative change history required by Phase 4. General
 operational log investigation, reporting, and exports remain Phase 9.
 
-## Future CSV import — Phase 5
+## CSV import — Phase 5 implemented
 
 | Item | Specification |
 | --- | --- |
-| Route | `/admin/import` |
-| Primary user | Administrator or data encoder |
-| Goal | Validate a local CSV before any graduate record is committed |
-| Dominant information | File, column mapping, validation summary, and row errors |
-| Primary action | Confirm import only after preview passes |
-| Required states | No file, reading, mapping, preview, warnings, row errors, ready, importing, complete, failed |
-| Recovery | Preserve mapping/error details; failed validation creates no partial import |
-| Prohibited content | Automatic commit on upload, vague aggregate error, cloud file service |
+| Routes | `/admin/students/import` with separate inspect, mapping, preview, confirm, summary, and template endpoints |
+| Primary user/device | Administrator or data encoder on an operator laptop |
+| Goal | Review and atomically create graduate records from one local CSV |
+| Dominant information | Current step, selected ceremony, mapping or row-level validation results |
+| Primary action | Inspect file, review mapping, or confirm import according to the current step |
+| Secondary information | Supported limits, safe filename, ignored columns, counts, and recovery guidance |
+| Required states | No file, reading, mapping, mapping error, preview valid, preview warnings, row errors, ready, importing, complete, expired, ownership denied, failed |
+| Keyboard | Native file/select/checkbox/button order; field errors are linked; no hover-only actions |
+| Responsive targets | 1440×900, 1366×768, 1024×768; mapping and preview tables own horizontal overflow |
+| Recovery | Mapping remains server-managed; return to mapping; invalid/failed confirmation imports zero rows |
+| Prohibited content | Automatic commit on upload, browser-trusted row state, raw QR tokens, cloud file services, update/sync controls, analytics |
 
-The screen must use local files, show representative rows, support keyboard
-mapping, and keep the confirmation action visually separate from file selection.
+### Layout alternatives considered
+
+1. A single long wizard page keeps every step visible but makes upload and
+   confirmation feel insufficiently separate and becomes difficult to scan at
+   1024 px.
+2. Separate upload, mapping, preview, and summary pages give each decision one
+   dominant task, create a clear HTTP boundary before confirmation, and allow
+   focused recovery.
+3. A split mapping/preview workspace makes comparison immediate but compresses
+   long headings, samples, and error messages on the minimum laptop viewport.
+
+Option 2 is selected. A short semantic progress line relates the pages without
+turning them into a decorative stepper.
+
+### Selected textual wireframes
+
+```text
+UPLOAD
+┌──────────────────────────────────────────────────────────────────────┐
+│ IMPORT GRADUATES                         Step 1 of 4 · Select CSV    │
+│ Prepare create-only graduate records for one ceremony.              │
+├──────────────────────────────────────────────────────────────────────┤
+│ Ceremony *  [Sample Graduation Ceremony                         ▾]  │
+│ CSV file *  [Choose file]  No file selected                         │
+│                                                                      │
+│ [Inspect columns]                         [Download CSV template]    │
+├──────────────────────────────────────────────────────────────────────┤
+│ FORMAT AND LIMITS                                                   │
+│ UTF-8 · comma/semicolon/tab · 2 MiB · 2,000 rows · 40 columns       │
+└──────────────────────────────────────────────────────────────────────┘
+
+MAPPING
+┌──────────────────────────────────────────────────────────────────────┐
+│ MAP CSV COLUMNS                         Step 2 of 4 · Review mapping │
+│ Sample Graduation Ceremony · graduates-july.csv                     │
+├──────────────────────────────────────────────────────────────────────┤
+│ SOURCE HEADER          SAMPLE VALUE                    MAP TO        │
+│ Student Number         2027-0101                       Student no. ▾ │
+│ Full Name              Ana Marie dela Cruz             Ignore      ▾ │
+│ Program                BS Computer Science             Program     ▾ │
+├──────────────────────────────────────────────────────────────────────┤
+│ [Choose another file]                         [Preview 128 rows]     │
+└──────────────────────────────────────────────────────────────────────┘
+
+PREVIEW
+┌──────────────────────────────────────────────────────────────────────┐
+│ REVIEW IMPORT                           Step 3 of 4 · Validate rows  │
+│ Sample Graduation Ceremony · Create new graduates only              │
+├──────────────────────────────────────────────────────────────────────┤
+│ 128 total · 120 valid · 8 warnings · 0 errors                       │
+│ Ignored: Adviser email                                               │
+├──────────────────────────────────────────────────────────────────────┤
+│ ROW  RESULT   STUDENT / PROGRAM                         MESSAGES      │
+│ 2    Warning  Ana Marie dela Cruz · BS Computer Science Generated…  │
+│ 3    Valid    Christopher Emmanuel Villanueva-Santos    None        │
+├──────────────────────────────────────────────────────────────────────┤
+│ [Return to mapping]                            [Previous] [Next]     │
+│ [ ] I reviewed the ceremony, mapping, warnings, and row count.       │
+│                                      [Import 128 graduates]          │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+The confirm region appears only when there are no blocking errors. With errors,
+the same position contains a concise correction instruction and no confirm
+button. Summary is a compact definition list of total/created/warnings/times
+with links to the ceremony-filtered graduate list and a new import.
+
+### Behavior and acceptance criteria
+
+- Upload and confirmation are separate server-authorized HTTP requests.
+- Temporary content is encrypted, owner-bound, expiring, and never returned to
+  the browser as confirmation authority.
+- Mapping is by source-column position. Duplicate targets and missing required
+  targets receive linked errors; ambiguous columns remain visibly ignored.
+- Preview shows 50 rows per page with row number, text result, normalized values,
+  generated/existing indicators, and actionable messages.
+- Long names/programs/messages wrap inside a table-owned horizontal container.
+- Processing disables duplicate submissions and communicates the active action.
+- Confirmation requires a checkbox and revalidates every row through
+  PostgreSQL; failure changes no graduate record.
+- Required layouts are inspected at 1440×900, 1366×768, and 1024×768.
+
+The compiled authenticated workflow passed browser checks for local template
+download, upload/no-file, automatic mapping, long realistic samples,
+warning/confirm, blocked duplicate/eligibility, summary, filtered graduate
+retrieval, safe audit, reduced motion, and scanner-role denial. Screenshots and
+the verification boundary are indexed under `docs/evidence/phase-5/`.
 
 ## Future QR preparation — Phase 6
 

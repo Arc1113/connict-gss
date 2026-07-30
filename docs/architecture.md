@@ -1,8 +1,8 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 4 administration architecture implemented**
+Document status: **Phase 5 CSV import architecture implemented**
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 ## 1. Architectural intent
 
@@ -132,6 +132,12 @@ purpose-built Inertia props, apply bounded query filters/pagination, and delegat
 writes. `SaveCeremonyRequest` and `SaveStudentRequest` normalize and validate the
 complete form contracts, including scoped uniqueness and actual file types.
 
+Phase 5 adds `StudentImportController` with purpose-specific inspect, mapping,
+preview, confirm, summary, and template methods. Three form requests enforce
+create/owner policies and keep file, mapping, and acknowledgment validation at
+separate HTTP boundaries. The controller never accepts browser-normalized rows as
+confirmation input.
+
 ### 6.2 Domain actions
 
 `ScanStudentForPresentation` owns the scan transaction, safe result mapping, scan
@@ -149,6 +155,11 @@ transition checks, presenting-state protection, audit insertion, and safe
 deletion. `StudentAdministration` owns graduate CRUD, media replacement/removal
 coordination, safe audit diffs, and history-aware deletion.
 
+`InspectStudentImport` parses one uploaded file and creates an expiring,
+owner-bound import row. `ConfirmStudentImport` owns the locked, create-only
+confirmation transaction, server QR generation, per-graduate safe audits,
+completion/failure summary, and encrypted-source cleanup.
+
 ### 6.3 State helpers
 
 - `ActiveCeremonyResolver` returns `ready`, `no_active_ceremony`, or
@@ -160,6 +171,28 @@ coordination, safe audit diffs, and history-aware deletion.
   It recognizes only `storage/graduates/...` paths for cleanup.
 - `AdministrativeAuditLogger` inserts actor/entity/action/IP and caller-provided
   safe values without accepting a serialized model.
+- `StudentCsvParser` uses native `fgetcsv` for bounded UTF-8/BOM, delimiter,
+  header, row-structure, column, and cell handling.
+- `StudentImportPreparation` owns exact alias suggestions, mapping validation,
+  normalization, Phase 4 field validation, generated-name warnings, in-file
+  duplicate detection, and current PostgreSQL conflict classification.
+- `StudentImportLimits` is the single server/browser source for Phase 5 size,
+  row, column, cell, pagination, and expiry limits.
+
+The `student_imports` table is deliberately temporary workflow state:
+
+```text
+token UUID route key
+user_id owner
+ceremony_id nullable FK
+safe original_filename + create_only mode
+delimiter + JSONB headers/mapping
+encrypted source_content
+row_count + JSONB safe summary
+expires_at + consumed_at + timestamps
+```
+
+No import upload path or public temporary file exists.
 
 ### 6.4 Events
 
@@ -238,6 +271,21 @@ activates and the other receives a validation conflict.
 The existing active-ceremony resolver still rejects multiple active rows. That
 defensive path is retained for direct database corruption or legacy data and for
 Phase 3 operational recovery; administration does not rely on ambiguity.
+
+### 8.2 CSV confirmation concurrency
+
+Every Phase 5 confirmation obtains a fixed PostgreSQL transaction-scoped advisory
+lock before locking the temporary import, destination ceremony, and current
+graduate rows. This conservatively serializes import confirmations. Manual
+graduate writes do not take that advisory lock, so the complete CSV is reparsed
+after locks and database uniqueness constraints remain responsible for any
+concurrent manual insert.
+
+Database unique constraints remain the final protection for ceremony/student
+number, ceremony/sequence, and global QR token races. A uniqueness exception or
+any later error rolls back all imported students and their in-transaction audit
+rows. The action translates database failures into safe operator recovery text;
+it never reports a partial success.
 
 ## 9. Completion transaction
 
@@ -369,6 +417,25 @@ All administration pages are Inertia views in the same application:
 The administration UI has no stage commands, queue controls, fake analytics, or
 runtime WebSocket dependency.
 
+### 12.5 Phase 5 import workspace
+
+The CSV workflow is four separate Inertia pages sharing `AdminLayout`,
+`ImportProgress`, validation support, and a compact count definition list:
+
+```text
+upload → mapping → server preview/confirmation → safe summary
+```
+
+`useForm` controls pending/disabled submission states. Native file, select,
+checkbox, and button controls remain keyboard operable and field-linked errors
+are included in a summary. Mapping and preview tables own horizontal overflow;
+the page body does not. The preview renders only server-provided normalized
+values, row findings, and counts. It never renders source content or QR tokens.
+
+There is no frontend CSV parser, client-side import authority, drag-and-drop
+library, analytics panel, WebSocket dependency, cloud upload, or added UI
+framework.
+
 ## 13. Audio architecture
 
 The stage keeps at most one browser `Audio` object:
@@ -413,6 +480,11 @@ final institutional loudness standards, and operator warnings remain deferred.
 | Two scans | Locked row + unique indexes | One accepted; other conflict |
 | Completion/scan race | Locked row defines order | Consistent idle or next-presenting state |
 | Transaction exception | Rollback | No partial rows or success event |
+| CSV malformed/oversized | No temporary import | Correct local file and inspect again |
+| Import mapping/row error | Encrypted temporary row | Remap or correct/re-upload; confirm stays absent |
+| Import expires | Temporary row deleted | Upload the source again |
+| Conflict appears after preview | Current PostgreSQL rows | Confirmation recheck blocks and imports none |
+| Mid-import/database failure | Transaction rollback | No graduates/completion audit; safe retry guidance |
 | Missing media | Presentation record remains valid | Visual fallback |
 | Zero/multiple active ceremonies | No implicit selection | Correct ceremony data operationally |
 
@@ -436,6 +508,11 @@ authorized operator/server logs.
    eligible for cleanup.
 9. **Audit:** same-transaction, administrator-only history with purpose-built
    allowlisted values rather than serialized request/model data.
+10. **Import custody:** owner-specific policy, CSRF, hard parser limits, encrypted
+    PostgreSQL source content, random UUID route key, UTC expiry, and no public
+    temporary file.
+11. **Imported QR custody:** generated only inside Laravel, globally constrained,
+    and absent from CSV/template/Inertia/summary/audit contracts.
 
 Raw scanned tokens are hashed in operational logs. Reverb/DB credentials and
 development passwords remain in the ignored `.env`.
@@ -483,6 +560,26 @@ through the compiled administration routes at the required viewports and checks
 overflow, focus, long content, missing media, audio preview, validation/no-result
 states, and role denial without adding a browser test package.
 
+Phase 5 adds PostgreSQL-backed tests for:
+
+- guest/inactive/role and cross-owner route boundaries;
+- UTF-8/BOM, quoted values, supported delimiters, malformed input, and every
+  hard parser limit;
+- exact mapping suggestions, required/duplicate mapping errors, normalization,
+  generated fields, duplicate/current conflicts, and 50-row pagination;
+- encrypted raw storage, expiry deletion, local template safety, and QR/audit
+  privacy;
+- confirmation revalidation, duplicate confirmation denial, ceremony closure,
+  uniqueness races, and injected mid-import rollback; and
+- valid all-row creation with collision-resistant internal tokens and safe
+  completion summary.
+
+`tests/Support/phase5-browser-check.mjs` exercises the compiled real workflow at
+1440×900, 1366×768, and 1024×768. It checks the local template, upload, mapping,
+warning and blocked previews, confirmation, summary, graduate retrieval, safe
+audit, visible focus, reduced motion, same-origin resources, overflow
+containment, and denied scanner role.
+
 ## 17. Phase boundary and future architecture
 
 Phase 3 deliberately has no durable waiting-queue workflow. A scan is either the
@@ -490,9 +587,9 @@ current presentation or a conflict. Phase 7 must define and implement the full
 queue transition graph and both presentation modes without bypassing the
 transaction, version, event, or recovery principles established here.
 
-Still deferred after Phase 4:
+Still deferred after Phase 5:
 
-- CSV import/export and preflight;
+- CSV update/synchronization/export;
 - QR generation and custody;
 - device authentication/registration;
 - advanced stage controls and queue commands;
@@ -519,6 +616,9 @@ Still deferred after Phase 4:
 | Public local media URL | Generated names, controlled LAN, no external origin | Whether production delivery requires a policy-authorized media controller |
 | Upload filesystem/DB split | Store-first compensation and managed-prefix cleanup | Backup/restore and orphan reconciliation procedure |
 | Media standards | Actual-type and size validation | Final dimensions, duration, loudness, approval, and retention |
+| Temporary CSV sensitivity | Encrypted owner-bound row, hard limits, 30-minute UTC expiry, cleared content | Final retention/privacy notice |
+| Import concurrency throughput | Global advisory lock and full current-state recheck | Whether later ceremony-scoped parallelism is required |
+| Create-only correction | Conflicts block and existing rows never change | Approved future update/sync identity and merge rules |
 
-The implementation may not advance to Phase 5 until Phase 4 is reviewed and
+The implementation may not advance to Phase 6 until Phase 5 is reviewed and
 approved.

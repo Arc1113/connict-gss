@@ -66,6 +66,7 @@ export default function AuditLogIndex({ filters, logs }) {
                         <option value="">All record types</option>
                         <option value="ceremony">Ceremony</option>
                         <option value="student">Graduate</option>
+                        <option value="student_import">Graduate import</option>
                     </select>
                 </div>
                 <div className="admin-filter-actions">
@@ -87,7 +88,7 @@ export default function AuditLogIndex({ filters, logs }) {
                 <EmptyState title="No audit entries">
                     {hasFilters
                         ? 'No important changes match the current filters.'
-                        : 'Important Phase 4 changes will appear here.'}
+                        : 'Important ceremony, graduate, media, and import changes will appear here.'}
                 </EmptyState>
             ) : (
                 <>

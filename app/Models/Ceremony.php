@@ -61,4 +61,9 @@ class Ceremony extends Model
     {
         return $this->hasMany(StageEvent::class);
     }
+
+    public function studentImports(): HasMany
+    {
+        return $this->hasMany(StudentImport::class);
+    }
 }

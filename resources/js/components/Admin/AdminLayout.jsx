@@ -39,10 +39,23 @@ export default function AdminLayout({ children }) {
                         )}
                         {abilities.view_students && (
                             <NavLink
-                                active={currentUrl.startsWith('/admin/students')}
+                                active={
+                                    currentUrl.startsWith('/admin/students') &&
+                                    !currentUrl.startsWith('/admin/students/import')
+                                }
                                 href="/admin/students"
                             >
                                 Graduates
+                            </NavLink>
+                        )}
+                        {abilities.import_students && (
+                            <NavLink
+                                active={currentUrl.startsWith(
+                                    '/admin/students/import',
+                                )}
+                                href="/admin/students/import"
+                            >
+                                Import CSV
                             </NavLink>
                         )}
                         {abilities.view_audit_logs && (

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CeremonyController;
 use App\Http\Controllers\Admin\StudentController;
+use App\Http\Controllers\Admin\StudentImportController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CompleteCurrentPresentationController;
 use App\Http\Controllers\ScanController;
@@ -15,7 +16,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'appName' => config('app.name'),
-        'phase' => 'Phase 4',
+        'phase' => 'Phase 5',
         'stack' => [
             'Laravel',
             'React',
@@ -58,6 +59,37 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/audit-logs', AuditLogController::class)->name('audit-logs.index');
 
         Route::resource('ceremonies', CeremonyController::class);
+
+        Route::prefix('students/import')
+            ->name('students.import.')
+            ->group(function (): void {
+                Route::get('/', [StudentImportController::class, 'index'])
+                    ->name('index');
+                Route::get('/template', [StudentImportController::class, 'template'])
+                    ->name('template');
+                Route::post('/inspect', [StudentImportController::class, 'inspect'])
+                    ->name('inspect');
+                Route::get(
+                    '/{studentImport}/mapping',
+                    [StudentImportController::class, 'mapping'],
+                )->name('mapping');
+                Route::post(
+                    '/{studentImport}/preview',
+                    [StudentImportController::class, 'storeMapping'],
+                )->name('preview.store');
+                Route::get(
+                    '/{studentImport}/preview',
+                    [StudentImportController::class, 'preview'],
+                )->name('preview');
+                Route::post(
+                    '/{studentImport}/confirm',
+                    [StudentImportController::class, 'confirm'],
+                )->name('confirm');
+                Route::get(
+                    '/{studentImport}/summary',
+                    [StudentImportController::class, 'summary'],
+                )->name('summary');
+            });
 
         Route::delete(
             '/students/{student}/photo',

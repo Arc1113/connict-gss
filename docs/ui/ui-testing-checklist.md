@@ -42,6 +42,25 @@ and results in the phase report.
 - [ ] Missing audio/photo/honors is safe.
 - [ ] No technical or operator information is visible.
 
+## CSV import function
+
+- [ ] Administrator and data encoder can open the workspace; other roles are
+      denied.
+- [ ] Local template is UTF-8/BOM and contains no QR or media fields.
+- [ ] No-file, invalid type/content, limit, and expired states give recovery.
+- [ ] Exact mapping suggestions are reviewable; required and duplicate mappings
+      receive linked errors.
+- [ ] Ignored columns, samples, safe filename, ceremony, mode, and whole-file
+      counts remain visible.
+- [ ] Ready, warning, and blocked rows use text as well as color.
+- [ ] Long names/programs/messages wrap inside table-owned overflow.
+- [ ] Confirmation is absent with errors and requires acknowledgment when valid.
+- [ ] Rapid/repeat confirmation is locked and server revalidation remains
+      authoritative.
+- [ ] Success summary and audit expose counts but no source rows or QR values.
+- [ ] Upload, mapping, preview, blocked, and summary states are checked at
+      1440×900, 1366×768, and 1024×768.
+
 ## Regression
 
 - [ ] Relevant Laravel tests pass.
