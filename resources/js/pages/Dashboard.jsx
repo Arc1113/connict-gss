@@ -53,6 +53,34 @@ export default function Dashboard() {
                         </div>
                     )}
 
+                    {!abilities.view_ceremonies &&
+                        !abilities.view_students &&
+                        (abilities.view_operational_logs ||
+                            abilities.view_backups) && (
+                            <div className="dashboard-operations">
+                                {abilities.view_operational_logs && (
+                                    <Link
+                                        className="primary-action"
+                                        href="/admin/scan-logs"
+                                    >
+                                        Open technical operations
+                                    </Link>
+                                )}
+                                {abilities.view_backups && (
+                                    <Link
+                                        className="secondary-action"
+                                        href="/admin/backups"
+                                    >
+                                        Open backups
+                                    </Link>
+                                )}
+                                <p className="operation-feedback">
+                                    Review local service evidence, operational logs,
+                                    backups, and recovery status.
+                                </p>
+                            </div>
+                        )}
+
                     {(abilities.operate_scanner || abilities.operate_stage) && (
                         <div className="dashboard-operations">
                             {abilities.operate_scanner && (
@@ -81,7 +109,7 @@ export default function Dashboard() {
 
                     <div className="dashboard-actions">
                         <Link className="secondary-action" href="/">
-                            Foundation status
+                            System home
                         </Link>
                         <Link
                             className="primary-action"

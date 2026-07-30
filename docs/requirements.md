@@ -1,6 +1,6 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 11 software readiness verified; physical readiness pending**
+Document status: **Phase 12 software requirements verified; physical readiness pending**
 
 Last updated: 2026-07-30
 
@@ -32,6 +32,10 @@ documentation.
 Phase 10 adds local deployment packaging and device/network setup guidance.
 Phase 11 verifies the implemented system as a release candidate and separates
 software readiness from physical hardware and venue readiness.
+Phase 12 remediates the highest-risk real-world operating gaps found after that
+review: safe wrong-graduate correction, one-command completion and advancement,
+accurate presentation-mode language, administrator-managed local accounts, and
+role-appropriate navigation.
 
 ## 2. Fixed architecture and device requirements
 
@@ -75,6 +79,7 @@ software readiness from physical hardware and venue readiness.
 | Ceremony completion summary | `administrator` |
 | Backup status, backup creation, and restore verification | `administrator`, `technical_operator` |
 | Operational reset | `administrator` |
+| Local operator-account create/edit/activate/deactivate/role assignment | `administrator` |
 | Event readiness review and final operational sign-off | Human lead operator, administrator, and technical operator |
 
 All access uses Phase 2 session authentication, CSRF protection, active-account
@@ -112,18 +117,20 @@ exposing graduate data.
 1. A valid eligible scan creates one durable queue row before any presentation
    decision.
 2. Controlled mode leaves the new row `waiting`.
-3. Automatic mode may promote the new row to `presenting` in the same
+3. Assisted automatic mode may promote the new row to `presenting` in the same
    transaction only when the stage is idle, automatic presentation is not
    paused, and the row is the earliest waiting item.
 4. A scan never replaces or preempts the current graduate.
 5. Present-next selects the smallest non-null waiting position. Present-selected
    may choose any waiting row in the active ceremony without renumbering others.
-6. Completion is always explicit and never automatically advances the queue.
+6. Completion is always operator-confirmed. The operator may either complete
+   and clear or use one atomic command that completes the current graduate and
+   presents the earliest waiting graduate.
 7. Skip changes a waiting row to `skipped` and clears its position. Return
    changes that same row back to `waiting` at the new tail position.
 8. Replay does not alter queue status. Holding does not complete or detach the
    current row.
-9. Automatic pause is persisted in PostgreSQL. Resuming affects future scans
+9. Assisted-automatic pause is persisted in PostgreSQL. Resuming affects future scans
    only and does not silently consume existing backlog.
 10. All transitions are HTTP commands with PostgreSQL locks, recorded stage
     events, monotonic state versions, post-commit broadcasts, and HTTP recovery.
@@ -311,6 +318,23 @@ not state storage.
 
 The minimal completion button belongs to an authenticated operator context. It
 must not appear on the audience stage display.
+
+`POST /stage/complete-and-present-next` must apply the same completion rules and
+also:
+
+- require the operator's expected stage-state version;
+- lock the earliest waiting queue item in the same transaction;
+- complete the current graduate and present that waiting graduate with one state
+  version increment and no intermediate audience clear;
+- clear the audience safely when no waiting graduate exists;
+- reject a stale concurrent command without advancing a second graduate; and
+- broadcast only after the transaction commits.
+
+`POST /stage/return-current` is the explicit wrong-graduate recovery command. It
+must require the expected version, return the current presenting graduate to
+`waiting` at the preserved queue position, clear the audience into holding, keep
+the queue history, and require a subsequent explicit present action for the
+correct graduate.
 
 ## 13. Audience display requirements
 
@@ -856,19 +880,21 @@ current graduate, waiting order, skipped rows, recent actions, display mode,
 automatic pause, connection, and local-audio readiness. They never expose QR
 tokens or student numbers.
 
-Stage operators and administrators may present next/selected, complete, skip,
-return, replay, activate/deactivate holding, and pause/resume automatic initial
-presentation. All buttons prevent duplicate submission; high-consequence
-actions request confirmation and failures explain that the operator must
-refresh authoritative state before retrying.
+Stage operators and administrators may present next/selected, complete and
+clear, complete and present next, return a wrongly presented current graduate,
+skip, return, replay, activate/deactivate holding, and pause/resume assisted
+automatic initial presentation. All buttons prevent duplicate submission;
+high-consequence actions request confirmation and failures explain that the
+operator must refresh authoritative state before retrying.
 
 ### 21.3 Mode behavior
 
-Controlled mode never presents from a scan. Automatic mode is intentionally
-limited to initial presentation of the newly scanned, earliest waiting graduate
-when the stage is idle. It never preempts, bypasses backlog, or auto-advances
-after completion. Pause is durable and scan-safe; resume does not consume the
-backlog without an explicit present command.
+Controlled mode never presents from a scan. Assisted automatic mode is
+intentionally limited to initial presentation of the newly scanned, earliest
+waiting graduate when the stage is idle. It never preempts, bypasses backlog, or
+advances after completion without an explicit operator command. Pause is durable
+and scan-safe; resume does not consume the backlog without an explicit present
+command.
 
 ### 21.4 Recovery, audience safety, and acceptance
 
@@ -1105,5 +1131,64 @@ Still requiring approval:
 13. What retention or immediate-deletion period is approved for completed safe
     import summaries and import audit metadata?
 
-Phase 11 must not begin until the Phase 10 implementation and these documented
-boundaries are reviewed.
+## 26. Phase 12 real-world operations remediation
+
+### 26.1 Operator-confirmed advancement
+
+The UI calls the existing `automatic` database value **Assisted automatic**.
+This is a wording correction, not a schema or scan-rule change. An idle,
+unpaused stage may still present the earliest newly scanned graduate. The system
+does not use timers, audio-ended callbacks, or an unattended continuous
+advance.
+
+When a graduate is current and another is waiting, the dominant operator action
+is **Complete and present next**. It is a single HTTP transaction guarded by the
+stage-state version. Two operators sending the same version cannot skip over two
+graduates: one command succeeds and the stale command is rejected.
+
+**Complete and clear** remains available for breaks, ceremony boundaries, and
+an intentionally empty stage.
+
+### 26.2 Wrong-current correction
+
+**Correct wrong graduate** is available only while a graduate is current. After
+operator confirmation, it returns that queue item to `waiting` at its preserved
+position, clears the audience into the neutral holding state, records the
+correction, increments the state version, and broadcasts after commit. The
+operator then explicitly presents the verified graduate. No graduate is marked
+completed and no queue history is deleted.
+
+### 26.3 Local account administration
+
+Administrators can list, search, filter, create, and edit local user accounts.
+The form supports the five approved roles, active/inactive status, and a minimum
+12-character confirmed password. Passwords are never returned to Inertia props
+or stored in audit values. Leaving the edit password blank preserves the
+current password.
+
+An administrator cannot demote or deactivate their own signed-in account. The
+server also protects the last active administrator. Account writes and their
+safe audits occur in one PostgreSQL transaction.
+
+Technical operators receive only authorized operational links; the shared
+brand target no longer sends them to a forbidden readiness page. Data encoders,
+scanner operators, and stage operators do not gain account-management access.
+
+### 26.4 Phase 12 acceptance
+
+- Combined completion/advancement is atomic, version-guarded, logged, and
+  broadcast after commit.
+- Wrong-current recovery preserves the graduate, queue position, and history.
+- Account management is administrator-only and never exposes password data.
+- Assisted-automatic wording accurately describes the implemented behavior.
+- Role navigation contains no known link to a forbidden default destination.
+- Stage-control actions and mode controls have visible labels, keyboard focus,
+  and at least 44×44 px pointer targets where applicable.
+- Administration, stage-control, scanner, and audience routes retain contained
+  responsive layouts and browser-based recovery.
+- The approved architecture and all Phase 3–11 contracts remain unchanged.
+- Physical USB scanner, projector/LED, venue sound, and three-laptop
+  certification remain pending actual hardware.
+
+Phase 12 ends after this remediation and its verification. Further product
+features require a separately approved phase.

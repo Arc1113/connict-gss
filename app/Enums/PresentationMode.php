@@ -10,7 +10,7 @@ enum PresentationMode: string
     public function label(): string
     {
         return match ($this) {
-            self::Automatic => 'Automatic',
+            self::Automatic => 'Assisted automatic',
             self::Controlled => 'Controlled',
         };
     }

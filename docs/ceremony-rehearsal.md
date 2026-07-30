@@ -1,11 +1,12 @@
 # Ceremony Rehearsal
 
-Status: Phase 11 software rehearsal completed; physical rehearsal pending
+Status: Phase 12 software remediation verified; physical rehearsal pending
 
-Release candidate: `GSS-RC1`
+Release candidate: Phase 12 working-tree candidate based on
+`e6f1888aea01923eded291d3bf2a65a0e2f5f1ab`
 
-Git commit tested: `872fc3bebce9ce256d8899a438b6567a8e5d600e` plus approved
-Phase 11 verification/documentation changes.
+Git commit tested: `e6f1888aea01923eded291d3bf2a65a0e2f5f1ab` plus the
+approved Phase 12 working-tree implementation and documentation changes.
 
 ## Scope
 
@@ -33,7 +34,9 @@ The rehearsal used fictional data only and covered:
 - scan while another graduate is presenting;
 - controlled presentation;
 - selected out-of-order presentation;
-- automatic mode pause/resume;
+- assisted-automatic mode pause/resume;
+- operator-confirmed complete-and-present-next;
+- wrong-current correction into holding and verified replacement presentation;
 - skipped and returned graduate;
 - approved audio;
 - missing audio and live-announcer fallback;
@@ -43,7 +46,8 @@ The rehearsal used fictional data only and covered:
 - Reverb restart;
 - application restart;
 - audience-stage HTTP recovery;
-- admin and encoder access checks;
+- administrator, encoder, and technical-operator access/navigation checks;
+- administrator-managed local operator accounts;
 - export privacy check;
 - local asset check.
 
@@ -55,7 +59,8 @@ The rehearsal used fictional data only and covered:
 
 ## Results
 
-- Browser rehearsal status: passed.
+- Browser rehearsal status: passed, including Phase 12 combined advancement,
+  wrong-current correction, account administration, and technical navigation.
 - Reverb restart: recovered.
 - Application restart: recovered after browser refresh.
 - Audience safety: passed; the stage did not expose navigation, QR tokens,
@@ -83,4 +88,6 @@ Before event certification, run the same workflow using the real:
 The final physical rehearsal must confirm scanner suffix timing, scan distance,
 paper contrast, browser focus recovery, stage fullscreen behavior, audio output
 selection, venue loudness, audience-distance readability, power stability, and
-operator handoff procedures.
+operator handoff procedures. It must also rehearse **Complete and present next**,
+**Complete and clear**, and **Correct wrong graduate** with the assigned stage
+operator before audience admission.

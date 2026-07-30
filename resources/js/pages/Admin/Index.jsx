@@ -21,8 +21,8 @@ export default function AdminIndex({
         <AdminLayout>
             <Head title="Administration" />
             <PageHeader
-                description="Review ceremony readiness and open the data task that needs attention."
-                eyebrow="Phase 9"
+                description="Review ceremony readiness and open the operational data task that needs attention."
+                eyebrow="Ceremony Readiness"
                 title="Ceremony operations"
             />
 
@@ -58,7 +58,7 @@ export default function AdminIndex({
                         {readiness && (
                             <dl className="admin-readiness-list">
                                 <div>
-                                    <dt>Graduate records</dt>
+                                    <dt>Total graduates</dt>
                                     <dd>{readiness.total}</dd>
                                 </div>
                                 <div>
@@ -66,7 +66,7 @@ export default function AdminIndex({
                                     <dd>{readiness.eligible}</dd>
                                 </div>
                                 <div>
-                                    <dt>Waiting</dt>
+                                    <dt>Waiting in queue</dt>
                                     <dd>{readiness.waiting}</dd>
                                 </div>
                                 <div>
@@ -80,10 +80,6 @@ export default function AdminIndex({
                                 <div>
                                     <dt>Needs eligibility review</dt>
                                     <dd>{readiness.needs_review}</dd>
-                                </div>
-                                <div>
-                                    <dt>Missing approved photo</dt>
-                                    <dd>{readiness.missing_photo}</dd>
                                 </div>
                                 <div>
                                     <dt>Audio approved</dt>
@@ -121,6 +117,10 @@ export default function AdminIndex({
                                         </Link>
                                     </dd>
                                 </div>
+                                <div>
+                                    <dt>Missing photo</dt>
+                                    <dd>{readiness.missing_photo}</dd>
+                                </div>
                             </dl>
                         )}
                     </>
@@ -141,89 +141,103 @@ export default function AdminIndex({
 
             <section aria-labelledby="tasks-heading" className="admin-task-list">
                 <h2 id="tasks-heading">Operational tasks</h2>
-                {abilities.view_ceremonies && (
-                    <Link href="/admin/ceremonies">
-                        <span>
-                            <strong>Ceremonies</strong>
-                            <small>
-                                Review identity, schedule, mode, and lifecycle status.
-                            </small>
-                        </span>
-                        <span aria-hidden="true">→</span>
-                    </Link>
-                )}
-                {abilities.view_students && (
-                    <Link href="/admin/students">
-                        <span>
-                            <strong>Graduate records</strong>
-                            <small>
-                                Search, validate, and prepare local presentation media.
-                            </small>
-                        </span>
-                        <span aria-hidden="true">→</span>
-                    </Link>
-                )}
-                {abilities.import_students && (
-                    <Link href="/admin/students/import">
-                        <span>
-                            <strong>Import graduate CSV</strong>
-                            <small>
-                                Inspect, map, preview, and atomically create prepared
-                                records.
-                            </small>
-                        </span>
-                        <span aria-hidden="true">→</span>
-                    </Link>
-                )}
-                {abilities.view_audit_logs && (
-                    <Link href="/admin/audit-logs">
-                        <span>
-                            <strong>Administrative audit history</strong>
-                            <small>
-                                Review important ceremony, graduate, and media changes.
-                            </small>
-                        </span>
-                        <span aria-hidden="true">→</span>
-                    </Link>
-                )}
-                {abilities.view_operational_logs && (
-                    <Link href="/admin/scan-logs">
-                        <span>
-                            <strong>Operational logs</strong>
-                            <small>
-                                Review scanner attempts and stage-event history with
-                                safe filters.
-                            </small>
-                        </span>
-                        <span aria-hidden="true">→</span>
-                    </Link>
-                )}
-                {abilities.view_ceremony_reports && (
-                    <Link href="/admin/reports/ceremony-summary">
-                        <span>
-                            <strong>Ceremony summary</strong>
-                            <small>
-                                Review completion, readiness, media, and exception
-                                counts.
-                            </small>
-                        </span>
-                        <span aria-hidden="true">→</span>
-                    </Link>
-                )}
-                {abilities.view_backups && (
-                    <Link href="/admin/backups">
-                        <span>
-                            <strong>Backups and recovery</strong>
-                            <small>
-                                Last backup:{' '}
-                                {lastBackup
-                                    ? `${lastBackup.status} · ${lastBackup.verification_status || 'pending'}`
-                                    : 'none recorded'}
-                            </small>
-                        </span>
-                        <span aria-hidden="true">→</span>
-                    </Link>
-                )}
+                <div className="admin-task-links">
+                    {abilities.view_ceremonies && (
+                        <Link className="admin-task-link" href="/admin/ceremonies">
+                            <span>
+                                <strong>Ceremonies</strong>
+                                <small>
+                                    Review identity, schedule, mode, and lifecycle status.
+                                </small>
+                            </span>
+                            <span aria-hidden="true">→</span>
+                        </Link>
+                    )}
+                    {abilities.view_students && (
+                        <Link className="admin-task-link" href="/admin/students">
+                            <span>
+                                <strong>Graduate records</strong>
+                                <small>
+                                    Search, validate, and prepare local presentation media.
+                                </small>
+                            </span>
+                            <span aria-hidden="true">→</span>
+                        </Link>
+                    )}
+                    {abilities.import_students && (
+                        <Link className="admin-task-link" href="/admin/students/import">
+                            <span>
+                                <strong>Import graduate CSV</strong>
+                                <small>
+                                    Inspect, map, preview, and atomically create prepared
+                                    records.
+                                </small>
+                            </span>
+                            <span aria-hidden="true">→</span>
+                        </Link>
+                    )}
+                    {abilities.manage_users && (
+                        <Link className="admin-task-link" href="/admin/users">
+                            <span>
+                                <strong>Operator accounts</strong>
+                                <small>
+                                    Create local accounts, assign duties, and
+                                    deactivate access safely.
+                                </small>
+                            </span>
+                            <span aria-hidden="true">→</span>
+                        </Link>
+                    )}
+                    {abilities.view_audit_logs && (
+                        <Link className="admin-task-link" href="/admin/audit-logs">
+                            <span>
+                                <strong>Administrative audit history</strong>
+                                <small>
+                                    Review important ceremony, graduate, and media changes.
+                                </small>
+                            </span>
+                            <span aria-hidden="true">→</span>
+                        </Link>
+                    )}
+                    {abilities.view_operational_logs && (
+                        <Link className="admin-task-link" href="/admin/scan-logs">
+                            <span>
+                                <strong>Operational logs</strong>
+                                <small>
+                                    Review scanner attempts and stage-event history with
+                                    safe filters.
+                                </small>
+                            </span>
+                            <span aria-hidden="true">→</span>
+                        </Link>
+                    )}
+                    {abilities.view_ceremony_reports && (
+                        <Link className="admin-task-link" href="/admin/reports/ceremony-summary">
+                            <span>
+                                <strong>Ceremony summary</strong>
+                                <small>
+                                    Review completion, readiness, media, and exception
+                                    counts.
+                                </small>
+                            </span>
+                            <span aria-hidden="true">→</span>
+                        </Link>
+                    )}
+                    {abilities.view_backups && (
+                        <Link className="admin-task-link" href="/admin/backups">
+                            <span>
+                                <strong>Backups and recovery</strong>
+                                <small>
+                                    Last backup:{' '}
+                                    {lastBackup
+                                        ? `${lastBackup.status} · ${lastBackup.verification_status || 'pending'}`
+                                        : 'none recorded'}
+                                </small>
+                            </span>
+                            <span aria-hidden="true">→</span>
+                        </Link>
+                    )}
+                </div>
             </section>
         </AdminLayout>
     );

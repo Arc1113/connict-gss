@@ -1,9 +1,11 @@
 <?php
 
 use App\Actions\Admin\CeremonyAdministration;
+use App\Actions\CompleteAndPresentNext;
 use App\Actions\CompleteCurrentPresentation;
 use App\Actions\PresentStageQueueItem;
 use App\Actions\ReplayCurrentAnnouncement;
+use App\Actions\ReturnCurrentPresentationToQueue;
 use App\Actions\ReturnStageQueueItem;
 use App\Actions\ScanStudentForPresentation;
 use App\Actions\SetAutomaticPresentationPaused;
@@ -38,6 +40,16 @@ try {
         'complete' => app(CompleteCurrentPresentation::class)
             ->execute(
                 User::query()->findOrFail((int) $arguments[0]),
+            )['data'],
+        'complete_and_present_next' => app(CompleteAndPresentNext::class)
+            ->execute(
+                User::query()->findOrFail((int) $arguments[0]),
+                (int) $arguments[1],
+            )['data'],
+        'return_current' => app(ReturnCurrentPresentationToQueue::class)
+            ->execute(
+                User::query()->findOrFail((int) $arguments[0]),
+                (int) $arguments[1],
             )['data'],
         'present_next' => app(PresentStageQueueItem::class)
             ->next(

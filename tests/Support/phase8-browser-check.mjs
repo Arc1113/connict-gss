@@ -338,7 +338,7 @@ try {
     );
 
     logStep('Checking approved-audio stage replay');
-    await clickButton(control.client, 'Complete presentation');
+    await clickButton(control.client, 'Complete and clear');
     await clickButton(control.client, 'Present next graduate');
     await stage.client.waitFor(
         'document.body.innerText.includes("Phase 8 Approved Audio Graduate")',

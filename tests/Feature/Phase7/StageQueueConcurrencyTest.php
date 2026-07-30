@@ -226,6 +226,50 @@ class StageQueueConcurrencyTest extends TestCase
         );
     }
 
+    public function test_duplicate_complete_and_next_commands_advance_only_once(): void
+    {
+        $this->requireProcessSupport();
+        [$ceremony, , $operator] = $this->operationContext();
+        $current = $this->queue($this->student($ceremony, 'COMPOUND-CURRENT'), 1);
+        $next = $this->queue($this->student($ceremony, 'COMPOUND-NEXT'), 2);
+        $third = $this->queue($this->student($ceremony, 'COMPOUND-THIRD'), 3);
+        $current->update([
+            'status' => StageQueueStatus::Presenting,
+            'presented_at' => now(),
+            'presented_by' => $operator->id,
+        ]);
+        StageState::query()->whereBelongsTo($ceremony)->update([
+            'current_queue_item_id' => $current->id,
+            'display_mode' => 'graduate',
+            'version' => 7,
+        ]);
+
+        $results = $this->runConcurrently([
+            [
+                'operation' => 'complete_and_present_next',
+                'arguments' => [(string) $operator->id, '7'],
+            ],
+            [
+                'operation' => 'complete_and_present_next',
+                'arguments' => [(string) $operator->id, '7'],
+            ],
+        ]);
+
+        $this->assertSame(
+            ['completed_and_presented_next', 'stale_stage_state'],
+            collect($results)->pluck('status')->sort()->values()->all(),
+        );
+        $this->assertSame(StageQueueStatus::Completed, $current->refresh()->status);
+        $this->assertSame(StageQueueStatus::Presenting, $next->refresh()->status);
+        $this->assertSame(StageQueueStatus::Waiting, $third->refresh()->status);
+        $this->assertSame(
+            $next->id,
+            StageState::query()
+                ->whereBelongsTo($ceremony)
+                ->value('current_queue_item_id'),
+        );
+    }
+
     public function test_pause_and_automatic_scan_race_never_preempts_or_loses_pause(): void
     {
         $this->requireProcessSupport();

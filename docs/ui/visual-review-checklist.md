@@ -107,7 +107,7 @@ required viewports.
 - [ ] Skipped graduate and returned tail position
 - [ ] Command pending, safe failure, disconnected, and recovered
 - [ ] Holding active and restored current graduate
-- [ ] Automatic active, automatic paused, and paused scan remaining waiting
+- [ ] Assisted automatic active/paused, with a paused scan remaining waiting
 - [ ] Stacked 1024 px layout preserves hierarchy and table-owned overflow
 - [ ] Audience stage remains free of queue, controls, and technical status
 
@@ -164,6 +164,29 @@ required viewports.
       numbers, queue data, and technical connection text.
 - [ ] Physical display and venue-audio observations are recorded separately from
       browser-only evidence.
+
+## Phase 12 operations visual pass
+
+- [ ] The current graduate and the next safe action dominate `/stage-control`.
+- [ ] **Complete and present next**, **Complete and clear**, and **Correct wrong
+      graduate** are visually distinct without excessive cards or alarm styling.
+- [ ] Assisted-automatic description explains scan-to-idle presentation and does
+      not promise unattended advancement.
+- [ ] Correction holding and subsequent correct presentation remain obvious at
+      1440×900, 1366×768, and 1024×768.
+- [ ] Long graduate and program names wrap without covering queue controls.
+- [ ] Account filters, table, role/status labels, and create/edit forms remain
+      readable at 1440×900, 1366×768, and 1024×768.
+- [ ] The administrator topbar wraps into a visible navigation row without
+      clipping or hidden horizontal scrolling.
+- [ ] Technical-operator navigation is concise and contains no forbidden
+      readiness destination.
+- [ ] Radio/checkbox controls, links, and buttons have visible focus and usable
+      pointer targets.
+- [ ] The audience stage does not display correction, account, queue, connection,
+      or administrative information.
+- [ ] Compiled pages load only local runtime assets and reduced motion removes
+      non-essential transitions.
 
 ## Anti–AI-slop final pass
 

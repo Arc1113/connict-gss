@@ -70,11 +70,18 @@ resuming.
 
 ## Wrong graduate presented
 
-1. Do not rescan repeatedly.
-2. Use stage-control to complete, skip, or return queue entries as appropriate.
-3. Review `/admin/stage-events` and `/admin/scan-logs`.
-4. If state is inconsistent and no graduate is presenting, an administrator may
-   use the Phase 9 operational reset.
+1. Tell the announcer to pause and do not mark the graduate completed.
+2. On `/stage-control`, verify the displayed name, then choose **Correct wrong
+   graduate** and confirm. This returns the current item to its preserved queue
+   position and puts the audience into the neutral holding state.
+3. Verify the correct graduate in the waiting queue and use **Present selected**,
+   or use **Present next** only when the earliest row is the correct person.
+4. Confirm the audience display before resuming the announcement.
+5. Review `/admin/stage-events` if the correction needs an audit trail.
+
+If the correction reports stale state, refresh stage-control and verify the
+current graduate before retrying. Do not repeatedly scan, delete queue rows, edit
+PostgreSQL directly, or use operational reset while a graduate is presenting.
 
 ## Queue inconsistency
 

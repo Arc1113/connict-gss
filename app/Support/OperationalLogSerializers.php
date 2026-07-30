@@ -51,10 +51,20 @@ final readonly class OperationalLogSerializers
             ],
             'graduate' => $student?->display_name ?? 'Not applicable',
             'actor' => $event->performedBy?->name ?? 'System',
-            'description' => $this->stageDescription($event->event_type, $student?->display_name),
+            'description' => $this->stageDescription(
+                $event->event_type,
+                $student?->display_name,
+                $payload,
+            ),
             'stage_version' => $payload['version'] ?? null,
             'details' => collect($payload)
-                ->only(['queue_position', 'automatic', 'paused', 'holding'])
+                ->only([
+                    'queue_position',
+                    'automatic',
+                    'paused',
+                    'holding',
+                    'continued_to_next',
+                ])
                 ->all(),
         ];
     }
@@ -80,7 +90,7 @@ final readonly class OperationalLogSerializers
     private function queueOutcome(ScanLog $log): string
     {
         return match ($log->result->value) {
-            'accepted' => 'Graduate saved to queue or presented by automatic mode',
+            'accepted' => 'Graduate saved to queue or presented by assisted automatic mode',
             'duplicate' => 'Graduate already had active or completed queue history',
             'invalid' => 'No matching graduate was resolved',
             'ineligible' => 'Graduate was not eligible for presentation',
@@ -88,8 +98,14 @@ final readonly class OperationalLogSerializers
         };
     }
 
-    private function stageDescription(string $type, ?string $name): string
-    {
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function stageDescription(
+        string $type,
+        ?string $name,
+        array $payload,
+    ): string {
         $graduate = $name === null ? 'graduate' : $name;
 
         return match ($type) {
@@ -97,10 +113,14 @@ final readonly class OperationalLogSerializers
             'student_presented',
             'student_presented_automatically',
             'present_next',
-            'present_selected' => "{$graduate} was presented on the audience stage.",
-            'student_completed' => "{$graduate} was completed and the stage was cleared.",
+            'present_selected',
+            'present_next_after_completion' => "{$graduate} was presented on the audience stage.",
+            'student_completed' => ($payload['continued_to_next'] ?? false)
+                ? "{$graduate} was completed before the next graduate was presented."
+                : "{$graduate} was completed and the stage was cleared.",
             'student_skipped' => "{$graduate} was skipped from the waiting queue.",
             'student_returned_to_queue' => "{$graduate} was returned to the waiting queue.",
+            'current_presentation_returned' => "{$graduate} was returned to the queue without completion and the holding screen was shown.",
             'announcement_replayed' => 'The current approved announcement audio was replayed.',
             'holding_screen_activated' => 'The holding screen was activated.',
             'holding_screen_deactivated' => 'The live stage display was restored.',

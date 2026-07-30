@@ -100,10 +100,10 @@ and results in the phase report.
 ## Phase 7 queue and stage control
 
 - [ ] Controlled scans append one durable waiting row and never preempt.
-- [ ] Automatic mode presents only the first idle/unpaused scan with no earlier
+- [ ] Assisted automatic mode presents only the first idle/unpaused scan with no earlier
       waiting row; pause is persisted and resume does not consume backlog.
-- [ ] Present next and selected use the intended row; completion clears without
-      auto-advancing.
+- [ ] Present next and selected use the intended row; completion either clears
+      intentionally or advances once through the explicit combined command.
 - [ ] Skip preserves history, return appends to the tail, and repeated commands
       produce a safe conflict rather than duplicate state.
 - [ ] Replay stops/restarts approved local audio without changing queue status;
@@ -189,6 +189,34 @@ and results in the phase report.
 - [ ] Browser resource checks show no remote runtime assets.
 - [ ] Physical USB scanner, three laptops, projector/LED, and venue audio are
       marked separately as hardware/venue evidence, not software evidence.
+
+## Phase 12 real-world operations
+
+- [ ] Assisted automatic is named accurately on ceremony forms and stage control.
+- [ ] A current graduate plus waiting queue shows **Complete and present next**
+      as the dominant action and **Complete and clear** as a separate choice.
+- [ ] The combined action completes exactly one current item and presents
+      exactly one earliest waiting item without an audience clear flash.
+- [ ] Two commands with the same expected version produce one success and one
+      safe stale-state response.
+- [ ] **Correct wrong graduate** requires confirmation, preserves the queue
+      position, shows neutral holding, and permits an explicit correct
+      presentation.
+- [ ] No correction path marks the wrong graduate completed or deletes history.
+- [ ] Administrator account list filters work; create/edit validation is
+      field-linked; blank edit password preserves the hash.
+- [ ] Password data is absent from Inertia and audit payloads.
+- [ ] An administrator cannot demote or deactivate their own signed-in account.
+- [ ] Technical-operator navigation has no link to an unauthorized readiness
+      page and all visible links open successfully.
+- [ ] Navigation wraps visibly without page-level horizontal overflow.
+- [ ] Mode choices and account status controls provide at least a 44×44 px
+      pointer target, visible focus, and text labels.
+- [ ] `/stage-control` and `/admin/users` are checked at 1440×900, 1366×768,
+      and 1024×768 using realistic long names.
+- [ ] `/stage` remains audience-safe at 1920×1080 and 1366×768.
+- [ ] Reduced motion, refresh recovery, Reverb restart recovery, and local-only
+      assets remain working.
 
 ## Regression
 

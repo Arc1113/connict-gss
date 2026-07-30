@@ -6,7 +6,7 @@ import process from 'node:process';
 
 const repositoryPath = process.cwd();
 const applicationUrl =
-    process.env.GSS_APP_URL ?? 'http://127.0.0.1:8000';
+    process.env.GSS_APP_URL ?? 'http://127.0.0.1:8001';
 const chromePath = '/usr/bin/google-chrome';
 const password = readEnvironmentValue('GSS_SEED_PASSWORD');
 const evidencePath = join(repositoryPath, 'docs', 'evidence', 'phase-3a');
@@ -653,6 +653,7 @@ function approveSeedAudioFixtures() {
 
 async function login(client, email) {
     await client.navigate(`${applicationUrl}/login`);
+    await client.waitFor('document.querySelector("meta[name=\'csrf-token\']") !== null');
 
     const response = await client.evaluate(`(async () => {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;

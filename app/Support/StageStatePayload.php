@@ -47,6 +47,7 @@ final class StageStatePayload
                         'student_presented_automatically',
                         'present_next',
                         'present_selected',
+                        'present_next_after_completion',
                     ])
                     ->latest('id')
                     ->value('id');

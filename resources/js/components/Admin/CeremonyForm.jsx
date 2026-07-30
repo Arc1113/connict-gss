@@ -166,6 +166,7 @@ export default function CeremonyForm({
                             aria-describedby={describedBy(
                                 'presentation_mode',
                                 errors.presentation_mode,
+                                true,
                             )}
                             aria-invalid={Boolean(errors.presentation_mode)}
                             id="presentation_mode"
@@ -181,6 +182,14 @@ export default function CeremonyForm({
                                 </option>
                             ))}
                         </select>
+                        <p
+                            className="admin-field-hint"
+                            id="presentation_mode-hint"
+                        >
+                            {data.presentation_mode === 'automatic'
+                                ? 'Assisted automatic presents a new scan only while the stage is idle and no graduate is ahead. An operator still completes and advances the queue.'
+                                : 'Controlled mode keeps every scan waiting until a stage operator presents a graduate.'}
+                        </p>
                         <FieldError
                             id="presentation_mode-error"
                             message={errors.presentation_mode}

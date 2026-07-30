@@ -1,6 +1,6 @@
 # Graduation Stage System
 
-Status: **Phase 11 — Full-System Testing and Readiness Sign-Off completed as CONDITIONAL GO**
+Status: **Phase 12 — Real-World Operations and UX Remediation completed; physical readiness remains CONDITIONAL GO**
 
 The Graduation Stage System is a local-network-only application for reliable,
 QR-driven graduation presentation. Phase 3 established the complete operational
@@ -54,6 +54,42 @@ candidate through automated tests, browser rehearsal, failure simulation,
 backup/restore verification, and deployment/standby simulation. Software
 readiness is **CONDITIONAL GO** pending the actual USB scanner, three laptops,
 projector/LED display, router, and venue audio rehearsal.
+
+Phase 12 closes the highest-risk software usability gaps found during the
+post-readiness review. Stage control now supports an atomic
+operator-confirmed **Complete and present next** action and a safe
+**Correct wrong graduate** recovery. The existing `automatic` mode is labeled
+**Assisted automatic** so it no longer implies unattended continuous
+advancement. Administrators can manage named local operator accounts, and
+administration navigation now respects each role's authorized landing page.
+The approved backend, queue, scan, broadcast, recovery, and local-only runtime
+architecture remains unchanged.
+
+## Phase 12 operations remediation
+
+- **Complete and present next** completes the current graduate and presents the
+  earliest waiting graduate in one PostgreSQL transaction, guarded by the
+  current stage-state version.
+- **Complete and clear** remains available for an intended empty stage.
+- **Correct wrong graduate** returns the current item to waiting at its preserved
+  position and shows neutral holding until the operator presents the verified
+  graduate.
+- The system does not auto-advance from a timer or audio-ended callback. Every
+  transition between presented graduates remains operator-confirmed.
+- Administrators can create/edit local accounts, roles, active status, and
+  passwords under `/admin/users`. Password values are not returned to the
+  browser or audit log.
+- Technical operators land on an authorized operational page and see only
+  approved log/backup navigation.
+
+Phase 12 verification completed with 188 Laravel tests and 1,858 assertions.
+The 20 focused Phase 12/queue-concurrency tests passed with 147 assertions.
+Pint, ESLint, the Vite production build, Composer validation/audit, npm audit,
+and Compose configuration passed. The compiled application passed the
+multi-profile Chromium rehearsal at 1440×900, 1366×768, 1024×768, 1920×1080,
+and reduced-motion states. The remaining CONDITIONAL GO items require the
+physical USB scanner, three laptops, projector/LED display, router, and venue
+audio.
 
 ## Phase 11 readiness
 
@@ -165,12 +201,12 @@ available. Duration and loudness are manual review items: prepare clips around
    monotonically increasing ceremony-local position.
 3. Controlled mode leaves the row waiting until **Present next** or
    **Present selected** succeeds.
-4. Automatic mode may promote that new row to `presenting` in the same
+4. Assisted automatic mode may promote that new row to `presenting` in the same
    transaction only when the stage is idle, automation is not paused, and no
-   earlier waiting row exists. It never preempts and never auto-advances after
-   completion.
-5. Completion marks the current row `completed`, clears the audience state, and
-   leaves later graduates waiting.
+   earlier waiting row exists. It never preempts and never advances without an
+   explicit operator action after the initial idle-stage scan.
+5. Completion marks the current row `completed`. The operator can clear the
+   audience or atomically present the earliest waiting graduate.
 6. Skip removes a waiting row from ordered positions while preserving history;
    return appends it to the current tail with a new position.
 7. Replay versions and records an announcement request without changing queue
@@ -282,10 +318,15 @@ available. Duration and loudness are manual review items: prepare clips around
 - Present-next and present-selected lock authoritative state, reject
   busy/stale/cross-ceremony commands, record the action, and publish only after
   commit.
-- Controlled scans remain waiting. Automatic scans can present only the first
-  idle, unpaused item and do not bypass an existing queue. Automatic pause is
-  persisted; resuming does not silently present a backlog item.
-- Completion is explicit in both modes and never auto-advances.
+- Controlled scans remain waiting. Assisted-automatic scans can present only
+  the first idle, unpaused item and do not bypass an existing queue. The pause
+  is persisted; resuming does not silently present a backlog item.
+- Completion is explicit in both modes. **Complete and present next** performs
+  one operator-confirmed atomic advance; **Complete and clear** intentionally
+  leaves the stage empty.
+- A wrongly presented current graduate can be returned to waiting at the
+  preserved position. The audience moves to holding while the operator verifies
+  and explicitly presents the correct graduate.
 - Skip and return preserve the same queue item and its complete history. A
   returned graduate joins the tail rather than reclaiming an old position.
 - Replay is available only when the current graduate has approved readable local
@@ -315,6 +356,8 @@ available. Duration and loudness are manual review items: prepare clips around
 | `POST /stage/present-next` | Present the earliest waiting graduate | Stage operator, administrator |
 | `POST /stage/present/{queueItem}` | Present one selected waiting graduate | Stage operator, administrator |
 | `POST /stage/complete-current` | Complete current and clear the stage | Stage operator, administrator |
+| `POST /stage/complete-and-present-next` | Atomically complete current and present the earliest waiting graduate | Stage operator, administrator |
+| `POST /stage/return-current` | Return a wrongly presented current graduate to waiting and show holding | Stage operator, administrator |
 | `POST /stage/skip/{queueItem}` | Preserve history and skip a waiting graduate | Stage operator, administrator |
 | `POST /stage/return/{queueItem}` | Append a skipped graduate to the queue tail | Stage operator, administrator |
 | `POST /stage/replay` | Replay approved local audio without changing queue state | Stage operator, administrator |
@@ -324,6 +367,11 @@ available. Duration and loudness are manual review items: prepare clips around
 | `POST /stage/automatic/resume` | Resume automatic initial presentation | Stage operator, administrator |
 | `GET\|POST /broadcasting/auth` | Private Echo channel authorization | Authorized active session |
 | `GET /admin` | Ceremony readiness and preparation tasks | Administrator, data encoder |
+| `GET /admin/users` | Search/filter local operator accounts | Administrator |
+| `GET /admin/users/create` | Create a local operator account | Administrator |
+| `POST /admin/users` | Validate and store a local operator account | Administrator |
+| `GET /admin/users/{user}/edit` | Edit role, status, identity, or password | Administrator |
+| `PATCH /admin/users/{user}` | Validate and update a local operator account | Administrator |
 | `GET /admin/ceremonies` | Search/filter/paginated ceremony list | Administrator, data encoder |
 | `GET /admin/ceremonies/create` | Ceremony form | Administrator |
 | `GET /admin/ceremonies/{ceremony}` | Ceremony detail/history protection | Administrator, data encoder |
@@ -554,15 +602,20 @@ Use separate scanner, stage-control, and audience browser profiles.
    `/stage` with local audio. Refresh both stage pages and confirm HTTP recovery.
 5. Scan a fourth graduate while presenting. Confirm the row waits and the
    audience graduate does not change.
-6. Replay, then complete the current presentation. Confirm the stage clears and
-   does not automatically advance.
-7. Present one selected graduate out of order, skip another, return the skipped
-   graduate, and confirm it joins the queue tail.
-8. Show and restore the holding screen. Confirm the current graduate is
+6. Replay, then choose **Complete and present next**. Confirm exactly one current
+   row completes, the earliest waiting row is presented, and the audience does
+   not flash the empty stage.
+7. Choose **Correct wrong graduate**. Confirm the current row returns to its
+   preserved position, the audience shows holding, and **Present selected** can
+   put the verified graduate on stage.
+8. Use **Complete and clear** and confirm the audience intentionally becomes
+   empty. Present one selected graduate out of order, skip another, return the
+   skipped graduate, and confirm it joins the queue tail.
+9. Show and restore the holding screen. Confirm the current graduate is
    preserved and no operator/technical detail appears to the audience.
-9. Re-scan waiting, presenting, completed, and skipped graduates and verify the
+10. Re-scan waiting, presenting, completed, and skipped graduates and verify the
    precise status/recovery guidance.
-10. Stop Reverb with `docker compose stop reverb`, scan while it is unavailable,
+11. Stop Reverb with `docker compose stop reverb`, scan while it is unavailable,
     and confirm PostgreSQL still commits. Start it with
     `docker compose start reverb`; both views must reconnect and reconcile via
     HTTP.
@@ -693,8 +746,8 @@ replacement, HMAC stale-request protection, transaction rollback, old/new-token
 scan behavior, scanner fallback scoping, and manual-selection transaction tests.
 
 Phase 7 adds queue transition, position, authorization, safe-payload,
-controlled/automatic mode, replay, holding, recovery, and PostgreSQL uniqueness
-tests. Independent-process races cover duplicate scans, two present-next
+controlled/assisted-automatic mode, replay, holding, recovery, and PostgreSQL
+uniqueness tests. Independent-process races cover duplicate scans, two present-next
 commands, next versus selected, skip versus present, duplicate return,
 completion versus replay, and pause versus an automatic scan.
 
@@ -706,6 +759,12 @@ Phase 9 adds operational log authorization/filter/serializer tests, CSV export
 privacy and formula-injection tests, ceremony summary accuracy tests,
 operational reset history-preservation tests, backup failure safety tests, and
 real Docker backup/restore-verification scripts.
+
+Phase 12 adds atomic complete-and-present-next tests, expected-version and
+independent-process concurrency tests, wrong-current recovery tests, account
+authorization/validation/self-protection/audit tests, and browser checks for
+role navigation, account forms, assisted-automatic language, correction,
+combined advancement, responsive layout, and reduced motion.
 
 An optional live Chromium check exercises two authenticated browser profiles,
 private-channel delivery, local audio playback events, refresh recovery, and a
@@ -736,10 +795,12 @@ actual Phase 5 confirmation action, and records QR/print/scanner evidence under
 `docs/evidence/phase-6/`. It also verifies data-encoder restrictions, old/new
 replacement scans, repeated Enter locking, and controlled manual acceptance.
 The Phase 7 harness uses three authenticated Chromium profiles, exercises
-controlled and automatic presentation, pause/resume, selected presentation,
-completion, skip/return, holding, replay and missing audio, refresh recovery, a
-deliberate Reverb outage, role denial, long content, focus, reduced motion, and
-the approved control/audience viewports. Its PNG evidence is written under
+controlled and assisted-automatic presentation, pause/resume, selected
+presentation, combined completion/advancement, wrong-current correction,
+skip/return, holding, replay and missing audio, refresh recovery, a deliberate
+Reverb outage, administrator account routes, technical-operator navigation,
+role denial, long content, focus, reduced motion, and the approved
+control/audience viewports. Its PNG evidence is written under
 `docs/evidence/phase-7/` and remains ignored by Git.
 Set `GSS_APP_URL` when the local app uses a non-default host port.
 
@@ -799,10 +860,12 @@ Set `GSS_APP_URL` when the local app uses a non-default host port.
 
 ## Phase boundary
 
-Phase 10 adds local deployment and device-setup preparation only. It does not
-add public hosting, cloud deployment, external DNS, TLS termination, kiosk
-automation, full physical rehearsal, automatic failover, new application
-features, or Phase 11 ceremony rehearsal work.
+Phase 12 is limited to the approved real-world operations and UX remediation:
+safe queue advancement, wrong-current correction, accurate mode language, local
+account administration, role navigation, and high-impact accessibility/layout
+repairs. It does not add timer/audio-ended advancement, camera scanning, cloud
+deployment, external DNS, TLS termination, kiosk automation, automatic
+failover, arbitrary queue reordering, or other new application features.
 
 Phase 10 deployment documentation:
 
@@ -827,6 +890,6 @@ Use `compose.deploy.yaml` for event deployment. The Vite development server is
 not required at runtime, and PostgreSQL remains loopback-only.
 
 See [requirements](docs/requirements.md) and
-[architecture](docs/architecture.md) for the normative Phase 3 through Phase 10
-contracts. Do not begin Phase 11 until Phase 10 receives explicit human
-approval.
+[architecture](docs/architecture.md) for the normative Phase 3 through Phase 12
+contracts. Do not begin another feature phase until Phase 12 receives explicit
+human approval.

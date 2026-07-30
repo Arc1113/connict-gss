@@ -18,14 +18,8 @@ class ExampleTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Welcome')
                 ->where('appName', 'Graduation Stage System')
-                ->where('phase', 'Phase 8')
                 ->where('auth.user', null)
-                ->where('stack', [
-                    'Laravel',
-                    'React',
-                    'Inertia.js',
-                    'Vite',
-                    'PostgreSQL',
-                ]));
+                ->missing('phase')
+                ->missing('stack'));
     }
 }

@@ -248,7 +248,7 @@ try {
 
     await setCeremonyMode('automatic');
     await control.client.navigate(`${applicationUrl}/stage-control`);
-    await control.client.waitFor('document.body.innerText.includes("Automatic mode")');
+    await control.client.waitFor('document.body.innerText.includes("Assisted automatic")');
     await postJson(control.client, '/stage/automatic/pause', {}, 200);
     await scan(scanner.client, 'GSS-RC1-ETA');
     queue = await getJson(control.client, '/stage/queue');

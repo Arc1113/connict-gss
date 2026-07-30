@@ -33,7 +33,11 @@ enum StageQueueStatus: string
                 [self::Waiting, self::Cancelled],
                 true,
             ),
-            self::Presenting, self::Announced => $next === self::Completed,
+            self::Presenting, self::Announced => in_array(
+                $next,
+                [self::Waiting, self::Completed],
+                true,
+            ),
             self::Completed, self::Cancelled => false,
         };
     }

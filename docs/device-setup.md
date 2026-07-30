@@ -37,6 +37,13 @@ implemented and tested.
 Do not share one browser profile between incompatible roles. Log out and back in
 if a device was used for the wrong role.
 
+Before the final rehearsal, an administrator must create one named local account
+per operator under `/admin/users`, assign only the required role, verify the
+12-character-or-longer password offline, and deactivate unused rehearsal
+accounts. Do not place administrator credentials on the audience display
+profile. Technical operators should enter administration through their visible
+Logs or Backups links; they are not authorized for the readiness page.
+
 ## Server laptop
 
 Preparation:

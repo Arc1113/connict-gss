@@ -15,20 +15,33 @@ export default function AdminLayout({ children }) {
     const { auth, flash } = usePage().props;
     const currentUrl = usePage().url;
     const abilities = auth.abilities;
+    const canViewReadiness =
+        abilities.view_ceremonies || abilities.view_students;
+    const adminHome = canViewReadiness
+        ? '/admin'
+        : abilities.view_operational_logs
+          ? '/admin/scan-logs'
+          : '/admin/backups';
 
     return (
         <div className="admin-app">
             <header className="admin-topbar">
                 <div className="admin-topbar-inner">
-                    <Link className="admin-brand" href="/admin">
+                    <Link className="admin-brand" href={adminHome}>
                         <span>Graduation Stage System</span>
-                        <small>Data administration</small>
+                        <small>
+                            {canViewReadiness
+                                ? 'Administration'
+                                : 'Technical operations'}
+                        </small>
                     </Link>
 
                     <nav className="admin-nav" aria-label="Administration">
-                        <NavLink active={currentUrl === '/admin'} href="/admin">
-                            Readiness
-                        </NavLink>
+                        {canViewReadiness && (
+                            <NavLink active={currentUrl === '/admin'} href="/admin">
+                                Readiness
+                            </NavLink>
+                        )}
                         {abilities.view_ceremonies && (
                             <NavLink
                                 active={currentUrl.startsWith('/admin/ceremonies')}
@@ -75,6 +88,14 @@ export default function AdminLayout({ children }) {
                                 href="/admin/students/import"
                             >
                                 Import CSV
+                            </NavLink>
+                        )}
+                        {abilities.manage_users && (
+                            <NavLink
+                                active={currentUrl.startsWith('/admin/users')}
+                                href="/admin/users"
+                            >
+                                Accounts
                             </NavLink>
                         )}
                         {abilities.view_audit_logs && (

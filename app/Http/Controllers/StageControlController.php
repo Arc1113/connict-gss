@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CompleteAndPresentNext;
 use App\Actions\PresentStageQueueItem;
 use App\Actions\ReplayCurrentAnnouncement;
+use App\Actions\ReturnCurrentPresentationToQueue;
 use App\Actions\ReturnStageQueueItem;
 use App\Actions\SetAutomaticPresentationPaused;
 use App\Actions\SetStageHolding;
@@ -13,6 +15,7 @@ use App\Support\StageControlPayload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -70,6 +73,44 @@ class StageControlController extends Controller
             fn (): array => $present->selected(
                 $queueItem,
                 $request->user(),
+            ),
+        );
+    }
+
+    public function completeAndPresentNext(
+        Request $request,
+        CompleteAndPresentNext $complete,
+    ): JsonResponse {
+        $expectedVersion = $this->expectedVersion($request);
+
+        if ($expectedVersion instanceof JsonResponse) {
+            return $expectedVersion;
+        }
+
+        return $this->run(
+            'complete_and_present_next',
+            fn (): array => $complete->execute(
+                $request->user(),
+                $expectedVersion,
+            ),
+        );
+    }
+
+    public function returnCurrent(
+        Request $request,
+        ReturnCurrentPresentationToQueue $return,
+    ): JsonResponse {
+        $expectedVersion = $this->expectedVersion($request);
+
+        if ($expectedVersion instanceof JsonResponse) {
+            return $expectedVersion;
+        }
+
+        return $this->run(
+            'return_current',
+            fn (): array => $return->execute(
+                $request->user(),
+                $expectedVersion,
             ),
         );
     }
@@ -169,5 +210,22 @@ class StageControlController extends Controller
         }
 
         return response()->json($result['data'], $result['http_status']);
+    }
+
+    private function expectedVersion(Request $request): int|JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'expected_version' => ['required', 'integer', 'min:0'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'invalid_command',
+                'message' => 'The stage version is missing or invalid. Refresh stage control before trying again.',
+                'errors' => $validator->errors()->toArray(),
+            ], 422);
+        }
+
+        return (int) $validator->validated()['expected_version'];
     }
 }

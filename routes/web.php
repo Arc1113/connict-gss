@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\StageEventController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudentImportController;
 use App\Http\Controllers\Admin\StudentQrCodeController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CompleteCurrentPresentationController;
 use App\Http\Controllers\ScanController;
@@ -24,14 +25,6 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'appName' => config('app.name'),
-        'phase' => 'Phase 8',
-        'stack' => [
-            'Laravel',
-            'React',
-            'Inertia.js',
-            'Vite',
-            'PostgreSQL',
-        ],
     ]);
 })->name('home');
 
@@ -74,6 +67,10 @@ Route::middleware(['auth', 'active'])->group(function () {
             ->name('stage.queue');
         Route::post('/stage/present-next', [StageControlController::class, 'presentNext'])
             ->name('stage.present-next');
+        Route::post('/stage/complete-and-present-next', [StageControlController::class, 'completeAndPresentNext'])
+            ->name('stage.complete-and-present-next');
+        Route::post('/stage/return-current', [StageControlController::class, 'returnCurrent'])
+            ->name('stage.return-current');
         Route::post('/stage/present/{queueItem}', [StageControlController::class, 'presentSelected'])
             ->whereNumber('queueItem')
             ->name('stage.present-selected');
@@ -97,6 +94,9 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', AdminDashboardController::class)->name('index');
+        Route::resource('users', UserController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update'])
+            ->middleware('can:manage-users');
         Route::get('/scan-logs', [ScanLogController::class, 'index'])->name('scan-logs.index');
         Route::get('/scan-logs/export', [ScanLogController::class, 'export'])->name('scan-logs.export');
         Route::get('/stage-events', [StageEventController::class, 'index'])->name('stage-events.index');

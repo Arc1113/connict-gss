@@ -55,6 +55,7 @@ class HandleInertiaRequests extends Middleware
                     'is_active' => $user->is_active,
                 ],
                 'abilities' => $user === null ? [] : [
+                    'manage_users' => $user->can('manage-users'),
                     'operate_scanner' => $user->can('operate-scanner'),
                     'operate_stage' => $user->can('operate-stage'),
                     'view_ceremonies' => $user->can('viewAny', Ceremony::class),

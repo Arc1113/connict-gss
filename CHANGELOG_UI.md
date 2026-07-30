@@ -3,6 +3,62 @@
 UI changes are recorded by project phase. Functional backend changes belong in
 the main project documentation.
 
+## Phase 12 — Real-World Operations and UX Remediation
+
+Status: completed
+Date: 2026-07-30
+
+Completed:
+
+- Reworked stage-control priority around one operator-confirmed **Complete and
+  present next** action while retaining a separate **Complete and clear**
+  operation.
+- Added an explicit **Correct wrong graduate** recovery that returns the current
+  item to its preserved queue position and moves the audience to neutral holding
+  before a verified replacement presentation.
+- Renamed the visible automatic mode to **Assisted automatic** and explained
+  that it presents only an eligible scan to an idle stage; it does not promise
+  unattended continuous advancement.
+- Added administrator-only local operator-account list, filters, create, and
+  edit screens with role/status controls, strong confirmed passwords, field
+  errors, and signed-in account protection guidance.
+- Corrected administration navigation so technical operators land on authorized
+  operational pages and do not receive a readiness link they cannot open.
+- Replaced equal-sized readiness/task card grids with compact definitions and a
+  vertical task list, and made the administration navigation visibly wrap
+  instead of hiding links in horizontal overflow.
+- Increased mode and account-status pointer targets, preserved visible focus,
+  and kept all correction, queue, account, and technical content off the
+  audience stage.
+- Extended the Phase 7 browser rehearsal for correction, combined advancement,
+  account routes, technical navigation, long content, required viewports, and
+  reduced motion.
+
+Architecture intentionally preserved:
+
+- HTTP commands and recovery reads, PostgreSQL authority, post-commit Reverb
+  events, private Echo channels, local media/audio, and local-network-only
+  runtime.
+- No timer-driven or audio-ended advancement, polling, external asset, new UI
+  library, or cloud dependency was added.
+
+Verification:
+
+- Full Laravel suite: 188 tests, 1,858 assertions.
+- Phase 12 and queue-concurrency focus: 20 tests, 147 assertions.
+- Pint: 192 files passed.
+- ESLint, Vite production build, Composer validation/audit, npm audit, and
+  Compose configuration passed.
+- The real compiled application passed the extended Chromium rehearsal at
+  stage-control/account viewports 1440×900, 1366×768, and 1024×768 and audience
+  viewports 1920×1080 and 1366×768.
+- Generated browser PNGs remain local and ignored by Git.
+
+Known limitations:
+
+- Final USB scanner, projected display, three-device network, and venue-audio
+  certification still require physical hardware.
+
 ## Phase 11 — Full-System Testing and Readiness Sign-Off
 
 Status: completed as CONDITIONAL GO

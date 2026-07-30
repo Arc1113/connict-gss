@@ -19,6 +19,9 @@ const ACTION_LABELS = {
     present_selected: 'Selected graduate presented',
     student_presented_automatically: 'Graduate presented automatically',
     student_completed: 'Graduate completed',
+    student_completed_and_next_presented: 'Completed and presented next',
+    present_next_after_completion: 'Next graduate presented',
+    current_presentation_returned: 'Wrong graduate returned to queue',
     student_skipped: 'Graduate skipped',
     student_returned_to_queue: 'Graduate returned to queue',
     announcement_replayed: 'Announcement replayed',
@@ -158,7 +161,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
         });
     }, [reconcile]);
 
-    async function runCommand(action, url, confirmation = null) {
+    async function runCommand(action, url, confirmation = null, body = null) {
         if (commandLockRef.current || (confirmation && !window.confirm(confirmation))) {
             return;
         }
@@ -173,6 +176,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
         try {
             const { response, data } = await requestJson(url, {
                 method: 'POST',
+                body: body ? JSON.stringify(body) : undefined,
             });
 
             setFeedback({
@@ -214,7 +218,9 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                             {ceremony?.name ?? 'No active ceremony'}
                             <span aria-hidden="true"> · </span>
                             <strong>
-                                {automatic ? 'Automatic mode' : 'Controlled mode'}
+                                {automatic
+                                    ? 'Assisted automatic'
+                                    : 'Controlled mode'}
                                 {automatic && control.automatic_paused
                                     ? ' paused'
                                     : ''}
@@ -323,21 +329,47 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                             <div className="stage-control-primary-actions">
                                 {current ? (
                                     <>
+                                        {waiting.length > 0 && (
+                                            <button
+                                                className="primary-action"
+                                                disabled={Boolean(pendingAction)}
+                                                onClick={() =>
+                                                    runCommand(
+                                                        'complete-next',
+                                                        '/stage/complete-and-present-next',
+                                                        `Complete ${current.student.display_name} and present ${waiting[0].student.display_name} next? Both changes will be recorded together.`,
+                                                        {
+                                                            expected_version:
+                                                                control.version,
+                                                        },
+                                                    )
+                                                }
+                                                type="button"
+                                            >
+                                                {pendingAction === 'complete-next'
+                                                    ? 'Completing and presenting…'
+                                                    : 'Complete and present next'}
+                                            </button>
+                                        )}
                                         <button
-                                            className="primary-action"
+                                            className={
+                                                waiting.length === 0
+                                                    ? 'primary-action'
+                                                    : 'secondary-action'
+                                            }
                                             disabled={Boolean(pendingAction)}
                                             onClick={() =>
                                                 runCommand(
                                                     'complete',
                                                     '/stage/complete-current',
-                                                    `Complete ${current.student.display_name}? This cannot be undone in Phase 7.`,
+                                                    `Complete ${current.student.display_name} and clear the audience stage? The graduate will be recorded as completed.`,
                                                 )
                                             }
                                             type="button"
                                         >
                                             {pendingAction === 'complete'
                                                 ? 'Completing…'
-                                                : 'Complete presentation'}
+                                                : 'Complete and clear'}
                                         </button>
                                         <button
                                             className="secondary-action"
@@ -358,14 +390,33 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                                 ? 'Replaying…'
                                                 : 'Replay announcement'}
                                         </button>
+                                        <button
+                                            className="stage-control-danger-action"
+                                            disabled={Boolean(pendingAction)}
+                                            onClick={() =>
+                                                runCommand(
+                                                    'return-current',
+                                                    '/stage/return-current',
+                                                    `Correct the current presentation for ${current.student.display_name}? The graduate will return to queue position ${current.queue_position}, audio will stop, and the audience will see the holding screen.`,
+                                                    {
+                                                        expected_version:
+                                                            control.version,
+                                                    },
+                                                )
+                                            }
+                                            type="button"
+                                        >
+                                            {pendingAction === 'return-current'
+                                                ? 'Returning graduate…'
+                                                : 'Correct wrong graduate'}
+                                        </button>
                                     </>
                                 ) : (
                                     <button
                                         className="primary-action"
                                         disabled={
                                             Boolean(pendingAction) ||
-                                            waiting.length === 0 ||
-                                            isHolding
+                                            waiting.length === 0
                                         }
                                         onClick={() =>
                                             runCommand(
@@ -407,11 +458,11 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
 
                             {automatic && (
                                 <div className="stage-control-automatic">
-                                    <strong>Automatic initial presentation</strong>
+                                    <strong>Assisted automatic behavior</strong>
                                     <p>
                                         {control.automatic_paused
                                             ? 'Paused. New scans will remain waiting.'
-                                            : 'Active only when the stage is idle and no graduate is ahead. Completion remains manual.'}
+                                            : 'A new scan presents only while the stage is idle and no graduate is ahead. Completion and advancement require an operator command.'}
                                     </p>
                                     <button
                                         className="secondary-action"
@@ -429,8 +480,8 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                         {pendingAction === 'automatic'
                                             ? 'Updating…'
                                             : control.automatic_paused
-                                              ? 'Resume automatic mode'
-                                              : 'Pause automatic mode'}
+                                              ? 'Resume assisted automatic'
+                                              : 'Pause assisted automatic'}
                                     </button>
                                 </div>
                             )}
@@ -471,21 +522,29 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                             <tbody>
                                                 {waiting.map((item) => (
                                                     <tr key={item.id}>
-                                                        <td>
-                                                            <input
-                                                                aria-label={`Select ${item.student.display_name}`}
-                                                                checked={
-                                                                    selectedId ===
-                                                                    item.id
-                                                                }
-                                                                name="selected_queue_item"
-                                                                onChange={() =>
-                                                                    setSelectedId(
-                                                                        item.id,
-                                                                    )
-                                                                }
-                                                                type="radio"
-                                                            />
+                                                        <td className="stage-control-select-cell">
+                                                            <label className="stage-control-radio-target">
+                                                                <input
+                                                                    checked={
+                                                                        selectedId ===
+                                                                        item.id
+                                                                    }
+                                                                    name="selected_queue_item"
+                                                                    onChange={() =>
+                                                                        setSelectedId(
+                                                                            item.id,
+                                                                        )
+                                                                    }
+                                                                    type="radio"
+                                                                />
+                                                                <span className="sr-only">
+                                                                    Select{' '}
+                                                                    {
+                                                                        item.student
+                                                                            .display_name
+                                                                    }
+                                                                </span>
+                                                            </label>
                                                         </td>
                                                         <td>
                                                             {item.queue_position}
@@ -544,7 +603,6 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                             disabled={
                                                 !selected ||
                                                 stageBusy ||
-                                                isHolding ||
                                                 Boolean(pendingAction)
                                             }
                                             onClick={() =>

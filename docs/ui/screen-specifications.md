@@ -164,7 +164,7 @@ the name remains dominant. Missing media does not reserve blank space.
 - Clearing returns to the approved idle ceremony identity.
 - Optional content disappears cleanly.
 
-## Stage control — Phase 7 implemented
+## Stage control — Phase 12 remediated
 
 | Item | Specification |
 | --- | --- |
@@ -172,9 +172,9 @@ the name remains dominant. Missing media does not reserve blank space.
 | Primary user/device | Stage operator on the stage laptop |
 | Goal | Present and complete the correct graduate without losing queue context |
 | Dominant information | Current graduate and one approved next action |
-| Primary actions | Present next/selected, complete, skip/return, replay, holding/restore, pause/resume automatic |
+| Primary actions | Present next/selected, complete and present next, complete and clear, correct wrong graduate, skip/return, replay, holding/restore, pause/resume assisted automatic |
 | Secondary information | Upcoming queue, ceremony mode, compact connection/approved-audio status, recent actions |
-| Required states | Loading, empty queue, queued, presenting, paused, command pending/failed, disconnected, recovered |
+| Required states | Loading, empty queue, queued, presenting, wrong-current correction, corrected holding, paused, command pending/failed, stale command, disconnected, recovered |
 | Keyboard | Predictable tab order and shortcuts only when documented and non-conflicting |
 | Responsive targets | 1440×900, 1366×768, 1024×768 |
 | Accessibility | Named controls, visible focus, confirmation for risky actions, textual status |
@@ -190,7 +190,9 @@ the name remains dominant. Missing media does not reserve blank space.
 │ Villanueva-Santos                   │ 2  Ma. Lourdes P. Reyes        │
 │ BS Business Administration         │ ...                            │
 │                                     │                                │
-│ [Complete presentation]             │ [Present selected]             │
+│ [Complete and present next]         │ [Present selected]             │
+│ [Complete and clear]                │                                │
+│ [Correct wrong graduate]            │                                │
 ├─────────────────────────────────────┴────────────────────────────────┤
 │ RECENT ACTIONS                                                       │
 └──────────────────────────────────────────────────────────────────────┘
@@ -199,18 +201,21 @@ the name remains dominant. Missing media does not reserve blank space.
 The selected layout uses a dominant current-presentation area beside the
 deterministic queue at wide viewports, followed by compact skipped/recent
 history. At 1024 px the current area stacks above the table so the primary
-action remains visible before secondary queue detail. Automatic mode exposes
-only a clearly labeled persisted pause/resume control; it does not imply
-auto-advance. Pending commands disable every mutation until HTTP reconciliation
+action remains visible before secondary queue detail. Assisted automatic mode
+exposes only a clearly labeled persisted pause/resume control and accurately
+describes idle-stage scan presentation; it does not imply unattended continuous
+advance. Pending commands disable every mutation until HTTP reconciliation
 finishes. Holding and transport warnings stay operator-only.
 
 Acceptance requires safe empty/loading/pending/failure/disconnected/recovered
 states; long names/programs without horizontal page overflow; visible focus and
-textual status; explicit confirmation for completion, skip, out-of-order
-selection, and holding; no token/student-number content; and audio guidance that
-distinguishes approved audio from uploaded, needs-review, rejected, missing, or
-unreadable files. Replay is disabled unless the current graduate has approved
-readable audio.
+textual status; explicit confirmation for completion, correction, skip,
+out-of-order selection, and holding; no token/student-number content; and audio
+guidance that distinguishes approved audio from uploaded, needs-review,
+rejected, missing, or unreadable files. Replay is disabled unless the current
+graduate has approved readable audio. Correction must put the audience into the
+neutral holding state, preserve the wrong graduate's queue position, and leave a
+clear present-next/present-selected recovery path.
 
 ## Administration index — Phase 4 implemented
 
@@ -576,6 +581,27 @@ All Phase 10 browser checks must use compiled production assets and must not
 depend on the Vite development server. Audience-facing `/stage` remains free of
 navigation, operator controls, QR tokens, technical logs, terminals, desktop
 notifications, and server/debug details.
+
+## Operator accounts — Phase 12 implemented
+
+| Item | Specification |
+| --- | --- |
+| Routes | `/admin/users`, `/admin/users/create`, `/admin/users/{user}/edit` |
+| Primary user/device | Administrator on the server/admin laptop |
+| Goal | Prepare and safely maintain named local operator accounts |
+| Dominant information | Account identity, approved role, and active status |
+| Primary actions | Create account; save role/status/profile changes |
+| Required states | Populated, empty, filtered, validation failed, pending, inactive, signed-in self |
+| Responsive targets | 1440×900, 1366×768, 1024×768 |
+| Accessibility | Explicit labels, validation summary, visible focus, 44 px checkbox target, status in text |
+| Prohibited content | Password values, password hashes, secret fields, fake activity metrics, role descriptions presented as marketing cards |
+
+The list uses compact filters and a table-owned horizontal container. The form
+groups identity, role/status, and password without nested cards. Create requires
+a confirmed password of at least 12 characters. Edit leaves the password blank
+unless the administrator intends to replace it. The current administrator sees
+a clear explanation that their own account cannot be demoted or deactivated.
+Errors remain linked to fields and successful writes return to the account list.
 
 ## Future settings — post-Phase 10, confirmation required
 

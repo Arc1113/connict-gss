@@ -1,6 +1,6 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 11 software architecture verified**
+Document status: **Phase 12 software architecture verified**
 
 Last updated: 2026-07-30
 
@@ -28,12 +28,12 @@ The approved architecture has not changed.
 | QR rendering | BaconQrCode 3.1.1 | Local deterministic SVG from the current PostgreSQL token |
 | Packaging | Docker Compose | Reproducible app, Reverb, and PostgreSQL processes |
 | Backup | Docker-aware local scripts and metadata table | PostgreSQL dump, media copy, manifest, checksum, restore verification |
-| Readiness | Phase 11 test and browser rehearsal harnesses | Software release-candidate verification and evidence capture |
+| Readiness | Phase 11–12 test and browser rehearsal harnesses | Release-candidate and real-world operations verification |
 
 No Redis, queue worker, polling loop, separate SPA/API application, SQLite,
 cloud-storage service, cloud speech service, or runtime CDN is used.
 
-Phase 11 did not change the approved architecture. The verified runtime remains
+Phase 12 does not change the approved architecture. The runtime remains
 HTTP for commands and recovery reads, PostgreSQL for authoritative state,
 post-commit Reverb broadcasts, Echo browser delivery, local media, and
 local-network-only deployment.
@@ -130,8 +130,8 @@ service.
 - `StageController` renders `/stage` and returns safe `GET /stage/state` JSON.
 - `CompleteCurrentPresentationController` delegates the clear action.
 - `StageControlController` renders `/stage-control`, returns the authoritative
-  safe queue snapshot, and delegates present, skip/return, replay, holding, and
-  automatic-pause commands.
+  safe queue snapshot, and delegates present, completion, wrong-current
+  correction, skip/return, replay, holding, and automatic-pause commands.
 - `StoreScanRequest` normalizes input, validates length, and produces structured
   authorization/validation failures.
 
@@ -162,6 +162,11 @@ Phase 9 adds `ScanLogController`, `StageEventController`,
 purpose-built safe serializers, stream native CSV, expose local backup metadata,
 and keep destructive restore out of browser routes.
 
+Phase 12 adds `Admin\UserController` and `SaveUserRequest` for
+administrator-only local account management. They return purpose-built account
+fields without password data and delegate writes to a transactional domain
+action.
+
 ### 6.2 Domain actions
 
 `ScanStudentForPresentation` owns queue insertion, optional automatic initial
@@ -175,6 +180,16 @@ clear dispatch.
 `SetAutomaticPresentationPaused` each own one locked transition and its
 post-commit events. `StageQueueTransitions` centralizes legal status changes.
 
+`CompleteAndPresentNext` atomically completes the current queue item and either
+presents the earliest waiting item or clears an empty queue. It requires the
+browser's expected stage-state version so concurrent operators cannot advance
+twice.
+
+`ReturnCurrentPresentationToQueue` is the correction boundary for a wrongly
+presented graduate. It preserves that item's queue position, returns it to
+waiting, clears the current pointer into neutral holding, records the action,
+and broadcasts only after commit.
+
 Both catch transport exceptions only after commit, log identifiers and exception
 class without credentials/payloads, and return a delivery flag to the authorized
 operator command response.
@@ -184,6 +199,11 @@ transition checks, presenting-state protection, audit insertion, and safe
 deletion. `StudentAdministration` owns graduate CRUD, media replacement/removal
 coordination, audio readiness/approval/rejection, safe audit diffs, and
 history-aware deletion.
+
+`UserAdministration` owns serialized account creation and updates, safe audit
+values, self-demotion/deactivation prevention, and last-active-administrator
+protection. Password hashes remain model state only and never enter audit or
+Inertia payloads.
 
 `InspectStudentImport` parses one uploaded file and creates an expiring,
 owner-bound import row. `ConfirmStudentImport` owns the locked, create-only
@@ -399,6 +419,28 @@ If the stage is idle, nothing is written or broadcast. If persisted state is
 internally inconsistent, Phase 3 returns `state_conflict` for operator review
 instead of silently rewriting history.
 
+Phase 12 adds an adjacent operator-confirmed transaction:
+
+```text
+POST /stage/complete-and-present-next + expected_version
+    │
+    └─ transaction
+         ├─ lock active ceremony, stage state, current, earliest waiting
+         ├─ reject stale expected_version
+         ├─ complete current
+         ├─ next exists: mark it presenting and point stage state to it
+         ├─ no next: clear stage state
+         ├─ version + 1 and insert committed stage event records
+         └─ COMMIT
+              ├─ next exists: StudentPresented + QueueUpdated
+              └─ no next: StagePresentationCleared + QueueUpdated
+```
+
+There is no intermediate audience-clear event when a next graduate exists.
+`POST /stage/return-current` uses the same expected-version guard to return a
+wrongly presented current item to waiting, clear the pointer, and activate the
+neutral holding presentation without completing it.
+
 ## 10. Real-time channel and authorization
 
 Laravel registers:
@@ -501,6 +543,18 @@ and unique indexes remain authoritative. Current presentation and primary
 action dominate the layout, the deterministic waiting table is secondary, and
 skipped/recent history is tertiary.
 
+Phase 12 keeps that hierarchy and changes the primary action according to
+authoritative state. With a current graduate and a waiting row, **Complete and
+present next** is dominant. **Complete and clear** remains a deliberate
+secondary action. **Correct wrong graduate** is a destructive-looking but
+history-preserving recovery action with explicit confirmation. When there is no
+current graduate, present-next/present-selected remains available even if the
+audience is in neutral holding after a correction.
+
+The legacy database value `automatic` is rendered as **Assisted automatic**.
+This makes the actual scan-to-idle-stage behavior clear without changing stored
+data, event contracts, or queue rules.
+
 ### 12.5 Phase 4 administration
 
 All administration pages are Inertia views in the same application:
@@ -518,6 +572,11 @@ All administration pages are Inertia views in the same application:
 
 The administration UI has no stage commands, queue controls, fake analytics, or
 runtime WebSocket dependency.
+
+Phase 12 adds an administrator-only account list and create/edit form using the
+same layout, validation summary, pending lock, bounded filters, and responsive
+table pattern. Role-aware navigation chooses an authorized administrative home;
+technical operators are not linked to the data-preparation readiness route.
 
 ### 12.6 Phase 5 import workspace
 
@@ -835,7 +894,7 @@ Phase 10 adds the deployment layer around the existing architecture:
 The deployment layer does not change scan validation, queue transactions,
 post-commit broadcasts, Echo recovery, audio rules, backups, or reporting.
 
-Still deferred after Phase 10:
+Still deferred after Phase 12:
 
 - CSV update/synchronization/export;
 - device authentication/registration;
@@ -870,5 +929,24 @@ Still deferred after Phase 10:
 | Lost/replaced paper cards | Immediate server-side invalidation and redacted replacement audit | Institutional custody/reprint/destruction procedure |
 | Staff card identity | Student number appears only on protected staff print cards | Final privacy approval for printed matching fields |
 
-The implementation may not advance to Phase 11 until Phase 10 is reviewed and
-approved.
+## 19. Phase 12 operations architecture
+
+Phase 12 adds no service, datastore, polling loop, UI library, external asset, or
+runtime network dependency. It extends existing HTTP and transaction boundaries:
+
+- stage-control sends `expected_version` with the two new recovery/advancement
+  commands;
+- PostgreSQL locks decide the only successful concurrent transition;
+- stage and queue events are persisted before post-commit Reverb dispatch;
+- Echo remains advisory and every browser can recover from HTTP;
+- user administration uses existing session authentication, Laravel gates,
+  Inertia forms, password hashing, and audit storage; and
+- the `automatic` enum value remains compatible while its operator label becomes
+  **Assisted automatic**.
+
+Unattended timer-driven advancement and audio-ended advancement are deliberately
+not introduced. Human confirmation remains the safety boundary between names.
+The physical event status remains conditional until the actual scanner,
+display, audio system, network, and devices complete the venue rehearsal.
+
+Phase 12 must be reviewed and approved before any subsequent feature phase.

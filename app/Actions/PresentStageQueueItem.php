@@ -94,7 +94,10 @@ final readonly class PresentStageQueueItem
 
             if (
                 $stageState->current_queue_item_id !== null
-                || $stageState->display_mode !== StageDisplayMode::Idle
+                || ! in_array($stageState->display_mode, [
+                    StageDisplayMode::Idle,
+                    StageDisplayMode::Holding,
+                ], true)
             ) {
                 return $this->failure(
                     'stage_busy',
