@@ -1,6 +1,6 @@
 # Graduation Stage System
 
-Status: **Phase 7 — Persistent Queue and Stage Control implemented**
+Status: **Phase 8 — Announcement Audio Reliability implemented**
 
 The Graduation Stage System is a local-network-only application for reliable,
 QR-driven graduation presentation. Phase 3 established the complete operational
@@ -37,6 +37,12 @@ mode presents only the first eligible scan when the stage is idle and the queue
 has no earlier graduate. Every command remains HTTP-first, transactionally
 persisted, broadcast after commit, and recoverable through HTTP.
 
+Phase 8 adds an explicit announcement-audio readiness workflow. Local audio can
+be uploaded, reviewed, approved, rejected, replaced, and removed without changing
+the queue or scan architecture. The stage plays or replays only approved,
+readable same-origin audio; every other state uses the documented live-announcer
+fallback while keeping the audience screen clean.
+
 ## Approved architecture
 
 - Laravel 13 backend
@@ -55,6 +61,47 @@ persisted, broadcast after commit, and recoverable through HTTP.
 
 There is no SQLite fallback, polling replacement, cloud runtime service, hosted
 font, CDN, browser speech synthesis, or internet runtime dependency.
+
+## Phase 8 audio readiness and playback behavior
+
+Supported upload formats are MP3, WAV, and OGG, up to 15 MB per graduate. The
+server validates local file type and generated storage names; no audio binary,
+raw waveform, cloud identifier, or original path is stored in PostgreSQL.
+
+Readiness states are:
+
+- `missing`: no usable announcement audio exists.
+- `uploaded`: a file was uploaded and awaits review.
+- `needs_review`: an operator/reviewer flagged the file for pronunciation,
+  content, volume, or quality review.
+- `approved`: an administrator approved the readable local file for stage
+  playback.
+- `rejected`: the current file must not be used and requires replacement.
+
+Data encoders can upload/replace audio, preview it, and mark it needs review.
+Administrators can approve or reject audio. Stage operators cannot modify files
+or review history; they only see whether the current graduate requires a live
+announcer or has approved audio for replay.
+
+Replacement invalidates prior approval. Failed replacements preserve the former
+file and metadata. Removal resets readiness to `missing`. Approval records the
+approver, timestamp, and safe notes; rejection preserves the file for authorized
+review and blocks playback. Audit records store safe status changes and notes,
+not media paths or audio content.
+
+The stage playback rule is:
+
+```text
+approved and readable audio -> preload and play/replay
+uploaded, needs_review, rejected, missing, or unreadable -> no automatic playback
+```
+
+The audience screen never shows audio technical status. The stage-control screen
+shows safe fallback guidance, normally **Live announcer required**. The human
+announcer reads the approved announcement name when no approved audio is
+available. Duration and loudness are manual review items: prepare clips around
+2-10 seconds, near -16 LUFS integrated loudness, and true peak at or below about
+-1 dBFS, then verify on the venue sound system.
 
 ## Phase 7 queue and presentation behavior
 
@@ -186,7 +233,8 @@ font, CDN, browser speech synthesis, or internet runtime dependency.
 - Completion is explicit in both modes and never auto-advances.
 - Skip and return preserve the same queue item and its complete history. A
   returned graduate joins the tail rather than reclaiming an old position.
-- Replay is available only when the current graduate has approved local audio.
+- Replay is available only when the current graduate has approved readable local
+  audio.
   It versions and records the request without changing queue status.
 - Holding mode preserves the current pointer and shows only neutral ceremony
   identity to the audience. Restoring returns to the persisted graduate or idle

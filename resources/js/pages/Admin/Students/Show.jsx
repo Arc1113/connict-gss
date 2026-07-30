@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import AdminLayout from '../../../components/Admin/AdminLayout';
 import AudioPreview from '../../../components/Admin/AudioPreview';
 import { ValidationSummary } from '../../../components/Admin/FormSupport';
@@ -16,8 +16,23 @@ function formatDateTime(value) {
     }).format(new Date(value));
 }
 
+function formatFileSize(value) {
+    if (!value) {
+        return 'Not recorded';
+    }
+
+    if (value < 1024 * 1024) {
+        return `${Math.round(value / 1024)} KB`;
+    }
+
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function StudentShow({ student }) {
     const { auth, errors } = usePage().props;
+    const audioReview = useForm({
+        audio_review_notes: student.media.audio_review_notes ?? '',
+    });
 
     function deleteStudent() {
         if (
@@ -29,6 +44,16 @@ export default function StudentShow({ student }) {
                 preserveScroll: true,
             });
         }
+    }
+
+    function submitAudioReview(action, confirmation = null) {
+        if (confirmation && !window.confirm(confirmation)) {
+            return;
+        }
+
+        audioReview.post(`/admin/students/${student.id}/audio/${action}`, {
+            preserveScroll: true,
+        });
     }
 
     return (
@@ -145,13 +170,162 @@ export default function StudentShow({ student }) {
                     </section>
                     <section>
                         <h3>Announcement audio</h3>
+                        <StatusText
+                            label={student.media.audio_status.label}
+                            value={student.media.audio_status.value}
+                        />
                         <AudioPreview
                             label={`Announcement audio for ${student.display_name}`}
                             src={student.media.audio_url}
                         />
+                        <dl className="admin-media-meta">
+                            <div>
+                                <dt>Stage policy</dt>
+                                <dd>{student.media.audio_stage_label}</dd>
+                            </div>
+                            <div>
+                                <dt>File label</dt>
+                                <dd>{student.media.audio_filename || 'Not uploaded'}</dd>
+                            </div>
+                            <div>
+                                <dt>Format</dt>
+                                <dd>{student.media.audio_mime_type || 'Not recorded'}</dd>
+                            </div>
+                            <div>
+                                <dt>Size</dt>
+                                <dd>{formatFileSize(student.media.audio_file_size)}</dd>
+                            </div>
+                            <div>
+                                <dt>Uploaded</dt>
+                                <dd>{formatDateTime(student.media.audio_uploaded_at)}</dd>
+                            </div>
+                            <div>
+                                <dt>Approved</dt>
+                                <dd>{formatDateTime(student.media.audio_approved_at)}</dd>
+                            </div>
+                            <div>
+                                <dt>Approved by</dt>
+                                <dd>{student.media.audio_approved_by || 'Not recorded'}</dd>
+                            </div>
+                        </dl>
                     </section>
                 </aside>
             </div>
+
+            <section className="admin-detail-section admin-audio-review">
+                <div className="admin-section-heading">
+                    <div>
+                        <h2>Announcement review</h2>
+                        <p>
+                            Confirm that the spoken clip matches the approved
+                            announcement name and pronunciation guide.
+                        </p>
+                    </div>
+                    <StatusText
+                        label={student.media.audio_status.label}
+                        value={student.media.audio_status.value}
+                    />
+                </div>
+                <dl className="admin-detail-list">
+                    <div>
+                        <dt>Announcement name</dt>
+                        <dd>{student.announcement_name}</dd>
+                    </div>
+                    <div>
+                        <dt>Pronunciation guide</dt>
+                        <dd>{student.pronunciation_guide || 'Not set'}</dd>
+                    </div>
+                    <div>
+                        <dt>Review notes</dt>
+                        <dd>{student.media.audio_review_notes || 'None recorded'}</dd>
+                    </div>
+                </dl>
+
+                {(auth.abilities.manage_students || auth.abilities.approve_audio) && (
+                    <div className="admin-audio-review-form">
+                        <label htmlFor="audio_review_notes">
+                            Reviewer notes
+                        </label>
+                        <textarea
+                            aria-invalid={Boolean(errors.audio_review_notes)}
+                            id="audio_review_notes"
+                            maxLength="1000"
+                            onChange={(event) =>
+                                audioReview.setData(
+                                    'audio_review_notes',
+                                    event.target.value,
+                                )
+                            }
+                            rows="3"
+                            value={audioReview.data.audio_review_notes}
+                        />
+                        {errors.audio_review_notes && (
+                            <p
+                                className="admin-field-error"
+                                id="audio_review_notes-error"
+                                role="alert"
+                            >
+                                {errors.audio_review_notes}
+                            </p>
+                        )}
+                        <div className="admin-form-actions">
+                            {auth.abilities.manage_students && (
+                                <button
+                                    className="admin-button admin-button-secondary"
+                                    disabled={
+                                        audioReview.processing ||
+                                        !student.media.audio_url
+                                    }
+                                    onClick={() =>
+                                        submitAudioReview('needs-review')
+                                    }
+                                    type="button"
+                                >
+                                    Mark needs review
+                                </button>
+                            )}
+                            {auth.abilities.approve_audio && (
+                                <>
+                                    <button
+                                        className="admin-button admin-button-primary"
+                                        disabled={
+                                            audioReview.processing ||
+                                            !student.media.audio_url ||
+                                            student.media.audio_status.value ===
+                                                'rejected'
+                                        }
+                                        onClick={() =>
+                                            submitAudioReview(
+                                                'approve',
+                                                `Approve announcement audio for ${student.display_name}?`,
+                                            )
+                                        }
+                                        type="button"
+                                    >
+                                        Approve audio
+                                    </button>
+                                    <button
+                                        className="admin-button admin-button-danger"
+                                        disabled={
+                                            audioReview.processing ||
+                                            !student.media.audio_url
+                                        }
+                                        onClick={() =>
+                                            submitAudioReview(
+                                                'reject',
+                                                `Reject announcement audio for ${student.display_name}? A replacement will be required for stage playback.`,
+                                            )
+                                        }
+                                        type="button"
+                                    >
+                                        Reject audio
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </section>
 
             <section className="admin-detail-section">
                 <h2>Academic presentation</h2>

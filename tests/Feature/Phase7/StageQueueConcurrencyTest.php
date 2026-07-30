@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Phase7;
 
+use App\Enums\AudioReadinessStatus;
 use App\Enums\CeremonyStatus;
 use App\Enums\EligibilityStatus;
 use App\Enums\PresentationMode;
@@ -190,6 +191,9 @@ class StageQueueConcurrencyTest extends TestCase
             'ceremony_id' => $ceremony->id,
             'student_id' => $this->student($ceremony, 'REPLAY-RACE', [
                 'audio_path' => 'media/phase3/audio/student-01.wav',
+                'audio_readiness_status' => AudioReadinessStatus::Approved,
+                'audio_approved_at' => now(),
+                'audio_approved_by' => $operator->id,
             ])->id,
             'status' => StageQueueStatus::Presenting,
             'queue_position' => 1,

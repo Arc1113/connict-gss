@@ -122,10 +122,14 @@ export default function StudentIndex({
                     <label htmlFor="media">Media readiness</label>
                     <select defaultValue={filters.media} id="media" name="media">
                         <option value="">All media states</option>
-                        <option value="ready">Photo and audio ready</option>
+                        <option value="ready">Photo ready and audio approved</option>
                         <option value="missing_any">Any media missing</option>
                         <option value="missing_photo">Photo missing</option>
                         <option value="missing_audio">Audio missing</option>
+                        <option value="audio_uploaded">Audio uploaded</option>
+                        <option value="audio_needs_review">Audio needs review</option>
+                        <option value="audio_approved">Audio approved</option>
+                        <option value="audio_rejected">Audio rejected</option>
                     </select>
                 </div>
                 <div>

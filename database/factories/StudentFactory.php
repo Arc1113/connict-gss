@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\AudioReadinessStatus;
 use App\Enums\EligibilityStatus;
 use App\Models\Ceremony;
 use App\Models\Student;
@@ -44,7 +45,29 @@ class StudentFactory extends Factory
             'sequence_number' => fake()->unique()->numberBetween(1, 100000),
             'photo_path' => null,
             'audio_path' => null,
+            'audio_readiness_status' => AudioReadinessStatus::Missing,
+            'audio_uploaded_at' => null,
+            'audio_approved_at' => null,
+            'audio_approved_by' => null,
+            'audio_review_notes' => null,
+            'audio_duration_seconds' => null,
+            'audio_mime_type' => null,
+            'audio_file_size' => null,
             'eligibility_status' => EligibilityStatus::Pending,
         ];
+    }
+
+    public function approvedAudio(string $path = 'media/phase3/audio/student-01.wav'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'audio_path' => $path,
+            'audio_readiness_status' => AudioReadinessStatus::Approved,
+            'audio_uploaded_at' => now(),
+            'audio_approved_at' => now(),
+            'audio_mime_type' => str_ends_with($path, '.wav')
+                ? 'audio/wav'
+                : 'audio/mpeg',
+            'audio_file_size' => 1024,
+        ]);
     }
 }

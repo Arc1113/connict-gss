@@ -1,7 +1,7 @@
 # Screen Specifications
 
-Status: Phase 5 screens implemented
-Updated: 2026-07-29
+Status: Phase 8 screens implemented
+Updated: 2026-07-30
 
 `/scanner`, `/stage`, Phase 4 administration, and the Phase 5 CSV import
 workspace are implemented. Later specifications preserve future intent and are
@@ -173,7 +173,7 @@ the name remains dominant. Missing media does not reserve blank space.
 | Goal | Present and complete the correct graduate without losing queue context |
 | Dominant information | Current graduate and one approved next action |
 | Primary actions | Present next/selected, complete, skip/return, replay, holding/restore, pause/resume automatic |
-| Secondary information | Upcoming queue, ceremony mode, compact connection/audio status, recent actions |
+| Secondary information | Upcoming queue, ceremony mode, compact connection/approved-audio status, recent actions |
 | Required states | Loading, empty queue, queued, presenting, paused, command pending/failed, disconnected, recovered |
 | Keyboard | Predictable tab order and shortcuts only when documented and non-conflicting |
 | Responsive targets | 1440×900, 1366×768, 1024×768 |
@@ -207,7 +207,10 @@ finishes. Holding and transport warnings stay operator-only.
 Acceptance requires safe empty/loading/pending/failure/disconnected/recovered
 states; long names/programs without horizontal page overflow; visible focus and
 textual status; explicit confirmation for completion, skip, out-of-order
-selection, and holding; and no token/student-number content.
+selection, and holding; no token/student-number content; and audio guidance that
+distinguishes approved audio from uploaded, needs-review, rejected, missing, or
+unreadable files. Replay is disabled unless the current graduate has approved
+readable audio.
 
 ## Administration index — Phase 4 implemented
 
@@ -293,11 +296,35 @@ The form uses explicit sections:
    announcement, and pronunciation fields;
 3. academic/eligibility: college, program, major, honors, eligibility;
 4. local media: JPEG/PNG/WebP photo and MP3/WAV/OGG audio with current preview,
-   replacement, missing state, and explicit removal.
+   replacement, missing state, readiness status, and explicit removal.
 
 Administrators and data encoders may create/edit and manage media. Only
 administrators may delete, and history blocks deletion. Current QR values never
 appear in page props; edit offers an optional hidden replacement field.
+
+### Phase 8 audio review addition
+
+Graduate detail is the focused pronunciation-review surface. It shows:
+
+- stage display name, approved announcement name, and pronunciation guide;
+- native local preview control;
+- readiness status;
+- safe filename label, MIME type, file size, uploaded time, approval time, and
+  approver when available;
+- current review notes;
+- data-encoder/admin `Mark needs review`;
+- administrator-only `Approve audio` and `Reject audio`.
+
+The review panel must stay inside the existing administration shell, use native
+textarea/buttons, and avoid waveform previews, analytics, decorative audio
+visualizers, or cloud/AI speech controls. Rejection requires a short note.
+Approval requires a readable local file and never happens automatically from
+upload success.
+
+The graduate list media filter includes audio uploaded, needs review, approved,
+rejected, and missing. The admin dashboard includes a focused readiness summary:
+total, approved, uploaded, needs review, missing, and rejected. It is not an
+analytics dashboard.
 
 ## Administrative audit history — Phase 4 implemented
 

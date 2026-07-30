@@ -213,6 +213,7 @@ try {
 
     await login(stage.client, 'stage@example.test');
     await login(scanner.client, 'scanner@example.test');
+    approveSeedAudioFixtures();
 
     await stage.client.setNetworkLatency(2_000);
     await stage.client.navigate(`${applicationUrl}/stage`);
@@ -620,6 +621,34 @@ async function launchBrowser(name, port, width, height) {
     await client.setViewport(width, height);
 
     return { client, process: browserProcess };
+}
+
+function approveSeedAudioFixtures() {
+    const code = [
+        '$admin = App\\Models\\User::query()->where("email", "admin@example.test")->sole();',
+        'App\\Models\\Student::query()->whereNotNull("audio_path")->where("audio_path", "like", "media/phase3/audio/%")->update([',
+        '"audio_readiness_status" => "approved",',
+        '"audio_approved_at" => now(),',
+        '"audio_approved_by" => $admin->id,',
+        '"audio_review_notes" => "Approved only for automated browser playback regression.",',
+        '"audio_mime_type" => "audio/wav",',
+        ']);',
+    ].join(' ');
+
+    execFileSync('docker', [
+        'compose',
+        'exec',
+        '-T',
+        'app',
+        'php',
+        'artisan',
+        'tinker',
+        '--execute',
+        code,
+    ], {
+        cwd: repositoryPath,
+        stdio: 'ignore',
+    });
 }
 
 async function login(client, email) {

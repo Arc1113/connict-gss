@@ -10,6 +10,10 @@ use App\Models\StageState;
 
 final class StageStatePayload
 {
+    public function __construct(
+        private readonly AnnouncementAudio $announcementAudio,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -67,6 +71,7 @@ final class StageStatePayload
                     ? 'holding'
                     : ($presentation === null ? 'idle' : 'graduate'),
                 'presentation' => $presentation,
+                'preload_audio_url' => $this->nextApprovedAudioUrl($ceremony),
             ],
         ];
     }
@@ -86,6 +91,7 @@ final class StageStatePayload
                 'version' => $version,
                 'mode' => 'idle',
                 'presentation' => null,
+                'preload_audio_url' => $this->nextApprovedAudioUrl($ceremony),
             ],
         ];
     }
@@ -111,7 +117,7 @@ final class StageStatePayload
             'major' => $student->major,
             'honors' => $student->honors,
             'photo_url' => $this->localMediaUrl($student->photo_path),
-            'audio_url' => $this->localMediaUrl($student->audio_path),
+            'audio_url' => $this->announcementAudio->approvedUrl($student),
             'presented_at' => $queueItem->presented_at?->toIso8601String(),
         ];
     }
@@ -129,5 +135,21 @@ final class StageStatePayload
         }
 
         return '/'.$path;
+    }
+
+    private function nextApprovedAudioUrl(Ceremony $ceremony): ?string
+    {
+        $next = StageQueueItem::query()
+            ->with('student')
+            ->whereBelongsTo($ceremony)
+            ->whereIn('status', ['waiting', 'ready'])
+            ->orderBy('queue_position')
+            ->orderBy('scanned_at')
+            ->orderBy('id')
+            ->first();
+
+        return $next === null
+            ? null
+            : $this->announcementAudio->approvedUrl($next->student);
     }
 }

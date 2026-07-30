@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AudioReadinessStatus;
 use App\Enums\CeremonyStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Ceremony;
@@ -42,7 +43,21 @@ class AdminDashboardController extends Controller
                 'eligible' => (clone $students)->where('eligibility_status', 'eligible')->count(),
                 'needs_review' => (clone $students)->where('eligibility_status', 'pending')->count(),
                 'missing_photo' => (clone $students)->whereNull('photo_path')->count(),
-                'missing_audio' => (clone $students)->whereNull('audio_path')->count(),
+                'audio_missing' => (clone $students)
+                    ->where('audio_readiness_status', AudioReadinessStatus::Missing)
+                    ->count(),
+                'audio_uploaded' => (clone $students)
+                    ->where('audio_readiness_status', AudioReadinessStatus::Uploaded)
+                    ->count(),
+                'audio_needs_review' => (clone $students)
+                    ->where('audio_readiness_status', AudioReadinessStatus::NeedsReview)
+                    ->count(),
+                'audio_approved' => (clone $students)
+                    ->where('audio_readiness_status', AudioReadinessStatus::Approved)
+                    ->count(),
+                'audio_rejected' => (clone $students)
+                    ->where('audio_readiness_status', AudioReadinessStatus::Rejected)
+                    ->count(),
             ];
         }
 

@@ -251,13 +251,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                     </p>
                     <p>
                         <strong>Announcement</strong>
-                        <span>
-                            {current?.student.has_audio
-                                ? 'Local audio ready'
-                                : current
-                                  ? 'No approved audio'
-                                  : 'No current graduate'}
-                        </span>
+                        <span>{current?.student.audio_status?.stage_label ?? 'No current graduate'}</span>
                     </p>
                 </section>
 
@@ -511,9 +505,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                                             </span>
                                                         </th>
                                                         <td>
-                                                            {item.student.has_audio
-                                                                ? 'Ready'
-                                                                : 'Missing'}
+                                                            {item.student.audio_status?.label ?? 'Missing'}
                                                         </td>
                                                         <td>
                                                             <button

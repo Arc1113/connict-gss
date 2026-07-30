@@ -1,6 +1,6 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 7 persistent queue and stage-control architecture implemented**
+Document status: **Phase 8 announcement audio reliability architecture implemented**
 
 Last updated: 2026-07-30
 
@@ -24,7 +24,7 @@ The approved architecture has not changed.
 | WebSocket server | Laravel Reverb 1.11 | Local committed-event transport |
 | Browser client | Laravel Echo 2.4 + `pusher-js` 8.6 | Private subscription and reconnect signals |
 | Scanner | USB 2D keyboard wedge | Types opaque QR token into `/scanner` |
-| Media | Local public paths | Tone fixtures and managed Phase 4 graduate uploads |
+| Media | Local public paths | Test fixtures and managed graduate photos/audio with readiness approval |
 | QR rendering | BaconQrCode 3.1.1 | Local deterministic SVG from the current PostgreSQL token |
 | Packaging | Docker Compose | Reproducible app, Reverb, and PostgreSQL processes |
 
@@ -169,7 +169,8 @@ operator command response.
 `CeremonyAdministration` owns ceremony lifecycle writes, activation locking,
 transition checks, presenting-state protection, audit insertion, and safe
 deletion. `StudentAdministration` owns graduate CRUD, media replacement/removal
-coordination, safe audit diffs, and history-aware deletion.
+coordination, audio readiness/approval/rejection, safe audit diffs, and
+history-aware deletion.
 
 `InspectStudentImport` parses one uploaded file and creates an expiring,
 owner-bound import row. `ConfirmStudentImport` owns the locked, create-only
@@ -194,6 +195,9 @@ transaction.
 - `ScanAttemptResult` centralizes the public scan response.
 - `StudentMediaStorage` is the only writer/deleter for managed Phase 4 media.
   It recognizes only `storage/graduates/...` paths for cleanup.
+- `AnnouncementAudio` centralizes local audio readiness, approved preview URLs,
+  safe filenames, and readability checks for managed graduate audio and explicit
+  development fixtures.
 - `AdministrativeAuditLogger` inserts actor/entity/action/IP and caller-provided
   safe values without accepting a serialized model.
 - `StudentCsvParser` uses native `fgetcsv` for bounded UTF-8/BOM, delimiter,
@@ -551,6 +555,33 @@ scanner without placing even a failed raw token in application logs.
 
 ## 13. Audio architecture
 
+Phase 8 separates file existence from production readiness. Graduate audio
+readiness is stored on `students` as `missing`, `uploaded`, `needs_review`,
+`approved`, or `rejected`, with approval timestamp/user, safe review notes,
+upload time, MIME type, file size, and optional duration metadata. PostgreSQL
+remains authoritative; no audio binary, waveform, cloud identifier, raw QR value,
+or server path is stored in audit payloads.
+
+The graduate media write path remains compensating:
+
+```text
+validate local file -> store generated path -> DB transaction + audit
+    ├─ rollback: delete new file and keep old approved metadata
+    └─ commit: delete old managed file and reset approval to uploaded
+```
+
+Approval and rejection are separate administrator actions. Data encoders can
+upload/replace, preview, and mark needs review, but cannot approve by default.
+Rejection preserves the file for authorized review and blocks automatic stage
+playback until replacement.
+
+The production playback rule is approved-only:
+
+```text
+approved + readable same-origin local audio -> stage payload audio_url
+all other statuses or unreadable file -> null audio_url
+```
+
 The stage keeps at most one browser `Audio` object:
 
 - a new presentation pauses, rewinds, and releases the prior object;
@@ -559,27 +590,22 @@ The stage keeps at most one browser `Audio` object:
 - a null audio URL produces visual-only presentation; and
 - a rejected `play()` promise is not exposed on the audience screen.
 
-Four short PCM WAV tones are versioned under
-`public/media/phase3/audio`. They validate delivery/playback plumbing only. One
-sample intentionally has no path.
+Replay is an authorized HTTP command that locks the current state, verifies the
+current graduate still has approved readable audio, records a versioned
+`announcement_replayed` event, broadcasts after commit, and never changes queue
+status. Completion and holding keep using the existing stage mode transitions to
+stop audience playback.
 
-Phase 4 stores validated JPEG/PNG/WebP and MP3/WAV/OGG uploads on Laravel's local
-`public` disk under generated `graduates/photos` and `graduates/audio` names.
-Database paths remain relative, so `StageStatePayload` continues to generate
-same-origin URLs. Replacement is compensating rather than pretending file
-storage is transactional:
+Stage HTTP recovery includes a safe `preload_audio_url` for the next waiting
+approved clip when known. The browser preloads current and this single next
+same-origin URL only; it does not load the full ceremony library.
 
-```text
-validate → store new file → DB transaction + audit
-    ├─ rollback: delete new file, retain old path/file
-    └─ commit: delete old managed file
-```
+Four short PCM WAV tones remain versioned under `public/media/phase3/audio`.
+They validate delivery/playback plumbing only and seed as review-required test
+fixtures. Browser regression scripts may explicitly approve them in development.
 
-The documentation gives provisional clip-duration and loudness preparation
-targets, but the application does not normalize or automatically approve audio.
-Phase 7 adds an explicit replay command for the current approved local clip.
-Pronunciation recording, server-side normalization, preloading, mute controls,
-final institutional loudness standards, and approval workflow remain deferred.
+Duration and loudness are manual review items. No media-inspection package,
+system binary, waveform library, cloud TTS, or normalization tool was added.
 
 ## 14. Failure and recovery
 
@@ -741,6 +767,12 @@ holding, missing audio, refresh and Reverb recovery, role denial, long content,
 focus, reduced motion, audience safety, overflow, and every approved Phase 7
 viewport. PNG evidence is local and ignored by Git.
 
+Phase 8 adds PostgreSQL-backed tests for announcement audio upload metadata,
+role boundaries, needs-review/approval/rejection transitions, replacement
+invalidation, failed replacement compensation, safe audit payloads, approved-only
+stage payloads, replay rejection for unapproved audio, and next-audio preload
+state.
+
 ## 17. Phase boundary and future architecture
 
 Phase 7 implements the durable waiting queue, controlled presentation,
@@ -748,12 +780,13 @@ automatic initial presentation with persisted pause, selected presentation,
 completion, skip/return, replay, holding, and HTTP/WebSocket reconciliation
 without bypassing the transaction, version, event, or recovery principles.
 
-Still deferred after Phase 7:
+Still deferred after Phase 8:
 
 - CSV update/synchronization/export;
 - device authentication/registration;
 - arbitrary reorder, bulk queue mutation, and mode switching during a ceremony;
-- recording, media normalization, and production approval workflow;
+- browser recording, automatic normalization, and advanced media-production
+  tooling;
 - operational logs/reports and exports;
 - backup/restore and standby;
 - reverse proxy/TLS, production process supervision, firewall policy, kiosk

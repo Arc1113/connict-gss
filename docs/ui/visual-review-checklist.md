@@ -111,6 +111,20 @@ required viewports.
 - [ ] Stacked 1024 px layout preserves hierarchy and table-owned overflow
 - [ ] Audience stage remains free of queue, controls, and technical status
 
+## Phase 8 audio states
+
+- [ ] Graduate detail shows uploaded audio awaiting review.
+- [ ] Graduate detail shows approved audio with timestamp/reviewer.
+- [ ] Graduate detail shows rejected audio and notes without exposing storage
+      paths.
+- [ ] Replacement guidance states that approval is cleared.
+- [ ] Stage control distinguishes approved audio from live-announcer fallback.
+- [ ] Replay disabled state is visible and not color-only.
+- [ ] Audience stage remains unchanged for missing, rejected, or unapproved
+      audio.
+- [ ] Audio review controls and native preview remain keyboard reachable.
+- [ ] Long announcement names and review notes wrap without horizontal overflow.
+
 ## Anti–AI-slop final pass
 
 - [ ] No equal card grid drives hierarchy.

@@ -3,6 +3,37 @@
 UI changes are recorded by project phase. Functional backend changes belong in
 the main project documentation.
 
+## Phase 8 — Announcement Audio Reliability
+
+Status: completed
+Date: 2026-07-30
+
+Completed:
+
+- Added audio-readiness status to graduate administration: uploaded, needs
+  review, approved, rejected, and missing.
+- Added graduate-detail pronunciation review with local preview, safe metadata,
+  review notes, role-aware needs-review/approve/reject controls, and no storage
+  path exposure.
+- Updated graduate list filters and the admin readiness summary to distinguish
+  approved audio from merely uploaded audio.
+- Updated stage-control copy so replay is available only for approved readable
+  audio and all other states give live-announcer fallback guidance.
+- Updated audience stage preloading while keeping audio technical state,
+  warnings, controls, and logs off `/stage`.
+
+Verification:
+
+- Phase 8 browser evidence is indexed under `docs/evidence/phase-8/`.
+- Screenshots remain ignored by Git under `/docs/evidence/**/*.png`.
+
+Known limitations:
+
+- Duration, LUFS, true peak, noise, clipping, and venue loudness certification
+  remain manual checks.
+- OGG playback must be checked on the final approved stage browser.
+- Physical venue audio and three-laptop rehearsal remain later readiness work.
+
 ## Phase 7 — Persistent Queue and Stage Control
 
 Status: completed

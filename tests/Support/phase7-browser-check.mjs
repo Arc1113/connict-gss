@@ -165,6 +165,7 @@ try {
         login(control.client, 'stage@example.test'),
         login(stage.client, 'stage@example.test'),
     ]);
+    approveSeedAudioFixtures();
     await Promise.all([
         scanner.client.navigate(`${applicationUrl}/scanner`),
         control.client.navigate(`${applicationUrl}/stage-control`),
@@ -359,7 +360,7 @@ try {
         const button = [...document.querySelectorAll('button')]
             .find((candidate) => candidate.textContent.trim() === 'Replay announcement');
         return button?.disabled === true &&
-            document.body.innerText.includes('No approved audio');
+            document.body.innerText.includes('Live announcer required');
     })()`);
 
     if (!replayDisabled) {
@@ -524,6 +525,34 @@ async function launchBrowser(name, port, width, height) {
     await client.setViewport(width, height);
 
     return { client, process: browserProcess };
+}
+
+function approveSeedAudioFixtures() {
+    const code = [
+        '$admin = App\\Models\\User::query()->where("email", "admin@example.test")->sole();',
+        'App\\Models\\Student::query()->whereNotNull("audio_path")->where("audio_path", "like", "media/phase3/audio/%")->update([',
+        '"audio_readiness_status" => "approved",',
+        '"audio_approved_at" => now(),',
+        '"audio_approved_by" => $admin->id,',
+        '"audio_review_notes" => "Approved only for automated browser playback regression.",',
+        '"audio_mime_type" => "audio/wav",',
+        ']);',
+    ].join(' ');
+
+    execFileSync('docker', [
+        'compose',
+        'exec',
+        '-T',
+        'app',
+        'php',
+        'artisan',
+        'tinker',
+        '--execute',
+        code,
+    ], {
+        cwd: repositoryPath,
+        stdio: 'ignore',
+    });
 }
 
 function prepareAutomaticModeFixtures() {

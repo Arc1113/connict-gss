@@ -14,6 +14,7 @@ export default function Stage({ ceremony }) {
     const [hasLoaded, setHasLoaded] = useState(false);
     const versionRef = useRef(0);
     const audioRef = useRef(null);
+    const preloadRef = useRef(null);
     const audioEnabledRef = useRef(false);
     const stageStateRef = useRef(IDLE_STATE);
     const hasConnectedRef = useRef(false);
@@ -48,6 +49,22 @@ export default function Stage({ ceremony }) {
         [stopAudio],
     );
 
+    const preloadAudio = useCallback((url) => {
+        if (preloadRef.current?.src === url) {
+            return;
+        }
+
+        preloadRef.current = null;
+
+        if (!url) {
+            return;
+        }
+
+        const audio = new Audio(url);
+        audio.preload = 'auto';
+        preloadRef.current = audio;
+    }, []);
+
     const reconcile = useCallback(async (markLoaded = false) => {
         let nextState = stageStateRef.current;
 
@@ -57,6 +74,7 @@ export default function Stage({ ceremony }) {
 
             versionRef.current = nextState.version;
             setStageState(nextState);
+            preloadAudio(nextState.presentation?.audio_url ?? nextState.preload_audio_url);
         } catch {
             setStageState((current) => current);
         } finally {
@@ -66,7 +84,7 @@ export default function Stage({ ceremony }) {
         }
 
         return nextState;
-    }, []);
+    }, [preloadAudio]);
 
     useEffect(() => {
         let cancelled = false;
@@ -221,11 +239,20 @@ export default function Stage({ ceremony }) {
 
     useEffect(() => {
         if (stageState.mode === 'graduate' && stageState.presentation) {
+            preloadAudio(stageState.presentation.audio_url);
             void playAudio(stageState.presentation);
         } else {
             stopAudio();
+            preloadAudio(stageState.preload_audio_url);
         }
-    }, [playAudio, stageState.mode, stageState.presentation, stopAudio]);
+    }, [
+        playAudio,
+        preloadAudio,
+        stageState.mode,
+        stageState.preload_audio_url,
+        stageState.presentation,
+        stopAudio,
+    ]);
 
     const presentation = stageState.presentation;
     const displayName = presentation?.display_name?.trim() || 'Graduate';

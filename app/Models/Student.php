@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AudioReadinessStatus;
 use App\Enums\EligibilityStatus;
 use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -29,6 +30,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'sequence_number',
     'photo_path',
     'audio_path',
+    'audio_readiness_status',
+    'audio_uploaded_at',
+    'audio_approved_at',
+    'audio_approved_by',
+    'audio_review_notes',
+    'audio_duration_seconds',
+    'audio_mime_type',
+    'audio_file_size',
     'eligibility_status',
 ])]
 class Student extends Model
@@ -41,6 +50,11 @@ class Student extends Model
         return [
             'sequence_number' => 'integer',
             'eligibility_status' => EligibilityStatus::class,
+            'audio_readiness_status' => AudioReadinessStatus::class,
+            'audio_uploaded_at' => 'immutable_datetime',
+            'audio_approved_at' => 'immutable_datetime',
+            'audio_duration_seconds' => 'integer',
+            'audio_file_size' => 'integer',
         ];
     }
 
@@ -62,5 +76,10 @@ class Student extends Model
     public function latestQueueItem(): HasOne
     {
         return $this->hasOne(StageQueueItem::class)->latestOfMany();
+    }
+
+    public function audioApprover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'audio_approved_by');
     }
 }

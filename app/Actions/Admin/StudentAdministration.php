@@ -2,10 +2,12 @@
 
 namespace App\Actions\Admin;
 
+use App\Enums\AudioReadinessStatus;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\StudentQrTokenGenerator;
 use App\Support\AdministrativeAuditLogger;
+use App\Support\AnnouncementAudio;
 use App\Support\StudentMediaStorage;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
@@ -38,6 +40,7 @@ final class StudentAdministration
         private readonly AdministrativeAuditLogger $auditLogger,
         private readonly StudentMediaStorage $mediaStorage,
         private readonly StudentQrTokenGenerator $qrTokens,
+        private readonly AnnouncementAudio $announcementAudio,
     ) {}
 
     /**
@@ -52,15 +55,20 @@ final class StudentAdministration
     ): Student {
         $photoPath = null;
         $audioPath = null;
+        $audioMetadata = [];
 
         try {
             $photoPath = $photo === null ? null : $this->mediaStorage->storePhoto($photo);
             $audioPath = $audio === null ? null : $this->mediaStorage->storeAudio($audio);
+            $audioMetadata = $audio === null
+                ? []
+                : $this->mediaStorage->audioMetadata($audio);
 
             return DB::transaction(function () use (
                 $attributes,
                 $photoPath,
                 $audioPath,
+                $audioMetadata,
                 $actor,
                 $ipAddress,
             ): Student {
@@ -69,6 +77,14 @@ final class StudentAdministration
                     'qr_token' => $this->qrTokens->generate(),
                     'photo_path' => $photoPath,
                     'audio_path' => $audioPath,
+                    'audio_readiness_status' => $audioPath === null
+                        ? AudioReadinessStatus::Missing
+                        : AudioReadinessStatus::Uploaded,
+                    'audio_uploaded_at' => $audioPath === null ? null : now(),
+                    'audio_approved_at' => null,
+                    'audio_approved_by' => null,
+                    'audio_review_notes' => null,
+                    ...$audioMetadata,
                 ]);
 
                 $this->auditLogger->record(
@@ -105,18 +121,23 @@ final class StudentAdministration
     ): Student {
         $newPhotoPath = null;
         $newAudioPath = null;
+        $newAudioMetadata = [];
         $oldPhotoPath = null;
         $oldAudioPath = null;
 
         try {
             $newPhotoPath = $photo === null ? null : $this->mediaStorage->storePhoto($photo);
             $newAudioPath = $audio === null ? null : $this->mediaStorage->storeAudio($audio);
+            $newAudioMetadata = $audio === null
+                ? []
+                : $this->mediaStorage->audioMetadata($audio);
 
             $updated = DB::transaction(function () use (
                 $student,
                 $attributes,
                 $newPhotoPath,
                 $newAudioPath,
+                $newAudioMetadata,
                 $actor,
                 $ipAddress,
                 &$oldPhotoPath,
@@ -157,6 +178,14 @@ final class StudentAdministration
 
                 if ($newAudioPath !== null) {
                     $locked->audio_path = $newAudioPath;
+                    $locked->audio_readiness_status = AudioReadinessStatus::Uploaded;
+                    $locked->audio_uploaded_at = now();
+                    $locked->audio_approved_at = null;
+                    $locked->audio_approved_by = null;
+                    $locked->audio_review_notes = null;
+                    $locked->audio_duration_seconds = null;
+                    $locked->audio_mime_type = $newAudioMetadata['audio_mime_type'] ?? null;
+                    $locked->audio_file_size = $newAudioMetadata['audio_file_size'] ?? null;
                 }
 
                 $locked->save();
@@ -254,6 +283,16 @@ final class StudentAdministration
             }
 
             $locked->setAttribute($column, null);
+            if ($type === 'audio') {
+                $locked->audio_readiness_status = AudioReadinessStatus::Missing;
+                $locked->audio_uploaded_at = null;
+                $locked->audio_approved_at = null;
+                $locked->audio_approved_by = null;
+                $locked->audio_review_notes = null;
+                $locked->audio_duration_seconds = null;
+                $locked->audio_mime_type = null;
+                $locked->audio_file_size = null;
+            }
             $locked->save();
 
             $this->recordMediaAudit(
@@ -271,6 +310,141 @@ final class StudentAdministration
         $this->mediaStorage->deleteManaged($oldPath);
 
         return $updated;
+    }
+
+    public function markAudioNeedsReview(
+        Student $student,
+        ?string $notes,
+        User $actor,
+        ?string $ipAddress,
+    ): Student {
+        return DB::transaction(function () use (
+            $student,
+            $notes,
+            $actor,
+            $ipAddress,
+        ): Student {
+            $locked = Student::query()->lockForUpdate()->findOrFail($student->id);
+
+            if ($locked->audio_path === null) {
+                throw ValidationException::withMessages([
+                    'audio' => 'Upload announcement audio before marking it for review.',
+                ]);
+            }
+
+            $oldStatus = $locked->audio_readiness_status;
+            $locked->audio_readiness_status = AudioReadinessStatus::NeedsReview;
+            $locked->audio_approved_at = null;
+            $locked->audio_approved_by = null;
+            $locked->audio_review_notes = $notes;
+            $locked->save();
+
+            $this->recordAudioReviewAudit(
+                $actor,
+                $locked,
+                'student.audio_needs_review',
+                $oldStatus,
+                AudioReadinessStatus::NeedsReview,
+                $notes,
+                $ipAddress,
+            );
+
+            return $locked;
+        }, 3);
+    }
+
+    public function approveAudio(
+        Student $student,
+        ?string $notes,
+        User $actor,
+        ?string $ipAddress,
+    ): Student {
+        return DB::transaction(function () use (
+            $student,
+            $notes,
+            $actor,
+            $ipAddress,
+        ): Student {
+            $locked = Student::query()->lockForUpdate()->findOrFail($student->id);
+
+            if ($locked->audio_path === null) {
+                throw ValidationException::withMessages([
+                    'audio' => 'Upload announcement audio before approval.',
+                ]);
+            }
+
+            if ($locked->audio_readiness_status === AudioReadinessStatus::Rejected) {
+                throw ValidationException::withMessages([
+                    'audio' => 'Rejected audio must be replaced before it can be approved.',
+                ]);
+            }
+
+            if (! $this->announcementAudio->isReadable($locked->audio_path)) {
+                throw ValidationException::withMessages([
+                    'audio' => 'The local audio file is not readable. Replace the file before approval.',
+                ]);
+            }
+
+            $oldStatus = $locked->audio_readiness_status;
+            $locked->audio_readiness_status = AudioReadinessStatus::Approved;
+            $locked->audio_approved_at = now();
+            $locked->audio_approved_by = $actor->id;
+            $locked->audio_review_notes = $notes;
+            $locked->save();
+
+            $this->recordAudioReviewAudit(
+                $actor,
+                $locked,
+                'student.audio_approved',
+                $oldStatus,
+                AudioReadinessStatus::Approved,
+                $notes,
+                $ipAddress,
+            );
+
+            return $locked;
+        }, 3);
+    }
+
+    public function rejectAudio(
+        Student $student,
+        string $notes,
+        User $actor,
+        ?string $ipAddress,
+    ): Student {
+        return DB::transaction(function () use (
+            $student,
+            $notes,
+            $actor,
+            $ipAddress,
+        ): Student {
+            $locked = Student::query()->lockForUpdate()->findOrFail($student->id);
+
+            if ($locked->audio_path === null) {
+                throw ValidationException::withMessages([
+                    'audio' => 'Upload announcement audio before rejection.',
+                ]);
+            }
+
+            $oldStatus = $locked->audio_readiness_status;
+            $locked->audio_readiness_status = AudioReadinessStatus::Rejected;
+            $locked->audio_approved_at = null;
+            $locked->audio_approved_by = null;
+            $locked->audio_review_notes = $notes;
+            $locked->save();
+
+            $this->recordAudioReviewAudit(
+                $actor,
+                $locked,
+                'student.audio_rejected',
+                $oldStatus,
+                AudioReadinessStatus::Rejected,
+                $notes,
+                $ipAddress,
+            );
+
+            return $locked;
+        }, 3);
     }
 
     public function delete(
@@ -325,7 +499,7 @@ final class StudentAdministration
             'major' => $student->major,
             'honors' => $student->honors,
             'photo_status' => $student->photo_path === null ? 'missing' : 'ready',
-            'audio_status' => $student->audio_path === null ? 'missing' : 'ready',
+            'audio_status' => $student->audio_readiness_status->value,
             'qr_token_configured' => $student->qr_token !== '',
         ];
     }
@@ -339,7 +513,9 @@ final class StudentAdministration
         ?string $ipAddress,
     ): void {
         $oldStatus = $oldPath === null ? 'missing' : 'ready';
-        $newStatus = $operation === 'removed' ? 'missing' : 'ready';
+        $newStatus = $operation === 'removed'
+            ? 'missing'
+            : ($type === 'audio' ? 'uploaded' : 'ready');
 
         $this->auditLogger->record(
             $actor,
@@ -348,6 +524,29 @@ final class StudentAdministration
             $student->id,
             [$type.'_status' => $oldStatus],
             [$type.'_status' => $newStatus],
+            $ipAddress,
+        );
+    }
+
+    private function recordAudioReviewAudit(
+        User $actor,
+        Student $student,
+        string $action,
+        AudioReadinessStatus $oldStatus,
+        AudioReadinessStatus $newStatus,
+        ?string $notes,
+        ?string $ipAddress,
+    ): void {
+        $this->auditLogger->record(
+            $actor,
+            $action,
+            'student',
+            $student->id,
+            ['audio_status' => $oldStatus->value],
+            [
+                'audio_status' => $newStatus->value,
+                'review_notes' => $notes,
+            ],
             $ipAddress,
         );
     }

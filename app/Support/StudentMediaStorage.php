@@ -18,6 +18,17 @@ final class StudentMediaStorage
         return $this->store($audio, 'graduates/audio', 'audio');
     }
 
+    /**
+     * @return array{audio_mime_type: string|null, audio_file_size: int|null}
+     */
+    public function audioMetadata(UploadedFile $audio): array
+    {
+        return [
+            'audio_mime_type' => $audio->getMimeType(),
+            'audio_file_size' => $audio->getSize(),
+        ];
+    }
+
     public function deleteManaged(?string $databasePath): void
     {
         if ($databasePath === null) {

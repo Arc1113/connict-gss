@@ -121,6 +121,27 @@ and results in the phase report.
 - [ ] `/stage-control` is checked at 1440×900, 1366×768, and 1024×768;
       `/stage` is checked at 1920×1080 and 1366×768.
 
+## Phase 8 announcement audio
+
+- [ ] Data encoder can upload or replace MP3/WAV/OGG audio and preview it.
+- [ ] Upload creates `uploaded` or review-required state, not approval.
+- [ ] Replacement invalidates previous approval.
+- [ ] Data encoder can mark audio needs review but cannot approve/reject.
+- [ ] Administrator can approve readable local audio with notes.
+- [ ] Administrator can reject audio with a reason.
+- [ ] Stage control shows approved, needs-review, rejected, and missing audio in
+      plain text.
+- [ ] Replay is enabled only for approved current audio.
+- [ ] Audience stage receives no technical audio status and no unapproved audio
+      URL.
+- [ ] Current approved audio preloads; next approved audio preloads where HTTP
+      state provides it.
+- [ ] Refresh and Reverb reconnect do not replay stale audio.
+- [ ] Keyboard focus reaches preview controls, notes, approve/reject, and
+      replacement controls.
+- [ ] Admin and stage-control routes are checked at 1440×900, 1366×768, and
+      1024×768; stage is checked at 1920×1080 and 1366×768.
+
 ## Regression
 
 - [ ] Relevant Laravel tests pass.

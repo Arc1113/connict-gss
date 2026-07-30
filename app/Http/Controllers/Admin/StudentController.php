@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Admin\StudentAdministration;
+use App\Enums\AudioReadinessStatus;
 use App\Enums\EligibilityStatus;
 use App\Enums\StageQueueStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SaveStudentRequest;
 use App\Models\Ceremony;
 use App\Models\Student;
+use App\Support\AnnouncementAudio;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +20,10 @@ use Inertia\Response;
 
 class StudentController extends Controller
 {
+    public function __construct(
+        private readonly AnnouncementAudio $announcementAudio,
+    ) {}
+
     public function index(Request $request): Response
     {
         Gate::authorize('viewAny', Student::class);
@@ -137,6 +143,7 @@ class StudentController extends Controller
 
         $student->load([
             'ceremony:id,name,academic_year',
+            'audioApprover:id,name',
             'latestQueueItem' => fn ($query) => $query->select([
                 'stage_queue_items.id',
                 'stage_queue_items.student_id',
@@ -156,7 +163,7 @@ class StudentController extends Controller
     {
         Gate::authorize('update', $student);
 
-        $student->load('ceremony:id,name');
+        $student->load(['ceremony:id,name', 'audioApprover:id,name']);
 
         return Inertia::render('Admin/Students/Edit', [
             'student' => $this->serializeForm($student),
@@ -231,12 +238,81 @@ class StudentController extends Controller
         return back()->with('success', 'Announcement audio removed.');
     }
 
+    public function markAudioNeedsReview(
+        Request $request,
+        Student $student,
+        StudentAdministration $administration,
+    ): RedirectResponse {
+        Gate::authorize('markAudioNeedsReview', $student);
+
+        $validated = $request->validate([
+            'audio_review_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $administration->markAudioNeedsReview(
+            $student,
+            $validated['audio_review_notes'] ?? null,
+            $request->user(),
+            $request->ip(),
+        );
+
+        return back()->with('success', 'Announcement audio marked for review.');
+    }
+
+    public function approveAudio(
+        Request $request,
+        Student $student,
+        StudentAdministration $administration,
+    ): RedirectResponse {
+        Gate::authorize('approveAudio', $student);
+
+        $validated = $request->validate([
+            'audio_review_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $administration->approveAudio(
+            $student,
+            $validated['audio_review_notes'] ?? null,
+            $request->user(),
+            $request->ip(),
+        );
+
+        return back()->with('success', 'Announcement audio approved.');
+    }
+
+    public function rejectAudio(
+        Request $request,
+        Student $student,
+        StudentAdministration $administration,
+    ): RedirectResponse {
+        Gate::authorize('rejectAudio', $student);
+
+        $validated = $request->validate([
+            'audio_review_notes' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $administration->rejectAudio(
+            $student,
+            $validated['audio_review_notes'],
+            $request->user(),
+            $request->ip(),
+        );
+
+        return back()->with('success', 'Announcement audio rejected.');
+    }
+
     private function applyMediaFilter(Builder $query, string $filter): void
     {
         match ($filter) {
-            'ready' => $query->whereNotNull('photo_path')->whereNotNull('audio_path'),
+            'ready' => $query
+                ->whereNotNull('photo_path')
+                ->where('audio_readiness_status', AudioReadinessStatus::Approved),
             'missing_photo' => $query->whereNull('photo_path'),
-            'missing_audio' => $query->whereNull('audio_path'),
+            'missing_audio' => $query->where('audio_readiness_status', AudioReadinessStatus::Missing),
+            'audio_uploaded' => $query->where('audio_readiness_status', AudioReadinessStatus::Uploaded),
+            'audio_needs_review' => $query->where('audio_readiness_status', AudioReadinessStatus::NeedsReview),
+            'audio_approved' => $query->where('audio_readiness_status', AudioReadinessStatus::Approved),
+            'audio_rejected' => $query->where('audio_readiness_status', AudioReadinessStatus::Rejected),
             'missing_any' => $query->where(
                 fn (Builder $query) => $query
                     ->whereNull('photo_path')
@@ -309,7 +385,11 @@ class StudentController extends Controller
             ],
             'media' => [
                 'photo' => $student->photo_path === null ? 'Missing' : 'Ready',
-                'audio' => $student->audio_path === null ? 'Missing' : 'Ready',
+                'audio' => $student->audio_readiness_status->label(),
+                'audio_status' => [
+                    'value' => $student->audio_readiness_status->value,
+                    'label' => $student->audio_readiness_status->label(),
+                ],
             ],
             'stage_status' => $this->stageStatus($student),
         ];
@@ -334,7 +414,20 @@ class StudentController extends Controller
             ],
             'media' => [
                 'photo_url' => $this->mediaUrl($student->photo_path),
-                'audio_url' => $this->mediaUrl($student->audio_path),
+                'audio_url' => $this->announcementAudio->previewUrl($student),
+                'audio_filename' => $this->announcementAudio->safeFilename($student->audio_path),
+                'audio_status' => [
+                    'value' => $student->audio_readiness_status->value,
+                    'label' => $student->audio_readiness_status->label(),
+                ],
+                'audio_stage_label' => $student->audio_readiness_status->stageLabel(),
+                'audio_uploaded_at' => $student->audio_uploaded_at?->toIso8601String(),
+                'audio_approved_at' => $student->audio_approved_at?->toIso8601String(),
+                'audio_approved_by' => $student->audioApprover?->name,
+                'audio_review_notes' => $student->audio_review_notes,
+                'audio_duration_seconds' => $student->audio_duration_seconds,
+                'audio_mime_type' => $student->audio_mime_type,
+                'audio_file_size' => $student->audio_file_size,
             ],
             'stage_status' => $this->stageStatus($student),
             'queue_items_count' => $student->queue_items_count,
@@ -368,7 +461,21 @@ class StudentController extends Controller
             'eligibility_status' => $student->eligibility_status->value,
             'qr_token_configured' => $student->qr_token !== '',
             'photo_url' => $this->mediaUrl($student->photo_path),
-            'audio_url' => $this->mediaUrl($student->audio_path),
+            'audio_url' => $this->announcementAudio->previewUrl($student),
+            'audio' => [
+                'status' => [
+                    'value' => $student->audio_readiness_status->value,
+                    'label' => $student->audio_readiness_status->label(),
+                ],
+                'filename' => $this->announcementAudio->safeFilename($student->audio_path),
+                'uploaded_at' => $student->audio_uploaded_at?->toIso8601String(),
+                'approved_at' => $student->audio_approved_at?->toIso8601String(),
+                'approved_by' => $student->audioApprover?->name,
+                'review_notes' => $student->audio_review_notes,
+                'mime_type' => $student->audio_mime_type,
+                'file_size' => $student->audio_file_size,
+                'duration_seconds' => $student->audio_duration_seconds,
+            ],
         ];
     }
 

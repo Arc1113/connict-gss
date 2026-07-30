@@ -11,6 +11,7 @@ use App\Models\StageQueueItem;
 use App\Models\StageState;
 use App\Models\User;
 use App\Support\ActiveCeremonyResolver;
+use App\Support\AnnouncementAudio;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -19,6 +20,7 @@ final readonly class ReplayCurrentAnnouncement
 {
     public function __construct(
         private ActiveCeremonyResolver $ceremonies,
+        private AnnouncementAudio $announcementAudio,
     ) {}
 
     /**
@@ -63,7 +65,7 @@ final readonly class ReplayCurrentAnnouncement
                 return ['status' => 'state_conflict'];
             }
 
-            if (blank($item->student->audio_path)) {
+            if (! $this->announcementAudio->isApprovedAndReadable($item->student)) {
                 return ['status' => 'audio_missing'];
             }
 
@@ -97,7 +99,7 @@ final readonly class ReplayCurrentAnnouncement
                 'ceremony_inactive' => 'Exactly one active ceremony is required.',
                 'stage_idle' => 'There is no current graduate to replay.',
                 'state_conflict' => 'The persisted stage state requires operator review.',
-                'audio_missing' => 'No approved local announcement is available for the current graduate.',
+                'audio_missing' => 'No approved local announcement is available. Use a live announcer or ask an administrator to approve replacement audio.',
             ];
 
             return [

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\AudioReadinessStatus;
 use App\Enums\CeremonyStatus;
 use App\Enums\EligibilityStatus;
 use App\Enums\PresentationMode;
@@ -139,6 +140,18 @@ class DatabaseSeeder extends Seeder
                     'major' => $student['major'],
                     'honors' => $student['honors'],
                     'audio_path' => $student['audio_path'],
+                    'audio_readiness_status' => $student['audio_path'] === null
+                        ? AudioReadinessStatus::Missing
+                        : AudioReadinessStatus::NeedsReview,
+                    'audio_uploaded_at' => $student['audio_path'] === null ? null : now(),
+                    'audio_approved_at' => null,
+                    'audio_approved_by' => null,
+                    'audio_review_notes' => $student['audio_path'] === null
+                        ? null
+                        : 'Development test tone only. Replace with reviewed production audio before ceremony use.',
+                    'audio_duration_seconds' => null,
+                    'audio_mime_type' => $student['audio_path'] === null ? null : 'audio/wav',
+                    'audio_file_size' => null,
                     'sequence_number' => $index + 1,
                     'eligibility_status' => EligibilityStatus::Eligible,
                 ],

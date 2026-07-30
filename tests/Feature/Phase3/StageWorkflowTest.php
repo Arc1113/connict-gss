@@ -58,6 +58,7 @@ class StageWorkflowTest extends TestCase
                     'version' => 0,
                     'mode' => 'idle',
                     'presentation' => null,
+                    'preload_audio_url' => null,
                 ],
             ]);
     }

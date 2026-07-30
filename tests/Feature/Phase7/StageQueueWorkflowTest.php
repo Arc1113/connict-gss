@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Phase7;
 
+use App\Enums\AudioReadinessStatus;
 use App\Enums\CeremonyStatus;
 use App\Enums\EligibilityStatus;
 use App\Enums\PresentationMode;
@@ -253,6 +254,9 @@ class StageQueueWorkflowTest extends TestCase
         $item = $this->queue(
             $this->student('AUDIO', [
                 'audio_path' => 'media/phase3/audio/student-01.wav',
+                'audio_readiness_status' => AudioReadinessStatus::Approved,
+                'audio_approved_at' => now(),
+                'audio_approved_by' => $this->operator->id,
             ]),
             1,
         );

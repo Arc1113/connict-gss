@@ -21,7 +21,7 @@ export default function AdminIndex({
             <Head title="Administration" />
             <PageHeader
                 description="Review ceremony readiness and open the data task that needs attention."
-                eyebrow="Phase 5"
+                eyebrow="Phase 8"
                 title="Ceremony preparation"
             />
 
@@ -73,8 +73,40 @@ export default function AdminIndex({
                                     <dd>{readiness.missing_photo}</dd>
                                 </div>
                                 <div>
-                                    <dt>Missing announcement audio</dt>
-                                    <dd>{readiness.missing_audio}</dd>
+                                    <dt>Audio approved</dt>
+                                    <dd>{readiness.audio_approved}</dd>
+                                </div>
+                                <div>
+                                    <dt>Audio needs review</dt>
+                                    <dd>
+                                        <Link href="/admin/students?media=audio_needs_review">
+                                            {readiness.audio_needs_review}
+                                        </Link>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Audio uploaded</dt>
+                                    <dd>
+                                        <Link href="/admin/students?media=audio_uploaded">
+                                            {readiness.audio_uploaded}
+                                        </Link>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Audio missing</dt>
+                                    <dd>
+                                        <Link href="/admin/students?media=missing_audio">
+                                            {readiness.audio_missing}
+                                        </Link>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Audio rejected</dt>
+                                    <dd>
+                                        <Link href="/admin/students?media=audio_rejected">
+                                            {readiness.audio_rejected}
+                                        </Link>
+                                    </dd>
                                 </div>
                             </dl>
                         )}

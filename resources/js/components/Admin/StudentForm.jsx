@@ -385,10 +385,21 @@ export default function StudentForm({
                             type="file"
                         />
                         <p className="admin-field-hint" id="audio-hint">
-                            MP3, WAV, or OGG; maximum 15 MB. Preview locally before
-                            ceremony use.
+                            MP3, WAV, or OGG; maximum 15 MB. Replacing audio clears
+                            approval and requires review before stage playback.
                         </p>
                         <FieldError id="audio-error" message={errors.audio} />
+                        {editing && student.audio && (
+                            <div className="admin-audio-readiness">
+                                <strong>Readiness</strong>
+                                <span>{student.audio.status.label}</span>
+                                <small>
+                                    {student.audio.approved_at
+                                        ? `Approved ${new Date(student.audio.approved_at).toLocaleString('en-PH')}`
+                                        : 'Not approved for automatic stage playback'}
+                                </small>
+                            </div>
+                        )}
                         {editing && student.audio_url && (
                             <button
                                 className="admin-text-action admin-text-action-danger"

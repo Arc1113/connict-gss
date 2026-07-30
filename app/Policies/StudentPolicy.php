@@ -28,6 +28,21 @@ class StudentPolicy
         return $user->hasRole(UserRole::DataEncoder);
     }
 
+    public function markAudioNeedsReview(User $user, Student $student): bool
+    {
+        return $this->update($user, $student);
+    }
+
+    public function approveAudio(User $user, Student $student): bool
+    {
+        return $user->hasRole(UserRole::Administrator);
+    }
+
+    public function rejectAudio(User $user, Student $student): bool
+    {
+        return $user->hasRole(UserRole::Administrator);
+    }
+
     public function delete(User $user, Student $student): bool
     {
         return false;

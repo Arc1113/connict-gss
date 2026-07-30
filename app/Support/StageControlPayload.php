@@ -11,6 +11,10 @@ use App\Models\StageState;
 
 final class StageControlPayload
 {
+    public function __construct(
+        private readonly AnnouncementAudio $announcementAudio,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -112,7 +116,12 @@ final class StageControlPayload
                 'program' => $item->student->program,
                 'major' => $item->student->major,
                 'honors' => $item->student->honors,
-                'has_audio' => filled($item->student->audio_path),
+                'has_audio' => $this->announcementAudio->isApprovedAndReadable($item->student),
+                'audio_status' => [
+                    'value' => $item->student->audio_readiness_status->value,
+                    'label' => $item->student->audio_readiness_status->label(),
+                    'stage_label' => $item->student->audio_readiness_status->stageLabel(),
+                ],
             ],
         ];
     }

@@ -19,7 +19,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'appName' => config('app.name'),
-        'phase' => 'Phase 7',
+        'phase' => 'Phase 8',
         'stack' => [
             'Laravel',
             'React',
@@ -160,6 +160,18 @@ Route::middleware(['auth', 'active'])->group(function () {
             '/students/{student}/audio',
             [StudentController::class, 'destroyAudio'],
         )->name('students.audio.destroy');
+        Route::post(
+            '/students/{student}/audio/needs-review',
+            [StudentController::class, 'markAudioNeedsReview'],
+        )->name('students.audio.needs-review');
+        Route::post(
+            '/students/{student}/audio/approve',
+            [StudentController::class, 'approveAudio'],
+        )->name('students.audio.approve');
+        Route::post(
+            '/students/{student}/audio/reject',
+            [StudentController::class, 'rejectAudio'],
+        )->name('students.audio.reject');
         Route::resource('students', StudentController::class);
     });
 
