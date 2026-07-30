@@ -74,6 +74,30 @@ required viewports.
 - [ ] Expired/failed state or honestly documented automated limitation
 - [ ] Access denied
 
+## QR preparation and print states
+
+- [ ] Ceremony selected
+- [ ] Empty ceremony/no matches
+- [ ] Filtered selectable list
+- [ ] Empty/invalid/over-limit selection recovery
+- [ ] Individual ready card
+- [ ] Long graduate and program
+- [ ] Data encoder without regeneration
+- [ ] Administrator regeneration confirmation and blocked state
+- [ ] A4 individual print at 100% scale
+- [ ] A4 four-card batch with unsplit cards
+- [ ] Grayscale/high-contrast QR and text
+- [ ] No visible token, remote asset, clipped content, or print overflow
+
+## Phase 6 scanner states
+
+- [ ] Manual fallback closed and expanded
+- [ ] No lookup matches
+- [ ] Lookup results with long names
+- [ ] Lookup processing through the existing scan result
+- [ ] Duplicate Enter preserves the confirmed result
+- [ ] Pointer focus recovery does not trap keyboard navigation
+
 ## Anti–AI-slop final pass
 
 - [ ] No equal card grid drives hierarchy.

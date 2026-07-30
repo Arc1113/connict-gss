@@ -61,6 +61,42 @@ and results in the phase report.
 - [ ] Upload, mapping, preview, blocked, and summary states are checked at
       1440×900, 1366×768, and 1024×768.
 
+## QR preparation and printing
+
+- [ ] Administrator and data encoder can view and print; other roles are denied.
+- [ ] Only an administrator can regenerate a token.
+- [ ] Ceremony, college, program, eligibility, readiness, and sequence filters
+      preserve their values and select the intended graduates.
+- [ ] Empty, duplicate, cross-ceremony, ineligible, missing-token, and over-limit
+      selections are rejected server-side with recovery text.
+- [ ] Individual and batch SVG images are protected, local, black on opaque
+      white, and contain no visible raw token.
+- [ ] Individual and batch print documents use A4 physical units, fixed QR
+      dimensions, deterministic order, and unsplit cards.
+- [ ] Long names/programs wrap without shrinking or overlapping a QR.
+- [ ] Regeneration confirmation explains invalidation; stale, presenting,
+      completed, unauthorized, failed, and concurrent attempts are safe.
+- [ ] Old output fails after regeneration and new output succeeds through the
+      unchanged scanner transaction.
+- [ ] Audit values contain safe counts/context and no token, payload, SVG, or
+      selected-ID list.
+- [ ] QR workspace and individual view are checked at 1440×900, 1366×768, and
+      1024×768; individual and batch documents are checked through Chromium
+      print rendering.
+
+## Phase 6 scanner hardening
+
+- [ ] Non-interactive pointer use restores QR focus without stealing focus from
+      links, buttons, or manual lookup.
+- [ ] Rapid characters plus Enter submit once; duplicate Enter and manual double
+      submission do not create a second request.
+- [ ] Manual lookup is bounded to the active ceremony and returns minimal data.
+- [ ] A lookup selection uses the same scan statuses and transaction.
+- [ ] Token/manual-query input clears after processing and tokens never appear in
+      URLs, console output, or rendered feedback.
+- [ ] USB HID mode, keyboard layout, Enter suffix, enabled 2D symbology, beep,
+      prefix, timeout, and printed-output checks are documented.
+
 ## Regression
 
 - [ ] Relevant Laravel tests pass.

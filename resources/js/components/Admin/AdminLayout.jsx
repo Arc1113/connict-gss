@@ -41,11 +41,30 @@ export default function AdminLayout({ children }) {
                             <NavLink
                                 active={
                                     currentUrl.startsWith('/admin/students') &&
-                                    !currentUrl.startsWith('/admin/students/import')
+                                    !currentUrl.startsWith('/admin/students/import') &&
+                                    !currentUrl.startsWith('/admin/students/qr-codes') &&
+                                    !/\/admin\/students\/\d+\/qr-code/.test(
+                                        currentUrl,
+                                    )
                                 }
                                 href="/admin/students"
                             >
                                 Graduates
+                            </NavLink>
+                        )}
+                        {abilities.prepare_qr_codes && (
+                            <NavLink
+                                active={
+                                    currentUrl.startsWith(
+                                        '/admin/students/qr-codes',
+                                    ) ||
+                                    /\/admin\/students\/\d+\/qr-code/.test(
+                                        currentUrl,
+                                    )
+                                }
+                                href="/admin/students/qr-codes"
+                            >
+                                QR preparation
                             </NavLink>
                         )}
                         {abilities.import_students && (

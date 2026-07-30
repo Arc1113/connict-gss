@@ -42,7 +42,10 @@ class StudentAdministrationTest extends TestCase
         $student = Student::query()->sole();
 
         $this->assertSame('Ana Marie dela Cruz', $student->display_name);
-        $this->assertSame('GSS-ANA-2027', $student->qr_token);
+        $this->assertMatchesRegularExpression(
+            '/^GSS-[A-Z0-9]{48}$/',
+            $student->qr_token,
+        );
         $this->assertSame(EligibilityStatus::Eligible, $student->eligibility_status);
 
         $this->actingAs($encoder)
@@ -75,7 +78,7 @@ class StudentAdministrationTest extends TestCase
                 ->where('filters.search', '2027-0007'));
     }
 
-    public function test_update_preserves_the_existing_qr_token_and_reviewed_names_when_blank_or_unchanged(): void
+    public function test_update_preserves_the_server_owned_qr_token_and_reviewed_names(): void
     {
         $student = Student::factory()->create([
             'ceremony_id' => $this->ceremony->id,
@@ -89,7 +92,7 @@ class StudentAdministrationTest extends TestCase
         $this->actingAs($this->administrator)
             ->put("/admin/students/{$student->id}", $this->payload([
                 'student_number' => '2027-0001',
-                'qr_token' => '',
+                'qr_token' => 'ATTEMPTED-OPERATOR-REPLACEMENT',
                 'first_name' => 'Maria Lourdes',
                 'display_name' => 'Ma. Lourdes P. Reyes',
                 'announcement_name' => 'Ma. Lourdes P. Reyes',
@@ -110,7 +113,6 @@ class StudentAdministrationTest extends TestCase
         Student::factory()->create([
             'ceremony_id' => $this->ceremony->id,
             'student_number' => '2027-DUPLICATE',
-            'qr_token' => 'DUPLICATE-TOKEN',
             'sequence_number' => 22,
         ]);
 
@@ -118,7 +120,6 @@ class StudentAdministrationTest extends TestCase
             ->from('/admin/students/create')
             ->post('/admin/students', $this->payload([
                 'student_number' => '2027-DUPLICATE',
-                'qr_token' => 'duplicate-token',
                 'sequence_number' => 22,
                 'program' => '',
                 'eligibility_status' => 'unknown',
@@ -126,7 +127,6 @@ class StudentAdministrationTest extends TestCase
             ->assertRedirect('/admin/students/create')
             ->assertSessionHasErrors([
                 'student_number',
-                'qr_token',
                 'sequence_number',
                 'program',
                 'eligibility_status',
@@ -203,7 +203,6 @@ class StudentAdministrationTest extends TestCase
         return [
             'ceremony_id' => $this->ceremony->id,
             'student_number' => '2027-0007',
-            'qr_token' => 'gss-ana-2027',
             'first_name' => 'Ana Marie',
             'middle_name' => null,
             'last_name' => 'dela Cruz',

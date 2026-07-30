@@ -84,6 +84,28 @@ state.
 - Long names wrap without horizontal overflow.
 - Required layouts fit 1440×900, 1366×768, and 1024×768.
 
+### Phase 6 scanner hardening
+
+The QR field remains the dominant control. A compact, initially closed manual
+lookup follows the current result and last success; it is recovery rather than a
+second primary workflow.
+
+- Clicking non-interactive scanner-console space restores focus to the QR field.
+  Interacting with links, buttons, or manual-lookup controls does not have focus
+  stolen.
+- One Enter suffix submits once. A second empty Enter immediately after a
+  completed attempt is ignored without replacing the confirmed result.
+- The pending lock remains synchronous and server concurrency rules remain
+  authoritative.
+- Manual lookup searches only the active ceremony and returns at most ten
+  minimal matches: name, program, sequence, and eligibility. It never returns a
+  token.
+- Processing a lookup result delegates to the unchanged scan transaction and
+  produces the same accepted, duplicate, completed, ineligible, and busy
+  outcomes.
+- Both paths clear sensitive input after processing. Neither places a token in a
+  URL, log message, browser console message, or rendered result.
+
 ## Audience stage
 
 | Item | Specification |
@@ -387,18 +409,102 @@ warning/confirm, blocked duplicate/eligibility, summary, filtered graduate
 retrieval, safe audit, reduced motion, and scanner-role denial. Screenshots and
 the verification boundary are indexed under `docs/evidence/phase-5/`.
 
-## Future QR preparation — Phase 6
+## QR preparation and print — Phase 6
 
 | Item | Specification |
 | --- | --- |
-| Route | `/admin/qr-codes` |
-| Primary user | Administrator or data encoder |
+| Routes | `/admin/students/qr-codes` plus protected individual image/preview/print and batch-print actions |
+| Primary user/device | Administrator or data encoder on an operator laptop; 1024px minimum |
 | Goal | Generate and print local QR material for confirmed graduate records |
 | Dominant information | Ceremony scope, eligible record selection, generation/print readiness |
-| Primary action | Generate or print the explicitly selected set |
-| Required states | Empty ceremony, no eligible records, selectable list, generating, ready, print failure |
-| Recovery | Regeneration remains tied to the authoritative stored token; test with physical scanner |
-| Prohibited content | Internet QR service, exposed token text in normal lists, uncontrolled bulk regeneration |
+| Primary action | Print the explicitly selected graduate or batch |
+| Secondary information | College/program/eligibility/readiness/sequence filters, physical print guidance, safe regeneration status |
+| Required states | No ceremony, empty ceremony, no matches, selectable records, empty selection, over-limit selection, ready, print response, regeneration confirmation/conflict/blocked |
+| Keyboard | Native filters, checkboxes, links, and confirmation controls in DOM order; no hover-only action |
+| Responsive targets | 1440×900, 1366×768, and 1024×768; the selection table owns horizontal overflow |
+| Recovery | Keep filters after validation; reject the whole batch when any selected record is invalid; regenerate only through an explicit administrator action |
+| Prohibited content | Internet QR service, exposed token text, public image route, uncontrolled bulk regeneration, PDF/cloud dependency, decorative card dashboard |
+
+### Layout alternatives considered
+
+1. Adding QR checkboxes and print controls to the general graduate list reduces
+   navigation, but mixes data correction with print custody and makes that
+   already dense table harder to use at 1024 px.
+2. A dedicated readiness workspace with one selection table and a separate
+   individual preparation page keeps ceremony scope, filtering, batch custody,
+   replacement printing, and administrator-only regeneration explicit.
+3. A multi-step print wizard can force review, but introduces state and
+   navigation overhead for a deterministic server-validated print request.
+
+Option 2 is selected. It keeps one dominant task per page and requires no
+temporary batch model.
+
+### Selected textual wireframes
+
+```text
+QR READINESS
+┌──────────────────────────────────────────────────────────────────────┐
+│ QR PREPARATION                                  [Graduate records]   │
+│ Select verified graduates for local print output.                   │
+├──────────────────────────────────────────────────────────────────────┤
+│ Ceremony * [Sample Graduation Ceremony                         ▾]  │
+│ College [All ▾]  Program [All ▾]  Eligibility [Eligible ▾]          │
+│ Sequence [from] [to]  QR readiness [All ▾]            [Apply]       │
+├──────────────────────────────────────────────────────────────────────┤
+│ [ ] NAME / PROGRAM                         SEQ  ELIGIBLE  QR         │
+│ [ ] Christopher Emmanuel Villanueva-...    18   Eligible  Ready      │
+│ [ ] Ma. Lourdes P. Reyes                   19   Pending   Ready      │
+├──────────────────────────────────────────────────────────────────────┤
+│ 2 selected · maximum 100                       [Print selected QR]   │
+└──────────────────────────────────────────────────────────────────────┘
+
+INDIVIDUAL PREPARATION
+┌──────────────────────────────────────────────────────────────────────┐
+│ INDIVIDUAL QR CARD                              [Back to selection] │
+│ Sample Graduation Ceremony · Sequence 18                            │
+├────────────────────────────────────┬─────────────────────────────────┤
+│ Christopher Emmanuel              │                                 │
+│ Villanueva-Santos                  │        protected QR image       │
+│ BS Electronics Engineering        │                                 │
+│ Student number: 2027-0018          │        QR token not shown       │
+│ QR readiness: Ready                │                                 │
+├────────────────────────────────────┴─────────────────────────────────┤
+│ [Print individual card]                                             │
+│ ADMIN ONLY: Replace QR token [confirmation] [Replace token]         │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Print contract
+
+- Output is protected print-optimized HTML with dynamic same-origin SVG images.
+- Individual: A4 portrait, one centered staff card, 65 mm QR.
+- Batch: A4 portrait, 12 mm margins, two columns by two rows, four cards per
+  page, 55 mm QR.
+- QR images are opaque black on white with a four-module quiet zone, no logo,
+  decoration, transparency, or visible raw token.
+- Cards use physical CSS units and `break-inside: avoid`.
+- Long names and programs wrap; QR dimensions never shrink.
+- Recommended settings are 100% scale, fit-to-page disabled, background graphics
+  unnecessary, and browser headers/footers disabled.
+- Maximum batch size is 100; ordering is sequence number, display name, then ID.
+
+### Behavior and acceptance criteria
+
+- Administrators and data encoders may view and print; only administrators may
+  regenerate.
+- All selected IDs are deduplicated and revalidated against the submitted
+  ceremony, eligibility, token availability, and maximum size.
+- Dynamic QR output encodes only the authoritative opaque token and stores no
+  image file.
+- Ordinary list/detail props and supporting print text never contain the raw
+  token.
+- Regeneration uses confirmation, a stale-page guard, a PostgreSQL row lock,
+  server-only token generation, and a safe audit. Presenting or completed
+  graduates cannot be regenerated.
+- Previously issued output becomes invalid immediately after commit; the
+  replacement output uses the new token.
+- Required operator viewports and Chromium print output are inspected with
+  long realistic names and programs.
 
 ## Future operational logs and reports — Phase 9
 

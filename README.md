@@ -1,6 +1,6 @@
 # Graduation Stage System
 
-Status: **Phase 5 — CSV Import and Data Preparation implemented**
+Status: **Phase 6 — QR Generation, Printing, and Scanner Hardening implemented**
 
 The Graduation Stage System is a local-network-only application for reliable,
 QR-driven graduation presentation. Phase 3 established the complete operational
@@ -25,6 +25,11 @@ mapping, server-normalized preview, and explicit confirmation are separate HTTP
 steps. PostgreSQL rechecks the complete file and creates all graduates in one
 transaction or creates none.
 
+Phase 6 adds protected, deterministic SVG QR output, individual and bounded batch
+print sheets, administrator-only token replacement, readiness review, and a
+controlled scanner lookup fallback. It preserves the Phase 3 scan transaction,
+post-commit Reverb event, Echo stage update, and HTTP recovery path.
+
 ## Approved architecture
 
 - Laravel 13 backend
@@ -34,6 +39,7 @@ transaction or creates none.
 - PostgreSQL 16 database
 - Laravel Reverb 1.11 WebSocket server
 - Laravel Echo 2.4 and `pusher-js` 8.6 browser client
+- BaconQrCode 3.1.1 for local deterministic SVG QR rendering
 - Session authentication and private broadcast channels
 - HTTP for commands, validation, and authoritative reads
 - Local files for presentation media
@@ -76,8 +82,8 @@ mode automation, and advanced recovery remain Phase 7 work.
 - Ceremony changes are blocked while a graduate is presenting. Operational
   history and stage state protect ceremonies from deletion.
 - Graduate deletion is blocked by scan, queue, or presentation history.
-- QR tokens are normalized and validated but never returned by list/detail/edit
-  page props. Editing uses an optional replacement value.
+- QR tokens are server-owned and never accepted by the normal graduate form.
+  They are never returned by list/detail/edit page props.
 - Uploaded JPEG/PNG/WebP photos (maximum 5 MB) and MP3/WAV/OGG audio (maximum
   15 MB) are stored under `storage/app/public/graduates` with generated names.
   Replacement commits the database change before removing the former managed
@@ -119,12 +125,44 @@ mode automation, and advanced recovery remain Phase 7 work.
   stored only in PostgreSQL, expires after 30 minutes, and is cleared after a
   successful import. No public or retained temporary upload file is created.
 
+## Phase 6 QR preparation and scanner behavior
+
+- Laravel generates every new graduate token as `GSS-` plus 48 random uppercase
+  alphanumeric characters. Existing tokens remain valid until an administrator
+  explicitly replaces one.
+- BaconQrCode 3.1.1 renders SVG locally and dynamically from the PostgreSQL token.
+  Output uses error-correction level Q, an opaque white background, and a
+  four-module quiet zone. No QR file, token, personal data, or external rendering
+  request is stored.
+- Administrators and data encoders can review readiness, open individual QR
+  output, and print batches. Only administrators can replace a token or see its
+  replacement history. Scanner, stage, and technical operators cannot access QR
+  administration.
+- Individual printing uses A4 portrait, one 65 mm QR card. Batch printing uses
+  A4 portrait with 12 mm margins, a two-column grid, up to four 55 mm QR cards
+  per page, deterministic sequence/name order, and a maximum of 100 graduates.
+  Print at 100% scale with **Fit to page** and browser headers/footers disabled.
+- Only eligible graduates with a current token and no completed presentation can
+  be printed. A regenerated token is marked **Regenerated — reprint**.
+- Token replacement locks the graduate in a PostgreSQL transaction, verifies an
+  opaque HMAC version, blocks presenting/completed graduates, writes a redacted
+  audit row, and immediately makes every old printed card invalid.
+- `/scanner` retains its synchronous submission lock, Enter handling, input
+  clearing, and focus recovery. A bounded active-ceremony lookup can select one
+  verified graduate when a printed QR will not decode; it runs the same
+  transaction and never exposes a token.
+- Physical USB scanner and paper-output certification remain pending because no
+  scanner was attached and configured printers were offline during Phase 6
+  development. Exact rehearsal steps are documented below.
+
 ## Implemented routes
 
 | Route | Purpose | Access |
 | --- | --- | --- |
 | `GET /scanner` | Keyboard-wedge and manual scan UI | Scanner operator, administrator |
+| `POST /scanner/lookup` | Bounded active-ceremony fallback search | Scanner operator, administrator |
 | `POST /scans` | Validate and commit one scan attempt | Scanner operator, administrator |
+| `POST /scans/manual` | Process one verified fallback selection through the scan transaction | Scanner operator, administrator |
 | `GET /stage` | Audience presentation display | Stage operator, administrator |
 | `GET /stage/state` | Authoritative safe stage snapshot | Stage operator, administrator |
 | `POST /stage/complete-current` | Minimal completion/clear command | Stage operator, administrator |
@@ -146,6 +184,12 @@ mode automation, and advanced recovery remain Phase 7 work.
 | `GET /admin/students/import/{import}/preview` | Review server-normalized row results | Owning administrator/data encoder |
 | `POST /admin/students/import/{import}/confirm` | Revalidate and atomically create records | Owning administrator/data encoder |
 | `GET /admin/students/import/{import}/summary` | Review safe committed counts | Owning administrator/data encoder |
+| `GET /admin/students/qr-codes` | Filter QR readiness and select a print batch | Administrator, data encoder |
+| `POST /admin/students/qr-codes/batch` | Validate and render a bounded batch print sheet | Administrator, data encoder |
+| `GET /admin/students/{student}/qr-code` | Review one protected QR card | Administrator, data encoder |
+| `GET /admin/students/{student}/qr-code/image` | Return protected no-store SVG output | Administrator, data encoder |
+| `GET /admin/students/{student}/qr-code/print` | Render one print sheet | Administrator, data encoder |
+| `POST /admin/students/{student}/qr-code/regenerate` | Replace one token | Administrator |
 | `GET /admin/audit-logs` | Safe administrative audit history | Administrator |
 
 The corresponding `POST`, `PUT/PATCH`, and `DELETE` resource actions are
@@ -166,6 +210,7 @@ and the channel ID matches it.
 - `already_completed` (`409`)
 - `stage_busy` (`409`)
 - `unauthorized` (`403`)
+- `request_failed` (`500`, safe unexpected-failure response)
 
 Every safely processable scan attempt stores a SHA-256 token hash, not the raw
 token. Success events expose only event ID, state version, graduate ID, display
@@ -363,8 +408,8 @@ system, firewall, or three separate physical devices.
    an activation conflict, and a protected delete.
 3. Open `/admin/students`; test realistic long names/programs, all filters,
    sequence/name sorting, pagination, and no-results recovery.
-4. Add/edit a graduate; confirm duplicate student/sequence/token errors identify
-   the field without exposing an existing token.
+4. Add/edit a graduate; confirm duplicate student/sequence errors identify the
+   field and that the server assigns the QR token without an operator field.
 5. Upload and replace a local photo and audio file, play the browser preview,
    remove each file, and confirm the missing-media state.
 6. Review `/admin/audit-logs`; confirm important actions exist without raw QR
@@ -392,6 +437,49 @@ system, firewall, or three separate physical devices.
 6. Confirm no page or audit output exposes a raw QR token or temporary CSV
    content, and that a second confirmation is forbidden.
 
+### Manual QR printing and physical scanner check
+
+Use ordinary white A4 stock and the intended ceremony printer. Do not use a
+browser or printer option that rescales the sheet.
+
+1. Sign in as `encoder@example.test`, open `/admin/students/qr-codes`, choose one
+   ceremony, and review eligible, ineligible, regenerated, long-name, and
+   long-program rows.
+2. Open one individual card. Confirm the graduate identity, select **Open print
+   sheet**, and verify A4 portrait, one 65 mm QR, 100% scale, no **Fit to page**,
+   and no browser headers/footers.
+3. Select representative eligible graduates and open the batch sheet. Confirm
+   deterministic sequence order, at most four 55 mm cards per page, 12 mm page
+   margins, intact borders/quiet zones, and no split card.
+4. Print individual and batch samples in normal and grayscale modes. Confirm
+   black modules, an opaque white quiet zone, readable matching text, and no
+   clipping. Do not reduce the documented QR size.
+5. Configure the USB 2D scanner for **USB HID keyboard** mode, the scanner
+   laptop’s keyboard layout, QR/2D symbology enabled, no prefix, and one Enter or
+   carriage-return suffix. Keep the device beep enabled so it confirms a local
+   decode; the web page confirms server acceptance separately.
+6. Open `/scanner`, click outside and return to the window, then confirm the QR
+   input regains focus. Scan each printed sample once. Exactly one HTTP request
+   and one accepted/rejected result must appear, the field must clear, and focus
+   must return.
+7. Scan rapidly, hold the trigger, press Enter twice, retry the active graduate,
+   try another graduate while the stage is busy, and try a completed graduate.
+   Confirm `duplicate_active`, `stage_busy`, and `already_completed` remain
+   specific and no second presentation is created.
+8. As an administrator, replace one non-presenting/non-completed test graduate’s
+   token. Confirm the old printed card returns **QR code not recognized**, print
+   the replacement, and confirm the replacement is accepted.
+9. If a printed code does not decode, clean/flatten it and retry. Then expand
+   **QR will not scan? Use controlled lookup**, search the active ceremony,
+   verify the name/program/sequence aloud, and process one selection.
+10. Repeat on the actual scanner laptop, printer, paper, local network, and venue
+    operating distance before ceremony use.
+
+Phase 6 browser automation verified generated SVGs, Chromium print media/PDF,
+server acceptance, focus, long content, and fallback search. It did **not**
+physically certify paper, the USB scanner, trigger timing, scanner beep/suffix
+configuration, or an offline printer because those devices were unavailable.
+
 ## Automated verification
 
 Run database tests inside the PHP container because the host PHP installation may
@@ -399,13 +487,18 @@ not include `pdo_pgsql`:
 
 ```bash
 docker compose exec -T app php artisan test
-vendor/bin/pint --test
+docker compose exec -T app vendor/bin/pint --test
 npm run lint
 npm run build
-composer audit
+docker compose exec -T app composer audit
 npm audit
 docker compose config --quiet
 ```
+
+The completed Phase 6 verification passed 124 PostgreSQL tests with 1,028
+assertions. Focused regressions passed Phase 3 at 22 tests/157 assertions
+(including both independent-process races), Phase 4 at 23/251, Phase 5 at
+22/286, and Phase 6 at 16/160.
 
 The Phase 3 tests include HTTP/access checks, all scan outcomes, scan-log and
 payload privacy checks, post-transaction event ordering, rollback behavior,
@@ -422,25 +515,38 @@ mapping validation, normalization and row classification, current-data
 conflicts, pagination, expiry, template privacy, transaction rollback,
 confirmation revalidation, generated-token privacy, and safe import audits.
 
+Phase 6 adds protected SVG/print authorization, payload and audit privacy,
+readiness filters, deterministic/deduplicated/bounded batches, administrator-only
+replacement, HMAC stale-request protection, transaction rollback, old/new-token
+scan behavior, scanner fallback scoping, and manual-selection transaction tests.
+
 An optional live Chromium check exercises two authenticated browser profiles,
 private-channel delivery, local audio playback events, refresh recovery, and a
 deliberate Reverb stop/restart:
 
 ```bash
-docker compose stop reverb
 docker compose exec -T app php artisan migrate:fresh --seed --force
-docker compose start reverb
+docker compose up -d --wait reverb
 node tests/Support/phase3-browser-check.mjs
+docker compose exec -T app php artisan migrate:fresh --seed --force
+node tests/Support/phase4-browser-check.mjs
+docker compose exec -T app php artisan migrate:fresh --seed --force
 node tests/Support/phase5-browser-check.mjs
+docker compose exec -T app php artisan migrate:fresh --seed --force
+node tests/Support/phase6-browser-check.mjs
 ```
 
 These checks require Google Chrome at `/usr/bin/google-chrome` and must run only
 against disposable seeded development data. The Phase 3 harness temporarily
 stops Reverb and completes sample presentations. The Phase 5 harness creates
 clearly prefixed sample graduates and writes review screenshots under
-`docs/evidence/phase-5/`. Never run either harness against ceremony production
-data or during live operations. Set `GSS_APP_URL` when the local app uses a
-non-default host port.
+`docs/evidence/phase-5/`. Never run any browser harness against ceremony
+production data or during live operations. The Phase 6 harness creates and
+removes only clearly prefixed temporary graduates, including one through the
+actual Phase 5 confirmation action, and records QR/print/scanner evidence under
+`docs/evidence/phase-6/`. It also verifies data-encoder restrictions, old/new
+replacement scans, repeated Enter locking, and controlled manual acceptance.
+Set `GSS_APP_URL` when the local app uses a non-default host port.
 
 ## Troubleshooting
 
@@ -477,16 +583,23 @@ non-default host port.
   until every required target is mapped once and no preview row is blocked.
 - **Import preview expired:** upload the source again. Temporary content expires
   after 30 minutes and cannot be recovered from a browser page.
+- **QR card is not printable:** confirm the graduate is eligible, has not
+  completed a presentation, and has a current server token.
+- **Printed QR will not decode:** verify 100% scale, white paper, intact quiet
+  zone, QR/2D symbology, keyboard layout, and one Enter suffix. Reprint the
+  individual 65 mm card before using controlled lookup.
+- **Old card stopped working:** review administrator replacement history and
+  print the current card. Regeneration intentionally invalidates older output.
 
 ## Phase boundary
 
-Phase 5 does not add CSV update/synchronization/export, QR artifact generation or
-printing, camera scanning, device credentials, a general queue,
+Phase 6 does not add CSV update/synchronization/export, camera scanning, device
+credentials, a general queue,
 present-next/selected, reorder, skip, return, replay/mute controls, operational
 scan/stage reports, backups, deployment automation, cloud media, or
 text-to-speech. Those features remain deferred to their approved phases,
-especially QR preparation in Phase 6 and full queue/mode behavior in Phase 7.
+especially full queue/mode behavior in Phase 7.
 
 See [requirements](docs/requirements.md) and
-[architecture](docs/architecture.md) for the normative Phase 3 through Phase 5
-contracts. Do not begin Phase 6 until Phase 5 receives explicit human approval.
+[architecture](docs/architecture.md) for the normative Phase 3 through Phase 6
+contracts. Do not begin Phase 7 until Phase 6 receives explicit human approval.

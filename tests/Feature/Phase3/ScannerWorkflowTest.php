@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Phase3;
 
+use App\Actions\ScanStudentForPresentation;
 use App\Enums\CeremonyStatus;
 use App\Enums\EligibilityStatus;
 use App\Enums\ScanResult;
@@ -18,6 +19,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -308,15 +310,15 @@ class ScannerWorkflowTest extends TestCase
     {
         Event::fake([StudentPresented::class]);
         $student = $this->eligibleStudent(['qr_token' => 'ROLLBACK']);
-        $this->withoutExceptionHandling();
 
         StageEvent::creating(function (): never {
             throw new RuntimeException('Forced transaction failure.');
         });
 
         try {
-            $this->actingAs($this->scanner)
-                ->postJson('/scans', ['token' => $student->qr_token]);
+            $this->app
+                ->make(ScanStudentForPresentation::class)
+                ->execute($student->qr_token, $this->scanner);
 
             $this->fail('The forced transaction exception was not thrown.');
         } catch (RuntimeException $exception) {
@@ -330,6 +332,45 @@ class ScannerWorkflowTest extends TestCase
         $this->assertSame(0, StageEvent::query()->count());
         $this->assertSame(0, ScanLog::query()->count());
         Event::assertNotDispatched(StudentPresented::class);
+    }
+
+    public function test_an_unexpected_http_failure_returns_safe_json_without_logging_the_token(): void
+    {
+        $student = $this->eligibleStudent([
+            'qr_token' => 'GSS-SENSITIVE-HTTP-FAILURE-TOKEN',
+        ]);
+        StageEvent::creating(function (): never {
+            throw new RuntimeException('Forced HTTP transaction failure.');
+        });
+        Log::shouldReceive('error')
+            ->once()
+            ->withArgs(function (string $message, array $context) use ($student): bool {
+                return $message === 'Scan command failed before confirmation.'
+                    && $context['operator_id'] === $this->scanner->id
+                    && $context['command'] === 'token_scan'
+                    && $context['exception'] === RuntimeException::class
+                    && ! str_contains(
+                        json_encode($context, JSON_THROW_ON_ERROR),
+                        $student->qr_token,
+                    );
+            });
+
+        try {
+            $this->actingAs($this->scanner)
+                ->postJson('/scans', ['token' => $student->qr_token])
+                ->assertInternalServerError()
+                ->assertExactJson([
+                    'status' => 'request_failed',
+                    'message' => 'The scan was not confirmed. Check the local server, then try the same card again.',
+                ]);
+        } finally {
+            StageEvent::flushEventListeners();
+        }
+
+        $this->assertStageRemainsIdle();
+        $this->assertDatabaseCount('stage_queue_items', 0);
+        $this->assertDatabaseCount('stage_events', 0);
+        $this->assertDatabaseCount('scan_logs', 0);
     }
 
     private function eligibleStudent(array $attributes = []): Student

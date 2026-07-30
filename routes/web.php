@@ -5,10 +5,12 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CeremonyController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudentImportController;
+use App\Http\Controllers\Admin\StudentQrCodeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CompleteCurrentPresentationController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\ScannerController;
+use App\Http\Controllers\ScannerLookupController;
 use App\Http\Controllers\StageController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -16,7 +18,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'appName' => config('app.name'),
-        'phase' => 'Phase 5',
+        'phase' => 'Phase 6',
         'stack' => [
             'Laravel',
             'React',
@@ -41,8 +43,13 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/scanner', ScannerController::class)
         ->middleware('can:operate-scanner')
         ->name('scanner');
+    Route::post('/scanner/lookup', ScannerLookupController::class)
+        ->middleware('can:operate-scanner')
+        ->name('scanner.lookup');
     Route::post('/scans', [ScanController::class, 'store'])
         ->name('scans.store');
+    Route::post('/scans/manual', [ScanController::class, 'manual'])
+        ->name('scans.manual');
 
     Route::get('/stage', [StageController::class, 'show'])
         ->middleware('can:operate-stage')
@@ -90,6 +97,31 @@ Route::middleware(['auth', 'active'])->group(function () {
                     [StudentImportController::class, 'summary'],
                 )->name('summary');
             });
+
+        Route::get(
+            '/students/qr-codes',
+            [StudentQrCodeController::class, 'index'],
+        )->name('students.qr-codes.index');
+        Route::post(
+            '/students/qr-codes/batch',
+            [StudentQrCodeController::class, 'batch'],
+        )->name('students.qr-codes.batch');
+        Route::get(
+            '/students/{student}/qr-code',
+            [StudentQrCodeController::class, 'show'],
+        )->name('students.qr-codes.show');
+        Route::get(
+            '/students/{student}/qr-code/image',
+            [StudentQrCodeController::class, 'image'],
+        )->name('students.qr-codes.image');
+        Route::get(
+            '/students/{student}/qr-code/print',
+            [StudentQrCodeController::class, 'print'],
+        )->name('students.qr-codes.print');
+        Route::post(
+            '/students/{student}/qr-code/regenerate',
+            [StudentQrCodeController::class, 'regenerate'],
+        )->name('students.qr-codes.regenerate');
 
         Route::delete(
             '/students/{student}/photo',

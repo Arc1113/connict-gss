@@ -30,6 +30,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-.png
-!docs/evidence/phase-4/*.png
-!docs/evidence/phase-5/*.png
+# Browser visual-QA screenshots are generated locally.
+/docs/evidence/**/*.png

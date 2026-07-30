@@ -353,7 +353,6 @@ class StudentController extends Controller
             'id' => $student->id,
             'ceremony_id' => $student->ceremony_id,
             'student_number' => $student->student_number,
-            'qr_token' => '',
             'first_name' => $student->first_name,
             'middle_name' => $student->middle_name,
             'last_name' => $student->last_name,

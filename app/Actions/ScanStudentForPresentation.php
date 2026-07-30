@@ -32,11 +32,28 @@ final readonly class ScanStudentForPresentation
     public function execute(string $token, User $operator): ScanAttemptResult
     {
         $normalizedToken = mb_strtoupper(trim($token));
-        $tokenHash = hash('sha256', $normalizedToken);
+
+        return $this->executeSubject($normalizedToken, null, $operator);
+    }
+
+    public function executeStudent(int $studentId, User $operator): ScanAttemptResult
+    {
+        return $this->executeSubject(null, $studentId, $operator);
+    }
+
+    private function executeSubject(
+        ?string $normalizedToken,
+        ?int $manualStudentId,
+        User $operator,
+    ): ScanAttemptResult {
+        $tokenHash = $normalizedToken === null
+            ? null
+            : hash('sha256', $normalizedToken);
 
         /** @var array{result: ScanAttemptResult, ceremony_id: int|null, broadcast: array<string, mixed>|null} $committed */
         $committed = DB::transaction(function () use (
             $normalizedToken,
+            $manualStudentId,
             $operator,
             $tokenHash,
         ): array {
@@ -83,10 +100,11 @@ final readonly class ScanStudentForPresentation
                 ]);
             }
 
-            $student = Student::query()
-                ->where('ceremony_id', $ceremony->id)
-                ->where('qr_token', $normalizedToken)
-                ->first();
+            $studentQuery = Student::query()
+                ->where('ceremony_id', $ceremony->id);
+            $student = $manualStudentId === null
+                ? $studentQuery->where('qr_token', $normalizedToken)->first()
+                : $studentQuery->whereKey($manualStudentId)->first();
 
             if ($student === null) {
                 return $this->rejected(
@@ -259,7 +277,7 @@ final readonly class ScanStudentForPresentation
     private function rejected(
         int $ceremonyId,
         ?int $studentId,
-        string $tokenHash,
+        ?string $tokenHash,
         ScanResult $result,
         string $reason,
         ScanStatus $status,
@@ -285,7 +303,7 @@ final readonly class ScanStudentForPresentation
     private function logAttempt(
         ?int $ceremonyId,
         ?int $studentId,
-        string $tokenHash,
+        ?string $tokenHash,
         ScanResult $result,
         string $reason,
         User $operator,

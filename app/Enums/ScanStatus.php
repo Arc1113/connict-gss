@@ -14,6 +14,7 @@ enum ScanStatus: string
     case AlreadyCompleted = 'already_completed';
     case StageBusy = 'stage_busy';
     case Unauthorized = 'unauthorized';
+    case RequestFailed = 'request_failed';
 
     public function httpStatus(): int
     {
@@ -25,6 +26,7 @@ enum ScanStatus: string
             self::AlreadyCompleted,
             self::StageBusy => Response::HTTP_CONFLICT,
             self::Unauthorized => Response::HTTP_FORBIDDEN,
+            self::RequestFailed => Response::HTTP_INTERNAL_SERVER_ERROR,
         };
     }
 }

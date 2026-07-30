@@ -4,6 +4,7 @@ namespace App\Actions\Admin;
 
 use App\Models\Student;
 use App\Models\User;
+use App\Services\StudentQrTokenGenerator;
 use App\Support\AdministrativeAuditLogger;
 use App\Support\StudentMediaStorage;
 use Illuminate\Database\QueryException;
@@ -18,7 +19,6 @@ final class StudentAdministration
     private const DATA_FIELDS = [
         'ceremony_id',
         'student_number',
-        'qr_token',
         'first_name',
         'middle_name',
         'last_name',
@@ -37,6 +37,7 @@ final class StudentAdministration
     public function __construct(
         private readonly AdministrativeAuditLogger $auditLogger,
         private readonly StudentMediaStorage $mediaStorage,
+        private readonly StudentQrTokenGenerator $qrTokens,
     ) {}
 
     /**
@@ -65,6 +66,7 @@ final class StudentAdministration
             ): Student {
                 $student = Student::query()->create([
                     ...Arr::only($attributes, self::DATA_FIELDS),
+                    'qr_token' => $this->qrTokens->generate(),
                     'photo_path' => $photoPath,
                     'audio_path' => $audioPath,
                 ]);
@@ -127,15 +129,10 @@ final class StudentAdministration
 
                 $data = Arr::only($attributes, self::DATA_FIELDS);
 
-                if (($data['qr_token'] ?? null) === null) {
-                    unset($data['qr_token']);
-                }
-
                 $identityFields = [];
 
                 foreach ([
                     'student_number',
-                    'qr_token',
                     'first_name',
                     'middle_name',
                     'last_name',
@@ -380,7 +377,7 @@ final class StudentAdministration
                 'sequence_number' => 'That sequence number is already used in the selected ceremony.',
             ],
             str_contains($message, 'students_qr_token_unique') => [
-                'qr_token' => 'That QR token is already assigned to another graduate.',
+                'student' => 'A secure QR token could not be assigned. Try saving the graduate again.',
             ],
             default => null,
         };

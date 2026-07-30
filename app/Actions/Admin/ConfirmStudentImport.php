@@ -8,12 +8,12 @@ use App\Models\Student;
 use App\Models\StudentImport;
 use App\Models\User;
 use App\Services\StudentImportPreparation;
+use App\Services\StudentQrTokenGenerator;
 use App\Support\AdministrativeAuditLogger;
 use App\Support\StudentImportLimits;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -24,6 +24,7 @@ final class ConfirmStudentImport
     public function __construct(
         private readonly StudentImportPreparation $preparation,
         private readonly AdministrativeAuditLogger $auditLogger,
+        private readonly StudentQrTokenGenerator $qrTokens,
     ) {}
 
     public function execute(
@@ -106,7 +107,7 @@ final class ConfirmStudentImport
                 foreach ($preview['rows'] as $row) {
                     $student = Student::query()->create([
                         'ceremony_id' => $ceremony->id,
-                        'qr_token' => $this->uniqueQrToken(),
+                        'qr_token' => $this->qrTokens->generate(),
                         ...$row['normalized'],
                     ]);
                     $created++;
@@ -204,19 +205,6 @@ final class ConfirmStudentImport
                 'confirm' => 'The import could not be completed. No graduate records were imported.',
             ]);
         }
-    }
-
-    private function uniqueQrToken(): string
-    {
-        for ($attempt = 0; $attempt < 10; $attempt++) {
-            $token = 'GSS-'.Str::upper(Str::random(48));
-
-            if (! Student::query()->where('qr_token', $token)->exists()) {
-                return $token;
-            }
-        }
-
-        throw new \RuntimeException('Unable to generate a unique graduate token.');
     }
 
     /**

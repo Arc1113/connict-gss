@@ -49,7 +49,6 @@ export default function StudentForm({
         _method: editing ? 'put' : undefined,
         ceremony_id: student?.ceremony_id ?? '',
         student_number: student?.student_number ?? '',
-        qr_token: '',
         first_name: student?.first_name ?? '',
         middle_name: student?.middle_name ?? '',
         last_name: student?.last_name ?? '',
@@ -164,36 +163,11 @@ export default function StudentForm({
                         />
                     </div>
 
-                    <div className="admin-field admin-field-wide">
-                        <label htmlFor="qr_token">
-                            {editing ? 'Replacement QR token' : 'QR token'}{' '}
-                            {!editing && <span aria-hidden="true">*</span>}
-                        </label>
-                        <input
-                            aria-describedby={describedBy(
-                                'qr_token',
-                                errors.qr_token,
-                                true,
-                            )}
-                            aria-invalid={Boolean(errors.qr_token)}
-                            autoComplete="off"
-                            id="qr_token"
-                            maxLength="128"
-                            onChange={(event) =>
-                                setData('qr_token', event.target.value)
-                            }
-                            required={!editing}
-                            spellCheck="false"
-                            type="password"
-                            value={data.qr_token}
-                        />
-                        <p className="admin-field-hint" id="qr_token-hint">
-                            {editing
-                                ? 'The current token is configured but never displayed. Leave blank to keep it.'
-                                : 'Enter the approved token. Phase 4 does not generate or print QR codes.'}
-                        </p>
-                        <FieldError id="qr_token-error" message={errors.qr_token} />
-                    </div>
+                    <p className="admin-form-note admin-field-wide">
+                        A secure QR token is assigned by the server. Prepare and print
+                        the card from the QR preparation workspace after saving this
+                        record.
+                    </p>
                 </div>
             </fieldset>
 

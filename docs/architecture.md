@@ -1,8 +1,8 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 5 CSV import architecture implemented**
+Document status: **Phase 6 QR preparation and scanner hardening architecture implemented**
 
-Last updated: 2026-07-29
+Last updated: 2026-07-30
 
 ## 1. Architectural intent
 
@@ -25,6 +25,7 @@ The approved architecture has not changed.
 | Browser client | Laravel Echo 2.4 + `pusher-js` 8.6 | Private subscription and reconnect signals |
 | Scanner | USB 2D keyboard wedge | Types opaque QR token into `/scanner` |
 | Media | Local public paths | Tone fixtures and managed Phase 4 graduate uploads |
+| QR rendering | BaconQrCode 3.1.1 | Local deterministic SVG from the current PostgreSQL token |
 | Packaging | Docker Compose | Reproducible app, Reverb, and PostgreSQL processes |
 
 No Redis, queue worker, polling loop, separate SPA/API application, SQLite,
@@ -138,6 +139,13 @@ create/owner policies and keep file, mapping, and acknowledgment validation at
 separate HTTP boundaries. The controller never accepts browser-normalized rows as
 confirmation input.
 
+Phase 6 adds `StudentQrCodeController` for the protected readiness workspace,
+individual SVG/review/print responses, bounded batch printing, and
+administrator-only token replacement. `ScannerLookupController` provides a
+bounded active-ceremony identity lookup. The selected graduate is submitted to
+`ScanController::manual`, which delegates to the existing presentation action
+instead of bypassing the scan transaction.
+
 ### 6.2 Domain actions
 
 `ScanStudentForPresentation` owns the scan transaction, safe result mapping, scan
@@ -160,6 +168,13 @@ owner-bound import row. `ConfirmStudentImport` owns the locked, create-only
 confirmation transaction, server QR generation, per-graduate safe audits,
 completion/failure summary, and encrypted-source cleanup.
 
+`PrepareStudentQrBatch` locks and revalidates a maximum of 100 selected
+graduates, renders only printable records, orders cards deterministically, and
+writes one safe count/filter audit. `RegenerateStudentQrToken` locks one
+graduate, verifies an opaque optimistic version, blocks presenting/completed
+history, replaces the token, and records a redacted audit in the same
+transaction.
+
 ### 6.3 State helpers
 
 - `ActiveCeremonyResolver` returns `ready`, `no_active_ceremony`, or
@@ -178,6 +193,16 @@ completion/failure summary, and encrypted-source cleanup.
   duplicate detection, and current PostgreSQL conflict classification.
 - `StudentImportLimits` is the single server/browser source for Phase 5 size,
   row, column, cell, pagination, and expiry limits.
+- `StudentQrTokenGenerator` owns the `GSS-` plus 48-character random token
+  contract for manual creation, CSV creation, and explicit replacement.
+- `QrCodeRenderer` owns the on-demand SVG contract: error correction Q, opaque
+  white background, black modules, four-module quiet zone, and a 512-unit view
+  box.
+- `StudentQrReadiness` derives printable/blocking labels from authoritative
+  graduate and presentation history. It creates no parallel readiness column.
+- `StudentQrTokenVersion` creates an application-keyed HMAC from the graduate,
+  current token, and update timestamp. The browser receives the fingerprint,
+  never the token.
 
 The `student_imports` table is deliberately temporary workflow state:
 
@@ -410,8 +435,8 @@ All administration pages are Inertia views in the same application:
 - list filters use ordinary GET query strings, so refresh/back/pagination remain
   understandable;
 - table containers own horizontal overflow at the 1024 px target;
-- QR tokens are password inputs on create/replacement and are never included in
-  list/detail/edit props; and
+- QR tokens are assigned by Laravel and are never accepted by or included in
+  ordinary create/list/detail/edit form props; and
 - native audio controls coordinate playback so only one preview plays.
 
 The administration UI has no stage commands, queue controls, fake analytics, or
@@ -435,6 +460,53 @@ values, row findings, and counts. It never renders source content or QR tokens.
 There is no frontend CSV parser, client-side import authority, drag-and-drop
 library, analytics panel, WebSocket dependency, cloud upload, or added UI
 framework.
+
+### 12.6 Phase 6 QR preparation
+
+The protected QR workspace is an Inertia administration screen that derives
+readiness from PostgreSQL and offers filters, pagination, individual review, and
+bounded batch selection. It never sends a token to React. An individual SVG is
+returned from a separately authorized, private no-store response. Print HTML
+uses embedded SVG data URIs so Chromium can produce a self-contained local
+print job without exposing a raw payload in page text, URLs, filenames, or
+remote requests.
+
+```text
+GET readiness/review
+    → authorized PostgreSQL read
+    → safe identity/readiness props only
+
+GET image or print / POST batch
+    → policy + validation
+    → current PostgreSQL token
+    → local SVG render
+    → no-store SVG or standalone print HTML
+
+POST regenerate
+    → administrator policy + explicit acknowledgment
+    → row lock + HMAC version check
+    → replace token + safe audit in one transaction
+```
+
+Individual output is A4 portrait with 12 mm margins and one 65 mm QR. Batch
+output is A4 portrait with 12 mm margins, a two-column grid, no more than four
+55 mm QR cards per page, and no more than 100 graduates per request. Browser
+headers/footers and fit-to-page scaling are operational printer settings, not
+application state.
+
+The scanner fallback is deliberately secondary. It queries at most ten safe
+identity results from the sole active ceremony and then submits one verified
+student ID over HTTP. `ScanStudentForPresentation::executeStudent` resolves and
+locks that student inside the same transaction used by token scans. Eligibility,
+duplicate/completed/busy rules, state/event/log persistence, post-commit Reverb
+delivery, and HTTP recovery therefore remain one shared path.
+
+The domain action continues to throw unexpected transaction exceptions so
+rollback behavior remains testable. At the HTTP boundary, `ScanController`
+catches such an exception before Laravel reports request arguments, writes only
+operator ID, command type, and exception class, and returns safe
+`request_failed` JSON. This keeps unexpected database failures actionable on the
+scanner without placing even a failed raw token in application logs.
 
 ## 13. Audio architecture
 
@@ -485,6 +557,11 @@ final institutional loudness standards, and operator warnings remain deferred.
 | Import expires | Temporary row deleted | Upload the source again |
 | Conflict appears after preview | Current PostgreSQL rows | Confirmation recheck blocks and imports none |
 | Mid-import/database failure | Transaction rollback | No graduates/completion audit; safe retry guidance |
+| QR print row changed after selection | Current PostgreSQL graduate/history | Batch lock/revalidation rejects the job |
+| Concurrent token replacement | Locked row + HMAC version | One replaces; stale request reloads |
+| Token replacement audit/write failure | Transaction rollback | Previous printed token remains valid |
+| Printed QR cannot decode | Current active-ceremony student row | Controlled lookup and shared scan transaction |
+| Old card used after replacement | Current PostgreSQL token only | Invalid-token rejection; reprint current card |
 | Missing media | Presentation record remains valid | Visual fallback |
 | Zero/multiple active ceremonies | No implicit selection | Correct ceremony data operationally |
 
@@ -513,6 +590,15 @@ authorized operator/server logs.
     temporary file.
 11. **Imported QR custody:** generated only inside Laravel, globally constrained,
     and absent from CSV/template/Inertia/summary/audit contracts.
+12. **Rendered QR custody:** authenticated policy checks, no-store/noindex SVG
+    and print responses, token-free URLs/filenames/page text, same-origin local
+    rendering, and no persisted QR artifacts.
+13. **Token replacement:** administrator-only acknowledgment, PostgreSQL row
+    lock, opaque HMAC stale-request rejection, history guards, and same-
+    transaction redacted audit.
+14. **Scanner fallback:** active-ceremony-only bounded search, allowlisted
+    identity response, verified selection, and the same authorized scan action;
+    no token disclosure or operational override.
 
 Raw scanned tokens are hashed in operational logs. Reverb/DB credentials and
 development passwords remain in the ignored `.env`.
@@ -580,6 +666,24 @@ warning and blocked previews, confirmation, summary, graduate retrieval, safe
 audit, visible focus, reduced motion, same-origin resources, overflow
 containment, and denied scanner role.
 
+Phase 6 adds PostgreSQL-backed tests for:
+
+- local deterministic SVG structure, expected token payload handling, no-store
+  responses, and absence of raw values from ordinary Inertia/audit contracts;
+- QR readiness, filter/pagination behavior, individual and batch access,
+  cross-ceremony/blocked/max-size rejection, physical print CSS, and
+  deterministic ordering;
+- administrator-only token replacement, old/new scan behavior, unchanged
+  identity/history, stale concurrent request rejection, presenting/completed
+  protection, redacted audit, and rollback on failure; and
+- scanner lookup limits/privacy/authorization, shared validation and
+  transaction semantics, rapid-submit behavior, and post-commit event delivery.
+
+`tests/Support/phase6-browser-check.mjs` exercises the compiled QR workspace,
+individual and batch print views, replacement warning, scanner QR/manual paths,
+visible focus, reduced motion, long content, contained overflow, same-origin
+resources, and Chromium print-to-PDF at the approved laptop/A4 viewports.
+
 ## 17. Phase boundary and future architecture
 
 Phase 3 deliberately has no durable waiting-queue workflow. A scan is either the
@@ -587,10 +691,9 @@ current presentation or a conflict. Phase 7 must define and implement the full
 queue transition graph and both presentation modes without bypassing the
 transaction, version, event, or recovery principles established here.
 
-Still deferred after Phase 5:
+Still deferred after Phase 6:
 
 - CSV update/synchronization/export;
-- QR generation and custody;
 - device authentication/registration;
 - advanced stage controls and queue commands;
 - recording, media normalization, and production approval workflow;
@@ -619,6 +722,9 @@ Still deferred after Phase 5:
 | Temporary CSV sensitivity | Encrypted owner-bound row, hard limits, 30-minute UTC expiry, cleared content | Final retention/privacy notice |
 | Import concurrency throughput | Global advisory lock and full current-state recheck | Whether later ceremony-scoped parallelism is required |
 | Create-only correction | Conflicts block and existing rows never change | Approved future update/sync identity and merge rules |
+| Printer/scanner variance | Fixed SVG/physical CSS contract and reproducible checklist | Approved devices, grayscale/scale/distance matrix |
+| Lost/replaced paper cards | Immediate server-side invalidation and redacted replacement audit | Institutional custody/reprint/destruction procedure |
+| Staff card identity | Student number appears only on protected staff print cards | Final privacy approval for printed matching fields |
 
-The implementation may not advance to Phase 6 until Phase 5 is reviewed and
+The implementation may not advance to Phase 7 until Phase 6 is reviewed and
 approved.

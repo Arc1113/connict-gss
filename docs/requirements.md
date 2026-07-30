@@ -1,8 +1,8 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 5 CSV import contract implemented**
+Document status: **Phase 6 QR preparation and scanner contract implemented**
 
-Last updated: 2026-07-29
+Last updated: 2026-07-30
 
 ## 1. Objective
 
@@ -16,6 +16,8 @@ Phase 3 proves the critical vertical slice. Phase 4 adds reliable manual
 ceremony and graduate preparation while preserving that operational workflow.
 Phase 5 adds controlled create-only CSV preparation without changing the
 scanner, presentation, event, or recovery contracts.
+Phase 6 adds protected local QR rendering, print preparation, explicit token
+replacement, and controlled scanner fallback without changing those contracts.
 
 ## 2. Fixed architecture and device requirements
 
@@ -46,6 +48,9 @@ scanner, presentation, event, or recovery contracts.
 | Ceremony create/edit/status/delete | `administrator` |
 | Graduate list/detail/create/edit and local media | `data_encoder`, `administrator` |
 | CSV template/upload/mapping/preview/confirmation/summary | Owning `data_encoder` or `administrator` |
+| QR readiness, individual/batch output, and printing | `data_encoder`, `administrator` |
+| QR token replacement and replacement history | `administrator` |
+| Scanner controlled lookup and manual verified selection | `scanner_operator`, `administrator` |
 | Graduate deletion | `administrator`, subject to history protection |
 | Administrative audit history | `administrator` |
 
@@ -104,6 +109,8 @@ automatic/controlled mode transition rules.
 - keep the token input focused on load and after each attempt;
 - accept keyboard-wedge input ending in Enter;
 - allow manual token entry for controlled testing and fallback;
+- provide a bounded active-ceremony graduate lookup when a printed QR cannot be
+  decoded, without returning token or unnecessary identity fields;
 - cap input at 128 characters;
 - prevent another submission while the current request is pending;
 - clear and refocus after the response;
@@ -184,7 +191,10 @@ Each safely processable attempt stores:
 - scan time.
 
 Logs must not store the raw QR token. Unauthorized requests are rejected before
-the workflow and are not recorded as scanner attempts.
+the workflow and are not recorded as scanner attempts. An unexpected HTTP scan
+failure must return safe `request_failed` JSON and log only the operator ID,
+command type, and exception class; it must not pass the raw input to Laravel's
+exception reporter.
 
 ## 10. Real-time requirements
 
@@ -418,8 +428,8 @@ Graduate forms validate:
 
 - an existing ceremony;
 - student number, required and unique within that ceremony;
-- QR token, required on create, globally unique, maximum 128 characters, and
-  normalized to uppercase;
+- a server-assigned globally unique QR token, never accepted from the ordinary
+  create/edit form;
 - required first, last, display, and announcement names;
 - optional middle name and suffix;
 - required program and positive sequence number unique within the ceremony;
@@ -429,8 +439,8 @@ Graduate forms validate:
 
 Separate name fields are persisted exactly as reviewed. Changing first/middle/
 last/suffix does not recompute or overwrite `display_name` or
-`announcement_name`. Editing never returns the current QR token; an empty
-replacement field preserves it.
+`announcement_name`. Editing never returns or replaces the current QR token.
+Only the explicit Phase 6 administrator replacement action may change it.
 
 Graduate deletion is permitted only before any scan, queue, or presentation
 history exists. Phase 4 does not introduce soft deletion.
@@ -652,17 +662,144 @@ traces. Only administrators may view audit history.
 - Existing Phase 3 scanner/stage automated and live-browser recovery behavior
   remains unchanged and passes.
 
-## 20. MVP and deferred boundaries
+## 20. Phase 6 QR generation, printing, and scanner hardening
+
+### 20.1 Token and QR payload contract
+
+- New manual and imported graduate records receive a Laravel-generated token in
+  the existing `GSS-` plus 48 random uppercase alphanumeric format.
+- Existing tokens are preserved unless an administrator explicitly replaces one.
+- The QR payload is exactly the stored token. It contains no name, student
+  number, program, ceremony data, database ID, URL, media path, or other personal
+  information.
+- BaconQrCode 3.1.1 renders SVG locally and deterministically with
+  error-correction level Q, a four-module quiet zone, 512-unit view box, black
+  modules, and an opaque white background.
+- QR images are generated on demand. No QR image or duplicate readiness state is
+  stored, no raw token is used in a filename/URL, and no internet service is
+  called.
+- QR responses are authenticated, role-authorized, `no-store`, `noindex`, and
+  protected from content-type sniffing.
+
+### 20.2 Access and readiness
+
+Administrators and data encoders may use the QR preparation index, individual
+review/image/print routes, and stateless batch print action. Scanner, stage, and
+technical operators are denied. Only administrators may replace a token and see
+replacement history.
+
+The preparation index filters one ceremony by college, program, eligibility,
+original/regenerated token state, and sequence range. It paginates 25 rows and
+reports text-labeled readiness. Printing requires:
+
+1. a current token;
+2. `eligible` status; and
+3. no completed presentation history.
+
+Presenting state does not invalidate an already prepared print, but token
+replacement is blocked while presenting. A completed graduate cannot be printed
+or receive a replacement under the safe Phase 6 policy.
+
+### 20.3 Individual and batch print contract
+
+Print output is standalone same-origin HTML with embedded SVG data URIs and no
+remote assets:
+
+| Output | Paper | Margin | Cards/page | QR size |
+| --- | --- | --- | ---: | ---: |
+| Individual replacement | A4 portrait | 12 mm | 1 | 65 mm |
+| Batch preparation | A4 portrait | 12 mm | up to 4, two columns | 55 mm |
+
+Cards show only the ceremony, approved display name, program, sequence number,
+and staff matching student number. The raw token is never visible. Cards use
+physical CSS units, `break-inside: avoid`, deterministic sequence/name/ID order,
+high contrast, a white QR background, and wrapping for long names/programs.
+
+The batch action accepts at most 100 deduplicated graduate IDs. It locks and
+revalidates every selected row, requires one ceremony, rejects missing,
+cross-ceremony, ineligible, tokenless, or completed records, and records only
+safe ceremony/filter/count audit data. Operators print at 100% scale with
+**Fit to page** and browser headers/footers disabled.
+
+### 20.4 Token replacement
+
+Administrator replacement requires an explicit acknowledgment. Inside one
+PostgreSQL transaction it:
+
+1. locks the current graduate row;
+2. compares an opaque HMAC fingerprint of graduate ID, current token, and record
+   timestamp so same-second competing requests cannot both succeed;
+3. rejects presenting or completed history;
+4. generates and saves one new unique token; and
+5. inserts a redacted audit row before commit.
+
+The new token immediately becomes the only token accepted by `POST /scans`.
+Graduate identity, ceremony, media, scan, queue, and presentation history remain
+unchanged. An audit/database failure rolls back to the previous valid token.
+Audit values contain state labels and ceremony/actor/request metadata, never
+either token or image data.
+
+### 20.5 Scanner hardening and fallback
+
+The primary path remains USB HID keyboard input ending in Enter and
+`POST /scans`. The synchronous submission lock prevents repeated Enter or trigger
+input from creating a second request while processing. Input is trimmed and
+uppercased on the server, cleared after every response, and refocused after
+success/failure and browser-window focus. Raw input never enters a URL, response
+message, console log, or browser persistence.
+
+When a printed QR does not decode, the scanner operator may expand controlled
+lookup. `POST /scanner/lookup` searches only the sole active ceremony, requires
+at least two characters, escapes wildcard input, returns at most 10 results, and
+returns only ID, display name, program, sequence, and eligibility label. After
+the operator verifies one result, `POST /scans/manual` resolves that ID inside
+the same active-ceremony PostgreSQL transaction and applies the same eligibility,
+duplicate, completed, busy-stage, persistence, post-commit broadcast, and HTTP
+recovery rules. It is not a queue-control or override feature.
+
+### 20.6 Physical configuration and acceptance limitation
+
+The approved device profile is USB HID keyboard mode, the scanner laptop’s
+keyboard layout, QR/2D symbology enabled, no prefix, and exactly one Enter or
+carriage-return suffix. Device beep confirms local decoding; the scanner page
+confirms server acceptance. The print/scanner matrix must cover individual and
+batch output, normal and grayscale print, documented physical sizes, long
+content, trigger/Enter repetition, busy/duplicate/completed outcomes, and
+old/new replacement cards.
+
+No USB 2D scanner was attached and configured printers were offline during Phase
+6 implementation. Automated PostgreSQL and Chrome checks prove generated SVG,
+print media/PDF structure, focus, duplicate-request locking, role boundaries,
+old/new token behavior, and stage regression. Physical paper, scanner beep,
+suffix timing, scan distance, printer scaling, and venue hardware remain a
+required pre-ceremony manual check; no physical verification is claimed.
+
+### 20.7 Phase 6 acceptance
+
+- Individual and bounded batch QR output are authenticated and local-only.
+- The encoded payload remains server-token-only and absent from surrounding
+  HTML, audit JSON, logs, URLs, and ordinary administration props.
+- Print layouts use documented physical dimensions and handle long content.
+- Replacement is administrator-only, confirmed, transaction-safe, concurrent
+  stale requests are rejected, failures roll back, and operational history is
+  preserved.
+- Scanner focus, Enter input, immediate feedback, input clearing, HTTP flow, and
+  bounded fallback behavior are covered by tests and browser checks.
+- Phase 3 Reverb/Echo/state/audio and Phase 4–5 administration/import regression
+  behavior remains operational.
+- Physical scanner/printer certification is explicitly pending with reproducible
+  steps.
+
+## 21. MVP and deferred boundaries
 
 The eventual MVP includes the completed ceremony/student administration,
 import/validation, QR creation/custody, durable queue operation, automatic and
 controlled modes, stage controls, local media, logs/reporting, backup/restore,
 deployment hardening, and rehearsal.
 
-Deferred beyond Phase 5:
+Deferred beyond Phase 6:
 
 - CSV update/synchronization/export;
-- QR generation, print, regeneration, and custody;
 - camera scanning;
 - device registration/authentication;
 - general queue and ordering;
@@ -674,7 +811,7 @@ Deferred beyond Phase 5:
 - production process supervision, TLS, firewall automation, and kiosk setup; and
 - full physical rehearsal.
 
-## 21. Assumptions and unresolved questions
+## 22. Assumptions and unresolved questions
 
 Current assumptions:
 
@@ -692,6 +829,10 @@ Current assumptions:
   after 30 minutes.
 - Student and sequence number uniqueness remains ceremony-scoped; generated QR
   tokens remain globally unique and server-controlled.
+- A4 portrait at 100% scale, 12 mm margins, 65 mm individual QR, 55 mm batch QR,
+  and four batch cards per page are the provisional local print standard.
+- Printed student number is approved only for staff-held matching cards, never
+  the audience stage.
 
 Still requiring approval:
 
@@ -718,5 +859,5 @@ Still requiring approval:
 15. What retention or immediate-deletion period is approved for completed safe
     import summaries and import audit metadata?
 
-Phase 6 must not begin until the Phase 5 implementation and these documented
+Phase 7 must not begin until the Phase 6 implementation and these documented
 boundaries are reviewed.

@@ -36,14 +36,24 @@ export default function StudentShow({ student }) {
             <Head title={student.display_name} />
             <PageHeader
                 actions={
-                    auth.abilities.manage_students && (
-                        <Link
-                            className="admin-button admin-button-primary"
-                            href={`/admin/students/${student.id}/edit`}
-                        >
-                            Edit graduate
-                        </Link>
-                    )
+                    <>
+                        {auth.abilities.prepare_qr_codes && (
+                            <Link
+                                className="admin-button admin-button-secondary"
+                                href={`/admin/students/${student.id}/qr-code`}
+                            >
+                                Prepare QR card
+                            </Link>
+                        )}
+                        {auth.abilities.manage_students && (
+                            <Link
+                                className="admin-button admin-button-primary"
+                                href={`/admin/students/${student.id}/edit`}
+                            >
+                                Edit graduate
+                            </Link>
+                        )}
+                    </>
                 }
                 description={`${student.ceremony.name} · sequence ${student.sequence_number}`}
                 eyebrow="Graduate records"
@@ -81,10 +91,10 @@ export default function StudentShow({ student }) {
                             <dd>{student.sequence_number}</dd>
                         </div>
                         <div>
-                            <dt>QR token</dt>
+                            <dt>QR preparation</dt>
                             <dd>
                                 {student.qr_token_configured
-                                    ? 'Configured and hidden'
+                                    ? 'Secure token assigned'
                                     : 'Missing'}
                             </dd>
                         </div>

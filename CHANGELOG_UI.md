@@ -3,6 +3,64 @@
 UI changes are recorded by project phase. Functional backend changes belong in
 the main project documentation.
 
+## Phase 6 — QR Generation, Printing, and Scanner Hardening
+
+Status: completed
+Date: 2026-07-30
+
+Completed:
+
+- Added a protected QR preparation workspace with one dominant task, compact
+  ceremony/readiness filters, paginated graduate rows, text-labeled readiness,
+  bounded batch selection, and explicit print guidance.
+- Added individual QR review and A4 print output plus a two-column A4 batch
+  layout. Long approved names/programs wrap without reducing the physical QR
+  size, and regenerated cards carry an operational reprint warning.
+- Kept raw tokens out of React props and visible page content. SVG output is
+  local, protected, no-store, and generated only when an authorized user opens
+  an image or print route.
+- Added administrator-only replacement acknowledgment and history without
+  exposing either old or new token. Data encoders retain preparation/printing
+  access but cannot replace tokens or view replacement history.
+- Extended `/scanner` with a secondary controlled lookup for unreadable paper
+  cards. The primary focused USB/Enter field remains dominant; the fallback uses
+  a bounded safe result set, verification step, the existing submission lock,
+  and the existing scan transaction.
+- Preserved the formal audience stage, Reverb/Echo delivery, HTTP recovery,
+  local audio, administration, CSV workflow, and phase boundaries. No external
+  asset, UI library, polling path, decorative dashboard, or internet runtime
+  dependency was added.
+
+Verification:
+
+- The full PostgreSQL suite passes 124 tests with 1,028 assertions. Focused
+  Phase 3, Phase 4, Phase 5, and Phase 6 runs pass 22/157, 23/251, 22/286, and
+  16/160 respectively.
+- Pint, ESLint, the Vite production build, Composer validation/platform/audit,
+  npm audit, and Compose validation pass.
+- Authenticated Chromium exercised the QR workspace, long individual output,
+  batch output, regeneration warning, old/replacement scans, one-request
+  repeated Enter, controlled lookup/acceptance, a genuinely imported graduate,
+  data-encoder restrictions, focus recovery, reduced motion, same-origin
+  resources, and print media.
+- The QR workspace was inspected at 1440×900, 1366×768, and 1024×768; individual
+  review at 1440×900 and 1024×768; scanner at 1440×900 and 1024×768; print
+  preview at 1366×768 and A4 portrait print media.
+- Chromium produced valid one-page A4 individual and batch PDFs. An independent
+  temporary OpenCV check decoded the locally rendered 52-character payload and
+  matched the expected token exactly. Visual evidence and the exact
+  state/viewport index are under `docs/evidence/phase-6/`.
+
+Known limitations:
+
+- No physical USB 2D scanner was attached and configured printers were offline.
+  Paper scale, grayscale, decode distance, trigger/suffix timing, device beep,
+  projector/audio, and three-laptop venue rehearsal remain manual checks.
+- Printer-specific unprintable margins and final approval of the student number
+  on staff-held cards require institutional review.
+- General queue controls and automatic/controlled presentation modes remain
+  Phase 7 work.
+
 ## Phase 5 — CSV Import and Data Preparation
 
 Status: completed

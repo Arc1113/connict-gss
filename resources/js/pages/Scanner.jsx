@@ -39,6 +39,10 @@ const REJECTION_FEEDBACK = {
         title: 'Scanner access expired',
         message: 'Return to operations and sign in again before processing another scan.',
     },
+    request_failed: {
+        title: 'Scan not confirmed',
+        message: 'Check the local server connection. When it is ready, scan the same QR code again.',
+    },
 };
 
 function ceremonyUnavailableFeedback(ceremonyStatus) {
@@ -141,6 +145,13 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
     const [serverState, setServerState] = useState('available');
     const [feedback, setFeedback] = useState(ceremony ? INITIAL_FEEDBACK : ceremonyUnavailableFeedback(ceremonyStatus));
     const [lastAccepted, setLastAccepted] = useState(null);
+    const [lookupQuery, setLookupQuery] = useState('');
+    const [lookupStudents, setLookupStudents] = useState([]);
+    const [lookupMessage, setLookupMessage] = useState(
+        'Search the active ceremony by graduate name or student number.',
+    );
+    const [lookupLoading, setLookupLoading] = useState(false);
+    const [selectedStudentId, setSelectedStudentId] = useState(null);
     const canScan = Boolean(ceremony) && ceremonyAccepting;
 
     useEffect(() => {
@@ -169,6 +180,55 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
             stopObserving();
         };
     }, []);
+
+    function applyScanResult(data, manual = false) {
+        setServerState(data.status === 'request_failed' ? 'unavailable' : 'available');
+
+        if (data.status === 'accepted') {
+            const displayName = data.student?.display_name?.trim();
+
+            if (!displayName) {
+                setFeedback({
+                    status: 'missing_student_information',
+                    tone: 'warning',
+                    title: 'Scan saved — information incomplete',
+                    message: 'Ask the stage operator to verify the graduate display before continuing.',
+                });
+                setLastAccepted('Graduate information unavailable');
+            } else {
+                setFeedback({
+                    status: 'accepted',
+                    tone: 'accepted',
+                    title: manual ? 'Manual selection accepted' : 'Successful scan',
+                    message: data.broadcast_delivered
+                        ? `${displayName} is ready on the stage display.`
+                        : `${displayName} was saved while live delivery was unavailable. The stage will recover from server state.`,
+                });
+                setLastAccepted(displayName);
+            }
+
+            return;
+        }
+
+        if (data.status === 'ceremony_inactive') {
+            setCeremonyAccepting(false);
+        }
+
+        if (manual && data.status === 'invalid_token') {
+            setFeedback({
+                status: 'invalid_manual_selection',
+                tone: 'rejected',
+                title: 'Graduate selection is no longer available',
+                message: 'Search the active ceremony again, verify the graduate, then retry.',
+            });
+
+            return;
+        }
+
+        setFeedback({
+            ...rejectionFeedback(data.status, data.message),
+        });
+    }
 
     async function submitScan(event) {
         event.preventDefault();
@@ -207,39 +267,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 body: JSON.stringify({ token: submittedToken }),
             });
 
-            setServerState('available');
-
-            if (data.status === 'accepted') {
-                const displayName = data.student?.display_name?.trim();
-
-                if (!displayName) {
-                    setFeedback({
-                        status: 'missing_student_information',
-                        tone: 'warning',
-                        title: 'Scan saved — information incomplete',
-                        message: 'Ask the stage operator to verify the graduate display before continuing.',
-                    });
-                    setLastAccepted('Graduate information unavailable');
-                } else {
-                    setFeedback({
-                        status: 'accepted',
-                        tone: 'accepted',
-                        title: 'Successful scan',
-                        message: data.broadcast_delivered
-                            ? `${displayName} is ready on the stage display.`
-                            : `${displayName} was saved while live delivery was unavailable. The stage will recover from server state.`,
-                    });
-                    setLastAccepted(displayName);
-                }
-            } else {
-                if (data.status === 'ceremony_inactive') {
-                    setCeremonyAccepting(false);
-                }
-
-                setFeedback({
-                    ...rejectionFeedback(data.status, data.message),
-                });
-            }
+            applyScanResult(data);
         } catch {
             setServerState('unavailable');
             setFeedback({
@@ -250,6 +278,104 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
             });
         } finally {
             setToken('');
+            setSubmitting(false);
+            submissionLockRef.current = false;
+            window.requestAnimationFrame(() => inputRef.current?.focus());
+        }
+    }
+
+    async function searchStudents(event) {
+        event.preventDefault();
+
+        const query = lookupQuery.trim();
+
+        if (query.length < 2 || lookupLoading || submitting || !canScan) {
+            setLookupMessage('Enter at least two characters before searching.');
+
+            return;
+        }
+
+        setLookupLoading(true);
+        setSelectedStudentId(null);
+        setLookupMessage('Searching the active ceremony…');
+
+        try {
+            const { response, data } = await requestJson('/scanner/lookup', {
+                method: 'POST',
+                body: JSON.stringify({ query }),
+            });
+
+            if (!response.ok) {
+                setLookupStudents([]);
+                setLookupMessage(
+                    data.message ??
+                        'Manual lookup failed. Check the local server and try again.',
+                );
+
+                if (data.status === 'ceremony_inactive') {
+                    setCeremonyAccepting(false);
+                }
+
+                return;
+            }
+
+            setLookupStudents(data.students ?? []);
+            setLookupMessage(data.message);
+        } catch {
+            setLookupStudents([]);
+            setLookupMessage(
+                'Manual lookup failed. Check the local server connection and try again.',
+            );
+        } finally {
+            setLookupLoading(false);
+        }
+    }
+
+    async function processSelectedStudent() {
+        if (
+            submissionLockRef.current ||
+            submitting ||
+            !canScan ||
+            selectedStudentId === null
+        ) {
+            return;
+        }
+
+        submissionLockRef.current = true;
+        setSubmitting(true);
+        setServerState('checking');
+        setFeedback({
+            status: 'processing',
+            tone: 'neutral',
+            title: 'Processing verified graduate',
+            message: 'Wait for server confirmation before processing anyone else.',
+        });
+
+        try {
+            const { data } = await requestJson('/scans/manual', {
+                method: 'POST',
+                body: JSON.stringify({ student_id: selectedStudentId }),
+            });
+
+            applyScanResult(data, true);
+
+            if (data.status === 'accepted') {
+                setLookupQuery('');
+                setLookupStudents([]);
+                setSelectedStudentId(null);
+                setLookupMessage(
+                    'Search the active ceremony by graduate name or student number.',
+                );
+            }
+        } catch {
+            setServerState('unavailable');
+            setFeedback({
+                status: 'request_failed',
+                tone: 'rejected',
+                title: 'Selection not confirmed',
+                message: 'Check the local server connection. Search and verify the graduate again after it is restored.',
+            });
+        } finally {
             setSubmitting(false);
             submissionLockRef.current = false;
             window.requestAnimationFrame(() => inputRef.current?.focus());
@@ -361,6 +487,97 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                         <dt>Last successful graduate</dt>
                         <dd>{lastAccepted ?? 'No successful scan in this browser session'}</dd>
                     </dl>
+
+                    <details className="scanner-fallback">
+                        <summary>QR will not scan? Use controlled lookup</summary>
+                        <div className="scanner-fallback-body">
+                            <p>
+                                Use this only after cleaning and retrying the printed
+                                card. Verify the graduate aloud before processing the
+                                selection.
+                            </p>
+                            <form onSubmit={searchStudents}>
+                                <label htmlFor="graduate-lookup">
+                                    Graduate name or student number
+                                </label>
+                                <div>
+                                    <input
+                                        autoComplete="off"
+                                        disabled={!canScan || submitting}
+                                        id="graduate-lookup"
+                                        maxLength="80"
+                                        onChange={(event) =>
+                                            setLookupQuery(event.target.value)
+                                        }
+                                        placeholder="Ana Marie dela Cruz"
+                                        type="search"
+                                        value={lookupQuery}
+                                    />
+                                    <button
+                                        className="secondary-action"
+                                        disabled={
+                                            lookupLoading ||
+                                            submitting ||
+                                            !canScan ||
+                                            lookupQuery.trim().length < 2
+                                        }
+                                        type="submit"
+                                    >
+                                        {lookupLoading ? 'Searching…' : 'Search'}
+                                    </button>
+                                </div>
+                            </form>
+                            <p
+                                aria-live="polite"
+                                className="scanner-lookup-message"
+                                role="status"
+                            >
+                                {lookupMessage}
+                            </p>
+                            {lookupStudents.length > 0 && (
+                                <fieldset className="scanner-lookup-results">
+                                    <legend>Verify one graduate</legend>
+                                    {lookupStudents.map((student) => (
+                                        <label key={student.id}>
+                                            <input
+                                                checked={
+                                                    selectedStudentId === student.id
+                                                }
+                                                name="manual_student_id"
+                                                onChange={() =>
+                                                    setSelectedStudentId(student.id)
+                                                }
+                                                type="radio"
+                                                value={student.id}
+                                            />
+                                            <span>
+                                                <strong>{student.display_name}</strong>
+                                                <small>
+                                                    Sequence {student.sequence_number}{' '}
+                                                    · {student.program} ·{' '}
+                                                    {student.eligibility}
+                                                </small>
+                                            </span>
+                                        </label>
+                                    ))}
+                                </fieldset>
+                            )}
+                            <button
+                                className="primary-action scanner-manual-submit"
+                                disabled={
+                                    selectedStudentId === null ||
+                                    submitting ||
+                                    !canScan
+                                }
+                                onClick={processSelectedStudent}
+                                type="button"
+                            >
+                                {submitting
+                                    ? 'Processing…'
+                                    : 'Process verified graduate'}
+                            </button>
+                        </div>
+                    </details>
                 </section>
             </main>
         </>

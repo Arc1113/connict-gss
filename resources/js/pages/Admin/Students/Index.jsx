@@ -239,6 +239,14 @@ export default function StudentIndex({
                                             >
                                                 View
                                             </Link>
+                                            {auth.abilities.prepare_qr_codes && (
+                                                <Link
+                                                    className="admin-row-action"
+                                                    href={`/admin/students/${student.id}/qr-code`}
+                                                >
+                                                    QR card
+                                                </Link>
+                                            )}
                                             {auth.abilities.manage_students && (
                                                 <Link
                                                     className="admin-row-action"

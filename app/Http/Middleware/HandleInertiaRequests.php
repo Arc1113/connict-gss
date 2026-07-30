@@ -61,6 +61,8 @@ class HandleInertiaRequests extends Middleware
                     'manage_ceremonies' => $user->can('create', Ceremony::class),
                     'view_students' => $user->can('viewAny', Student::class),
                     'manage_students' => $user->can('create', Student::class),
+                    'prepare_qr_codes' => $user->can('viewQrCodes', Student::class),
+                    'regenerate_qr_codes' => $user->isAdministrator(),
                     'import_students' => $user->can('create', StudentImport::class),
                     'delete_students' => $user->isAdministrator(),
                     'view_audit_logs' => $user->can('viewAny', AuditLog::class),

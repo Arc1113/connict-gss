@@ -3,7 +3,9 @@ export default function StatusText({ label, value }) {
         ? 'admin-status-success'
         : ['ineligible', 'conflict', 'missing'].includes(value)
           ? 'admin-status-danger'
-          : ['paused', 'pending', 'prepared', 'warning'].includes(value)
+        : ['paused', 'pending', 'prepared', 'regenerated', 'warning'].includes(
+                value,
+            )
             ? 'admin-status-warning'
             : 'admin-status-neutral';
 

@@ -40,12 +40,6 @@ class SaveStudentRequest extends FormRequest
                     ))
                     ->ignore($studentId),
             ],
-            'qr_token' => [
-                $student instanceof Student ? 'nullable' : 'required',
-                'string',
-                'max:128',
-                Rule::unique('students', 'qr_token')->ignore($studentId),
-            ],
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
@@ -82,7 +76,6 @@ class SaveStudentRequest extends FormRequest
         return [
             'student_number.unique' => 'That student number is already used in the selected ceremony.',
             'sequence_number.unique' => 'That sequence number is already used in the selected ceremony.',
-            'qr_token.unique' => 'That QR token is already assigned to another graduate.',
             'photo.mimes' => 'The photo must be a JPEG, PNG, or WebP image.',
             'audio.mimes' => 'The audio must be an MP3, WAV, or OGG file.',
         ];
@@ -94,7 +87,6 @@ class SaveStudentRequest extends FormRequest
 
         foreach ([
             'student_number',
-            'qr_token',
             'first_name',
             'middle_name',
             'last_name',
@@ -115,10 +107,6 @@ class SaveStudentRequest extends FormRequest
 
             $value = trim($value);
             $trimmed[$field] = $value === '' ? null : $value;
-        }
-
-        if (isset($trimmed['qr_token'])) {
-            $trimmed['qr_token'] = mb_strtoupper($trimmed['qr_token']);
         }
 
         $this->merge($trimmed);

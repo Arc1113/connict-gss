@@ -204,7 +204,7 @@ class StudentMediaAndAuditTest extends TestCase
     {
         Student::factory()->create([
             'ceremony_id' => $this->ceremony->id,
-            'qr_token' => 'PHASE4-MEDIA-TOKEN',
+            'student_number' => '2027-0101',
         ]);
 
         try {
@@ -216,11 +216,11 @@ class StudentMediaAndAuditTest extends TestCase
                 '127.0.0.1',
             );
 
-            $this->fail('The duplicate QR token was expected to be rejected.');
+            $this->fail('The duplicate student number was expected to be rejected.');
         } catch (ValidationException $exception) {
             $this->assertSame(
-                'That QR token is already assigned to another graduate.',
-                $exception->errors()['qr_token'][0],
+                'That student number is already used in the selected ceremony.',
+                $exception->errors()['student_number'][0],
             );
         }
 
@@ -245,6 +245,8 @@ class StudentMediaAndAuditTest extends TestCase
                 'photo' => $this->photo('private-name.png'),
             ]))
             ->assertRedirect();
+
+        $this->assertSame('OLD-SECRET-TOKEN', $student->refresh()->qr_token);
 
         $encodedAudit = AuditLog::query()
             ->where('entity_type', 'student')
@@ -307,7 +309,6 @@ class StudentMediaAndAuditTest extends TestCase
         return [
             'ceremony_id' => $this->ceremony->id,
             'student_number' => '2027-0101',
-            'qr_token' => 'PHASE4-MEDIA-TOKEN',
             'first_name' => 'Christopher Emmanuel',
             'middle_name' => null,
             'last_name' => 'Villanueva-Santos',

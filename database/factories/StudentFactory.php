@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\EligibilityStatus;
 use App\Models\Ceremony;
 use App\Models\Student;
+use App\Services\StudentQrTokenGenerator;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -18,7 +19,9 @@ class StudentFactory extends Factory
         return [
             'ceremony_id' => Ceremony::factory(),
             'student_number' => fake()->unique()->numerify('########'),
-            'qr_token' => 'GSS-'.Str::upper(Str::random(32)),
+            'qr_token' => StudentQrTokenGenerator::PREFIX.Str::upper(
+                Str::random(StudentQrTokenGenerator::RANDOM_LENGTH),
+            ),
             'first_name' => fake()->firstName(),
             'middle_name' => fake()->optional()->firstName(),
             'last_name' => fake()->lastName(),

@@ -32,4 +32,29 @@ class StudentPolicy
     {
         return false;
     }
+
+    public function viewQrCodes(User $user): bool
+    {
+        return $user->hasRole(UserRole::DataEncoder);
+    }
+
+    public function printQrCodes(User $user): bool
+    {
+        return $this->viewQrCodes($user);
+    }
+
+    public function viewQrCode(User $user, Student $student): bool
+    {
+        return $this->viewQrCodes($user);
+    }
+
+    public function printQrCode(User $user, Student $student): bool
+    {
+        return $this->printQrCodes($user);
+    }
+
+    public function regenerateQrCode(User $user, Student $student): bool
+    {
+        return false;
+    }
 }
