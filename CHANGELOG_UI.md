@@ -3,6 +3,46 @@
 UI changes are recorded by project phase. Functional backend changes belong in
 the main project documentation.
 
+## Phase 10 — Local Deployment and Device Setup
+
+Status: completed
+Date: 2026-07-30
+
+Completed:
+
+- Added local deployment, device setup, and network-plan documentation for the
+  three-laptop ceremony layout.
+- Added deployment scripts for release checks, startup, shutdown, and health
+  verification without changing the existing scanner, queue, stage, audio,
+  reporting, backup, or recovery interfaces.
+- Added deployment-device checklist items for browser profiles, LAN URLs,
+  fullscreen stage operation, audio activation, and audience-safety review.
+
+Known limitations:
+
+- Physical three-device, router, projector/LED, USB scanner, and venue audio
+  certification still requires the actual event hardware and belongs to the
+  final rehearsal/sign-off process.
+
+## Phase 9 — Logs, Reports, Backup, Restore, and Operational Recovery
+
+Status: completed
+Date: 2026-07-30
+
+Completed:
+
+- Added operational log navigation and screens for scan attempts and stage
+  events with compact filters, pagination, and safe CSV export actions.
+- Improved audit history with actor/entity/date filters, safe summaries, IP
+  visibility for administrators, and export support.
+- Added ceremony completion summary with PostgreSQL-derived counts and metric
+  definitions.
+- Added backup status page with local-backup metadata and non-destructive
+  restore-verification guidance.
+- Added administrator-only operational reset form with typed confirmation copy.
+- Preserved the restrained academic operations visual direction; no charts,
+  fake metrics, cloud services, or UI library were added.
+
 ## Phase 8 — Announcement Audio Reliability
 
 Status: completed

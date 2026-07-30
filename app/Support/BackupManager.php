@@ -1,0 +1,225 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\BackupRecord;
+use App\Models\Ceremony;
+use App\Models\User;
+use Illuminate\Support\Facades\File;
+use RuntimeException;
+use Symfony\Component\Process\Process;
+use Throwable;
+
+final class BackupManager
+{
+    public function create(?User $actor = null, ?string $destination = null): BackupRecord
+    {
+        $destination = $this->destination($destination);
+        $this->ensureSafeDestination($destination);
+        File::ensureDirectoryExists($destination);
+
+        $identifier = 'gss-backup-'.now()->format('Ymd-His');
+        $workspace = $destination.'/'.$identifier;
+        $record = BackupRecord::query()->create([
+            'identifier' => $identifier,
+            'path_label' => basename($destination).'/'.$identifier,
+            'status' => 'running',
+            'started_at' => now()->utc(),
+            'created_by' => $actor?->id,
+            'verification_status' => 'pending',
+        ]);
+
+        try {
+            File::ensureDirectoryExists($workspace);
+            $dump = $workspace.'/database.sql';
+            $this->databaseDump($dump);
+
+            $media = $workspace.'/media';
+            File::ensureDirectoryExists($media);
+            $this->copyMedia($media);
+
+            $checksums = $this->checksums($workspace);
+            file_put_contents(
+                $workspace.'/SHA256SUMS',
+                collect($checksums)
+                    ->map(fn (string $hash, string $file): string => "{$hash}  {$file}")
+                    ->implode(PHP_EOL).PHP_EOL,
+            );
+
+            $manifest = [
+                'identifier' => $identifier,
+                'created_at' => now()->toIso8601String(),
+                'environment' => app()->environment(),
+                'git_commit' => $this->gitCommit(),
+                'laravel_version' => app()->version(),
+                'postgresql_version' => $this->postgresVersion(),
+                'database_dump' => 'database.sql',
+                'media_directory' => 'media',
+                'checksums' => $checksums,
+                'ceremony_summary' => [
+                    'ceremonies' => Ceremony::query()->count(),
+                    'active_ceremonies' => Ceremony::query()->where('status', 'active')->count(),
+                ],
+                'status' => 'completed',
+                'verification_status' => 'passed',
+                'restore_instructions' => 'docs/backup-and-restore.md',
+            ];
+            file_put_contents(
+                $workspace.'/manifest.json',
+                json_encode($manifest, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR),
+            );
+
+            $record->fill([
+                'status' => 'completed',
+                'completed_at' => now()->utc(),
+                'file_size' => $this->directorySize($workspace),
+                'checksum' => hash_file('sha256', $workspace.'/manifest.json'),
+                'verification_status' => 'passed',
+            ])->save();
+        } catch (Throwable $exception) {
+            File::deleteDirectory($workspace);
+            $record->fill([
+                'status' => 'failed',
+                'completed_at' => now()->utc(),
+                'verification_status' => 'failed',
+                'failure_summary' => str($exception->getMessage())->limit(500)->toString(),
+            ])->save();
+        }
+
+        return $record->refresh();
+    }
+
+    public function destination(?string $destination = null): string
+    {
+        $destination ??= env('GSS_BACKUP_PATH');
+        $destination ??= storage_path('app/gss-backups');
+
+        return rtrim($destination, '/');
+    }
+
+    public function fullPath(BackupRecord $record, ?string $destination = null): string
+    {
+        return $this->destination($destination).'/'.$record->identifier;
+    }
+
+    public function ensureSafeDestination(string $destination): void
+    {
+        $public = realpath(public_path()) ?: public_path();
+        $resolvedParent = realpath(dirname($destination)) ?: dirname($destination);
+        $candidate = $resolvedParent.'/'.basename($destination);
+
+        if (str_starts_with($candidate, $public)) {
+            throw new RuntimeException('Backup destination must not be inside the public directory.');
+        }
+    }
+
+    private function databaseDump(string $path): void
+    {
+        $process = new Process([
+            'docker',
+            'compose',
+            'exec',
+            '-T',
+            'database',
+            'sh',
+            '-lc',
+            'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=plain --no-owner --no-privileges',
+        ], base_path());
+        $process->setTimeout(120);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new RuntimeException('PostgreSQL dump failed. Confirm Docker Compose and the database service are running.');
+        }
+
+        file_put_contents($path, $process->getOutput());
+
+        if (! is_file($path) || filesize($path) === 0) {
+            throw new RuntimeException('PostgreSQL dump was empty.');
+        }
+    }
+
+    private function postgresVersion(): ?string
+    {
+        $process = new Process([
+            'docker',
+            'compose',
+            'exec',
+            '-T',
+            'database',
+            'psql',
+            '--version',
+        ], base_path());
+        $process->setTimeout(20);
+        $process->run();
+
+        return $process->isSuccessful() ? trim($process->getOutput()) : null;
+    }
+
+    private function copyMedia(string $target): void
+    {
+        foreach ([
+            storage_path('app/public/graduates') => 'storage-graduates',
+            public_path('media/phase3') => 'development-phase3-media',
+        ] as $source => $label) {
+            if (! is_dir($source)) {
+                continue;
+            }
+
+            $this->copyDirectory($source, $target.'/'.$label);
+        }
+    }
+
+    private function copyDirectory(string $source, string $target): void
+    {
+        File::ensureDirectoryExists($target);
+
+        foreach (File::allFiles($source) as $file) {
+            $relative = $file->getRelativePathname();
+
+            if (str_contains($relative, '..')) {
+                throw new RuntimeException('Unsafe media path detected.');
+            }
+
+            File::ensureDirectoryExists(dirname($target.'/'.$relative));
+            File::copy($file->getPathname(), $target.'/'.$relative);
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function checksums(string $workspace): array
+    {
+        $checksums = [];
+
+        foreach (File::allFiles($workspace) as $file) {
+            $relative = str($file->getPathname())->after($workspace.'/')->toString();
+
+            if ($relative === 'manifest.json' || $relative === 'SHA256SUMS') {
+                continue;
+            }
+
+            $checksums[$relative] = hash_file('sha256', $file->getPathname());
+        }
+
+        ksort($checksums);
+
+        return $checksums;
+    }
+
+    private function directorySize(string $path): int
+    {
+        return collect(File::allFiles($path))
+            ->sum(fn ($file): int => $file->getSize());
+    }
+
+    private function gitCommit(): ?string
+    {
+        $process = new Process(['git', 'rev-parse', '--short=12', 'HEAD'], base_path());
+        $process->setTimeout(10);
+        $process->run();
+
+        return $process->isSuccessful() ? trim($process->getOutput()) : null;
+    }
+}

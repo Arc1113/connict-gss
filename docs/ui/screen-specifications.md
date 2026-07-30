@@ -543,25 +543,41 @@ INDIVIDUAL PREPARATION
 - Required operator viewports and Chromium print output are inspected with
   long realistic names and programs.
 
-## Future operational logs and reports — Phase 9
+## Operational logs and reports — Phase 9 implemented
 
 | Item | Specification |
 | --- | --- |
-| Route | `/logs` |
+| Route | `/admin/scan-logs`, `/admin/stage-events`, `/admin/reports/ceremony-summary`, `/admin/backups` |
 | Primary user | Administrator or technical operator |
 | Goal | Investigate ceremony actions and scan outcomes |
 | Dominant information | Filtered chronological records with actor, action/result, and time |
-| Primary action | Filter/export only when Phase 9 requirements approve it |
+| Primary action | Filter, export when authorized, verify backup, or reset current operations when explicitly confirmed |
 | Required states | Loading, empty, results, no matches, retrieval/export failure |
 | Recovery/privacy | Preserve filters; redact QR secrets and avoid audience/student-sensitive excess |
 | Prohibited content | Live stage controls, raw stack traces, raw QR tokens, invented analytics |
 
-The Phase 4 `/admin/audit-logs` page does not satisfy operational scan/stage
-investigation. The updated playbook does not currently approve a separate
-`/reports` page. Phase 9 must decide whether reporting remains within `/logs`
-before adding a route.
+Use working tables and compact filters rather than dashboards or charts. Backup
+restore remains a CLI procedure; the browser shows metadata and
+non-destructive verification status only.
 
-## Future settings — Phase 9 or 10, confirmation required
+## Deployment-device usage — Phase 10 implemented
+
+Phase 10 does not add new browser screens. It defines where existing screens are
+allowed to run during local deployment:
+
+| Route | Deployment placement |
+| --- | --- |
+| `/scanner` | Scanner laptop using the server LAN URL |
+| `/stage` | Stage laptop in fullscreen on the projector/LED display |
+| `/stage-control` | Protected operator device or separate protected browser profile; never projected |
+| `/admin/*` | Administrator or technical device only |
+
+All Phase 10 browser checks must use compiled production assets and must not
+depend on the Vite development server. Audience-facing `/stage` remains free of
+navigation, operator controls, QR tokens, technical logs, terminals, desktop
+notifications, and server/debug details.
+
+## Future settings — post-Phase 10, confirmation required
 
 | Item | Specification |
 | --- | --- |
@@ -573,9 +589,9 @@ before adding a route.
 | Recovery | Preserve last valid value and explain how to safely apply/revert a change |
 | Prohibited content | Cloud accounts, CDN/font configuration, secrets in browser output, unrelated preferences |
 
-Ownership and phase are unresolved because some settings may be application
-records (Phase 9) while network/kiosk/service settings belong to deployment
-(Phase 10). Do not implement until that boundary is approved.
+Ownership and phase remain unresolved because some settings may be application
+records while network, kiosk, service, and firewall settings belong to operator
+deployment procedures. Do not implement until that boundary is approved.
 
 ## Existing login and dashboard
 

@@ -67,6 +67,12 @@ class HandleInertiaRequests extends Middleware
                     'import_students' => $user->can('create', StudentImport::class),
                     'delete_students' => $user->isAdministrator(),
                     'view_audit_logs' => $user->can('viewAny', AuditLog::class),
+                    'view_operational_logs' => $user->can('view-operational-logs'),
+                    'export_operational_reports' => $user->can('export-operational-reports'),
+                    'view_ceremony_reports' => $user->can('view-ceremony-reports'),
+                    'view_backups' => $user->can('view-backups'),
+                    'create_backups' => $user->can('create-backups'),
+                    'reset_ceremony_operations' => $user->can('reset-ceremony-operations'),
                 ],
             ],
             'flash' => [

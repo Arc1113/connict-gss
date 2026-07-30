@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\AudioReadinessStatus;
 use App\Enums\CeremonyStatus;
 use App\Http\Controllers\Controller;
+use App\Models\BackupRecord;
 use App\Models\Ceremony;
+use App\Models\StageQueueItem;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -37,10 +39,14 @@ class AdminDashboardController extends Controller
 
         if ($referenceCeremony !== null) {
             $students = Student::query()->where('ceremony_id', $referenceCeremony->id);
+            $queue = StageQueueItem::query()->where('ceremony_id', $referenceCeremony->id);
 
             $readiness = [
                 'total' => (clone $students)->count(),
                 'eligible' => (clone $students)->where('eligibility_status', 'eligible')->count(),
+                'waiting' => (clone $queue)->where('status', 'waiting')->count(),
+                'presenting' => (clone $queue)->where('status', 'presenting')->count(),
+                'completed' => (clone $queue)->where('status', 'completed')->distinct('student_id')->count('student_id'),
                 'needs_review' => (clone $students)->where('eligibility_status', 'pending')->count(),
                 'missing_photo' => (clone $students)->whereNull('photo_path')->count(),
                 'audio_missing' => (clone $students)
@@ -61,6 +67,11 @@ class AdminDashboardController extends Controller
             ];
         }
 
+        $lastBackup = BackupRecord::query()
+            ->latest('started_at')
+            ->latest('id')
+            ->first();
+
         return Inertia::render('Admin/Index', [
             'activeCeremonyState' => match ($activeCeremonies->count()) {
                 0 => 'none',
@@ -75,6 +86,13 @@ class AdminDashboardController extends Controller
                 'status' => $referenceCeremony->status->value,
             ],
             'readiness' => $readiness,
+            'lastBackup' => $lastBackup === null ? null : [
+                'identifier' => $lastBackup->identifier,
+                'status' => $lastBackup->status,
+                'verification_status' => $lastBackup->verification_status,
+                'completed_at' => $lastBackup->completed_at?->toIso8601String(),
+                'failure_summary' => $lastBackup->failure_summary,
+            ],
         ]);
     }
 }

@@ -2087,6 +2087,34 @@ audio:focus-visible {
     line-height: 1.45;
 }
 
+.admin-inline-form {
+    display: grid;
+    gap: 0.55rem;
+    min-width: min(100%, 28rem);
+}
+
+.admin-inline-form label {
+    color: #2a4056;
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+
+.admin-inline-form input {
+    min-height: 2.65rem;
+    padding: 0.58rem 0.65rem;
+    border: 1px solid #97a9b8;
+    border-radius: 0.35rem;
+    color: var(--gss-ink);
+}
+
+.admin-table-note {
+    display: block;
+    margin-top: 0.3rem;
+    color: var(--gss-ink-muted);
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+
 .admin-audit-details summary {
     color: #174e76;
     font-weight: 700;

@@ -1,6 +1,6 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 8 announcement audio reliability implemented**
+Document status: **Phase 9 operational logs, reports, backup, restore, and recovery implemented**
 
 Last updated: 2026-07-30
 
@@ -25,6 +25,10 @@ Phase 8 adds graduate announcement-audio readiness, approval/rejection,
 replacement invalidation, approved-only stage playback, safe replay, preloading,
 and human-announcer fallback while preserving the Phase 3-7 scan/queue/stage
 architecture.
+Phase 9 adds traceable operational log views, safe CSV exports, ceremony
+completion summaries, local PostgreSQL/media backup, backup manifests and
+checksums, disposable restore verification, safe operational reset, and recovery
+documentation.
 
 ## 2. Fixed architecture and device requirements
 
@@ -63,6 +67,11 @@ architecture.
 | Scanner controlled lookup and manual verified selection | `scanner_operator`, `administrator` |
 | Graduate deletion | `administrator`, subject to history protection |
 | Administrative audit history | `administrator` |
+| Operational scan/stage log viewing | `administrator`, `technical_operator`, limited `stage_operator` |
+| Operational CSV exports | `administrator` |
+| Ceremony completion summary | `administrator` |
+| Backup status, backup creation, and restore verification | `administrator`, `technical_operator` |
+| Operational reset | `administrator` |
 
 All access uses Phase 2 session authentication, CSRF protection, active-account
 enforcement, and Laravel gates/policies. Phase 4 does not introduce device keys or token
@@ -958,14 +967,73 @@ no approved local inspection package or system binary was added.
 - Existing Phase 3-7 scanner, QR, import, queue, Reverb/Echo, and recovery
   behavior remains operational.
 
-## 23. MVP and deferred boundaries
+## 23. Phase 9 operational support
+
+Operational log pages are private administration routes:
+
+- `/admin/scan-logs`;
+- `/admin/stage-events`;
+- `/admin/audit-logs`.
+
+Scan-log output excludes raw QR tokens and token hashes. Stage-event output uses
+a safe serializer and does not show unrestricted JSON payloads. Audit output
+keeps allowlisted summaries and redacts secret, token, and storage-path fields.
+
+CSV exports are UTF-8, filter-respecting, and formula-safe. Cells beginning with
+`=`, `+`, `-`, `@`, tab, CR, or LF are prefixed with a single quote before
+output.
+
+Ceremony summary metrics are PostgreSQL-derived. Definitions:
+
+- completed graduate: distinct graduate with a completed queue item for the
+  selected ceremony;
+- never scanned: eligible graduate with no active or completed queue history in
+  the selected ceremony;
+- duplicate scan attempt: scan log with result `duplicate`;
+- rejected or unapproved audio: current audio readiness is not `approved`.
+
+Backups are local-only and include PostgreSQL dump, local media, manifest, and
+checksums. The approved Docker workflow is:
+
+```bash
+bash scripts/gss-backup-docker.sh storage/app/gss-backups
+bash scripts/gss-restore-verify-docker.sh storage/app/gss-backups/gss-backup-YYYYMMDD-HHMMSS
+```
+
+Browser restore over production data is prohibited. Destructive restore remains
+a documented CLI escalation requiring administrator approval, verified checksum,
+target confirmation, and a current safety backup.
+
+Operational reset is administrator-only. It cancels waiting/ready queue rows,
+clears current stage state, turns off holding and automatic pause, records an
+audit and stage event, and broadcasts after commit. It preserves graduate
+records, completed history, skipped/cancelled history, scan logs, stage events,
+and audit logs. Ordinary reset is blocked while a graduate is presenting.
+
+## 24. MVP and deferred boundaries
 
 The eventual MVP includes the completed ceremony/student administration,
 import/validation, QR creation/custody, durable queue operation, automatic and
 controlled modes, stage controls, local media, logs/reporting, backup/restore,
-deployment hardening, and rehearsal.
+local deployment preparation, and rehearsal.
 
-Deferred beyond Phase 8:
+Phase 10 local deployment requirements now include:
+
+- production deployment environment with `APP_ENV=production` and
+  `APP_DEBUG=false`;
+- compiled Vite assets served from `public/build` without the Vite development
+  server;
+- Docker Compose deployment override for Laravel, PostgreSQL, and Reverb;
+- app and Reverb LAN ports documented and health-checked;
+- PostgreSQL not exposed to scanner or stage devices;
+- startup, shutdown, health-check, and release-preparation scripts;
+- migration policy using `php artisan migrate --force`, never
+  `migrate:fresh`;
+- scanner, stage, and stage-control device setup checklists;
+- local firewall, power, audio, clock, offline package, standby, and network
+  fallback documentation.
+
+Deferred beyond Phase 10:
 
 - CSV update/synchronization/export;
 - camera scanning;
@@ -975,12 +1043,11 @@ Deferred beyond Phase 8:
 - mid-ceremony switching of the ceremony's configured presentation mode;
 - browser-based recording, automatic normalization, and final media-production
   tooling;
-- operational scan/stage reports and export;
-- backup/restore and standby tooling;
-- production process supervision, TLS, firewall automation, and kiosk setup; and
-- full physical rehearsal.
+- public hosting, reverse proxy/TLS, firewall automation, kiosk automation,
+  automatic failover, and cloud integrations; and
+- full physical rehearsal and event sign-off.
 
-## 24. Assumptions and unresolved questions
+## 25. Assumptions and unresolved questions
 
 Current assumptions:
 
@@ -992,9 +1059,10 @@ Current assumptions:
 - Queue positions are operational sequence identifiers, not dense row numbers.
 - Stage, scanner, and administration browsers use appropriate authenticated
   accounts.
-- A fixed server address and TCP `8000`/`8080` are acceptable for development.
+- A fixed or reserved server address and TCP `8000`/`8080` are acceptable for
+  local event deployment.
 - HTTP and generated-name public local media are acceptable on a controlled
-  development LAN pending TLS and media-delivery policy.
+  local ceremony LAN pending any later approved TLS and media-delivery policy.
 - CSV import is create-only, belongs to one authenticated operator, and expires
   after 30 minutes.
 - Student and sequence number uniqueness remains ceremony-scoped; generated QR
@@ -1020,17 +1088,18 @@ Still requiring approval:
 5. What graduate fields and honors formatting are institutionally approved?
 6. What final photo dimensions, audio loudness/duration, pronunciation, approval,
    retention, and protected-delivery process is required?
-7. What fixed IP, hostname, wired/wireless, firewall, TLS, and backup-network
-   design is approved?
+7. What exact fixed IP, hostname, wired/wireless topology, router model, and
+   firewall subnet will be used at the venue?
 8. What are the expected graduate count, scan burst, latency target, retention,
     privacy notice, RPO, and RTO?
 9. Where will the completion/control view run in the final three-laptop setup?
-10. What backup, restore, standby, UPS, and power-loss process is required?
+10. Which standby laptop, UPS, and power-loss procedure will be physically
+    available at the venue?
 11. What physical scanner, projector/LED, and audio hardware is standardized?
 12. Should a later phase support CSV update/synchronization, and if so, what
     immutable identifier and field-level conflict rules are approved?
 13. What retention or immediate-deletion period is approved for completed safe
     import summaries and import audit metadata?
 
-Phase 9 must not begin until the Phase 8 implementation and these documented
+Phase 11 must not begin until the Phase 10 implementation and these documented
 boundaries are reviewed.

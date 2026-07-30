@@ -1,6 +1,6 @@
 # Graduation Stage System
 
-Status: **Phase 8 — Announcement Audio Reliability implemented**
+Status: **Phase 9 — Logs, Reports, Backup, Restore, and Operational Recovery implemented**
 
 The Graduation Stage System is a local-network-only application for reliable,
 QR-driven graduation presentation. Phase 3 established the complete operational
@@ -42,6 +42,32 @@ be uploaded, reviewed, approved, rejected, replaced, and removed without changin
 the queue or scan architecture. The stage plays or replays only approved,
 readable same-origin audio; every other state uses the documented live-announcer
 fallback while keeping the audience screen clean.
+
+Phase 9 adds safe operational log views, CSV exports, ceremony completion
+summary, local PostgreSQL/media backup, manifest checksums, disposable restore
+verification, and administrator-only operational reset. Backups remain local and
+no browser route can destructively restore over production data.
+
+## Phase 9 operational support
+
+Authorized administrators can review scan logs, stage events, audit history, and
+ceremony completion summaries. Technical operators can review approved
+operational logs and backup status. Stage operators receive limited
+current-ceremony operational history. Data encoders and scanner operators do not
+receive backup, restore, reset, or unrestricted log access.
+
+CSV exports are native UTF-8 CSV. They respect filters, exclude QR tokens and
+storage paths, and neutralize spreadsheet-formula risk by prefixing cells that
+begin with `=`, `+`, `-`, `@`, tab, CR, or LF with a single quote.
+
+Create a verified local backup from the server laptop:
+
+```bash
+bash scripts/gss-backup-docker.sh storage/app/gss-backups
+bash scripts/gss-restore-verify-docker.sh storage/app/gss-backups/gss-backup-YYYYMMDD-HHMMSS
+```
+
+See `docs/backup-and-restore.md` and `docs/operational-recovery.md`.
 
 ## Approved architecture
 
@@ -292,6 +318,13 @@ available. Duration and loudness are manual review items: prepare clips around
 | `GET /admin/students/{student}/qr-code/print` | Render one print sheet | Administrator, data encoder |
 | `POST /admin/students/{student}/qr-code/regenerate` | Replace one token | Administrator |
 | `GET /admin/audit-logs` | Safe administrative audit history | Administrator |
+| `GET /admin/scan-logs` | Safe scanner-attempt history | Administrator, technical operator, limited stage operator |
+| `GET /admin/stage-events` | Safe stage-event history | Administrator, technical operator, limited stage operator |
+| `GET /admin/reports/ceremony-summary` | Ceremony completion and readiness summary | Administrator |
+| `GET /admin/backups` | Local backup status and restore-verification metadata | Administrator, technical operator |
+| `POST /admin/backups` | Attempt local backup from the current runtime | Administrator, technical operator |
+| `POST /admin/backups/{backup}/verify` | Non-destructive restore verification | Administrator, technical operator |
+| `POST /admin/ceremonies/{ceremony}/operational-reset` | Reset current operational state while preserving history | Administrator |
 
 The corresponding `POST`, `PUT/PATCH`, and `DELETE` resource actions are
 server-authorized. Separate `DELETE /admin/students/{student}/photo` and
@@ -636,6 +669,15 @@ tests. Independent-process races cover duplicate scans, two present-next
 commands, next versus selected, skip versus present, duplicate return,
 completion versus replay, and pause versus an automatic scan.
 
+Phase 8 adds announcement audio readiness, approval/rejection, replacement
+invalidation, approved-only stage payloads, replay restrictions, and next-audio
+preload tests.
+
+Phase 9 adds operational log authorization/filter/serializer tests, CSV export
+privacy and formula-injection tests, ceremony summary accuracy tests,
+operational reset history-preservation tests, backup failure safety tests, and
+real Docker backup/restore-verification scripts.
+
 An optional live Chromium check exercises two authenticated browser profiles,
 private-channel delivery, local audio playback events, refresh recovery, and a
 deliberate Reverb stop/restart:
@@ -714,16 +756,48 @@ Set `GSS_APP_URL` when the local app uses a non-default host port.
   individual 65 mm card before using controlled lookup.
 - **Old card stopped working:** review administrator replacement history and
   print the current card. Regeneration intentionally invalidates older output.
+- **Deployment startup rejects `.env`:** use a deployment env file based on
+  `.env.deployment.example`; Phase 10 startup requires `APP_ENV=production`,
+  `APP_DEBUG=false`, a server LAN `APP_URL`, and non-placeholder secrets.
+- **Scanner/stage laptop cannot connect:** confirm the server LAN IP, firewall
+  rules, TCP `8000` and `8080`, and that PostgreSQL is not being exposed as a
+  workaround.
+- **Application works only while Vite is running:** run `npm run build`, confirm
+  `public/build/manifest.json`, and remove `public/hot`.
+- **Deployment health check fails Reverb:** verify the Reverb container is
+  running, the host port is reachable from the ceremony LAN, and
+  `REVERB_ALLOWED_ORIGINS` includes the server LAN host.
 
 ## Phase boundary
 
-Phase 7 does not add CSV update/synchronization/export, camera scanning, device
-credentials, drag-and-drop queue reorder, bulk queue editing, microphone
-recording, audio normalization/approval, operational reports, backups,
-deployment automation, cloud media, or text-to-speech. Audio preparation and
-approval remain Phase 8; later operational and deployment capabilities remain
-in their assigned phases.
+Phase 10 adds local deployment and device-setup preparation only. It does not
+add public hosting, cloud deployment, external DNS, TLS termination, kiosk
+automation, full physical rehearsal, automatic failover, new application
+features, or Phase 11 ceremony rehearsal work.
+
+Phase 10 deployment documentation:
+
+- [Deployment runbook](docs/deployment.md)
+- [Device setup checklist](docs/device-setup.md)
+- [Local network plan](docs/network-plan.md)
+- [Backup and restore](docs/backup-and-restore.md)
+- [Operational recovery](docs/operational-recovery.md)
+
+Primary local deployment commands:
+
+```bash
+npm ci
+npm run build
+bash scripts/gss-build-release.sh --env-file .env.production
+bash scripts/gss-start.sh --env-file .env.production --build --migrate
+bash scripts/gss-health-check.sh --env-file .env.production
+bash scripts/gss-stop.sh --env-file .env.production --backup
+```
+
+Use `compose.deploy.yaml` for event deployment. The Vite development server is
+not required at runtime, and PostgreSQL remains loopback-only.
 
 See [requirements](docs/requirements.md) and
-[architecture](docs/architecture.md) for the normative Phase 3 through Phase 7
-contracts. Do not begin Phase 8 until Phase 7 receives explicit human approval.
+[architecture](docs/architecture.md) for the normative Phase 3 through Phase 10
+contracts. Do not begin Phase 11 until Phase 10 receives explicit human
+approval.

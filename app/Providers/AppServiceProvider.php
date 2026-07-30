@@ -79,5 +79,46 @@ class AppServiceProvider extends ServiceProvider
             'manage-technical-operations',
             fn (User $user): bool => $user->hasRole(UserRole::TechnicalOperator),
         );
+        Gate::define(
+            'view-operational-logs',
+            fn (User $user): bool => in_array($user->role, [
+                UserRole::Administrator,
+                UserRole::TechnicalOperator,
+                UserRole::StageOperator,
+            ], true),
+        );
+        Gate::define(
+            'export-operational-reports',
+            fn (User $user): bool => $user->hasRole(UserRole::Administrator),
+        );
+        Gate::define(
+            'view-ceremony-reports',
+            fn (User $user): bool => $user->hasRole(UserRole::Administrator),
+        );
+        Gate::define(
+            'view-backups',
+            fn (User $user): bool => in_array($user->role, [
+                UserRole::Administrator,
+                UserRole::TechnicalOperator,
+            ], true),
+        );
+        Gate::define(
+            'create-backups',
+            fn (User $user): bool => in_array($user->role, [
+                UserRole::Administrator,
+                UserRole::TechnicalOperator,
+            ], true),
+        );
+        Gate::define(
+            'verify-restores',
+            fn (User $user): bool => in_array($user->role, [
+                UserRole::Administrator,
+                UserRole::TechnicalOperator,
+            ], true),
+        );
+        Gate::define(
+            'reset-ceremony-operations',
+            fn (User $user): bool => $user->hasRole(UserRole::Administrator),
+        );
     }
 }

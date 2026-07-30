@@ -85,6 +85,33 @@ export default function AdminLayout({ children }) {
                                 Audit history
                             </NavLink>
                         )}
+                        {abilities.view_operational_logs && (
+                            <NavLink
+                                active={
+                                    currentUrl.startsWith('/admin/scan-logs') ||
+                                    currentUrl.startsWith('/admin/stage-events')
+                                }
+                                href="/admin/scan-logs"
+                            >
+                                Operational logs
+                            </NavLink>
+                        )}
+                        {abilities.view_ceremony_reports && (
+                            <NavLink
+                                active={currentUrl.startsWith('/admin/reports')}
+                                href="/admin/reports/ceremony-summary"
+                            >
+                                Reports
+                            </NavLink>
+                        )}
+                        {abilities.view_backups && (
+                            <NavLink
+                                active={currentUrl.startsWith('/admin/backups')}
+                                href="/admin/backups"
+                            >
+                                Backups
+                            </NavLink>
+                        )}
                     </nav>
 
                     <div className="admin-account">

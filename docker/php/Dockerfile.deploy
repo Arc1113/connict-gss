@@ -1,0 +1,47 @@
+FROM composer:2 AS composer
+
+FROM php:8.3-cli-bookworm
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes \
+        git \
+        libicu-dev \
+        libonig-dev \
+        libpq-dev \
+        libzip-dev \
+        unzip \
+    && docker-php-ext-install \
+        bcmath \
+        intl \
+        mbstring \
+        pcntl \
+        pdo_pgsql \
+        zip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer /usr/bin/composer /usr/local/bin/composer
+
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+RUN composer install \
+    --no-dev \
+    --no-interaction \
+    --no-progress \
+    --prefer-dist \
+    --optimize-autoloader \
+    --no-scripts
+
+COPY . .
+
+RUN rm -f .env .env.* \
+    && composer dump-autoload --optimize \
+    && mkdir -p \
+        storage/app/public \
+        storage/framework/cache/data \
+        storage/framework/sessions \
+        storage/framework/views \
+        storage/logs \
+    && ln -sfn /app/storage/app/public /app/public/storage
+
+EXPOSE 8000 8080

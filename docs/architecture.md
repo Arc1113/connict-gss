@@ -1,6 +1,6 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 8 announcement audio reliability architecture implemented**
+Document status: **Phase 9 operational support architecture implemented**
 
 Last updated: 2026-07-30
 
@@ -27,6 +27,7 @@ The approved architecture has not changed.
 | Media | Local public paths | Test fixtures and managed graduate photos/audio with readiness approval |
 | QR rendering | BaconQrCode 3.1.1 | Local deterministic SVG from the current PostgreSQL token |
 | Packaging | Docker Compose | Reproducible app, Reverb, and PostgreSQL processes |
+| Backup | Docker-aware local scripts and metadata table | PostgreSQL dump, media copy, manifest, checksum, restore verification |
 
 No Redis, queue worker, polling loop, separate SPA/API application, SQLite,
 cloud-storage service, cloud speech service, or runtime CDN is used.
@@ -149,6 +150,12 @@ bounded active-ceremony identity lookup. The selected graduate is submitted to
 `ScanController::manual`, which delegates to the existing presentation action
 instead of bypassing the scan transaction.
 
+Phase 9 adds `ScanLogController`, `StageEventController`,
+`CeremonySummaryController`, `BackupController`, and
+`CeremonyOperationalResetController`. They authorize Laravel gates, use
+purpose-built safe serializers, stream native CSV, expose local backup metadata,
+and keep destructive restore out of browser routes.
+
 ### 6.2 Domain actions
 
 `ScanStudentForPresentation` owns queue insertion, optional automatic initial
@@ -217,6 +224,25 @@ transaction.
 - `StudentQrTokenVersion` creates an application-keyed HMAC from the graduate,
   current token, and update timestamp. The browser receives the fingerprint,
   never the token.
+- `OperationalLogSerializers` turns scan logs, stage events, and audit logs into
+  allowlisted operator records without raw tokens, unrestricted JSON payloads,
+  storage paths, or secrets.
+- `SafeCsvExporter` streams UTF-8 CSV and applies formula-injection mitigation to
+  every cell.
+- `CeremonyCompletionSummary` owns PostgreSQL-derived report metrics and their
+  definitions.
+- `BackupManager` records backup metadata and supports environments with
+  available dump tooling. The verified Docker workflow is implemented in
+  `scripts/gss-backup-docker.sh`.
+- `RestoreVerifier` and `scripts/gss-restore-verify-docker.sh` validate manifests
+  and checksums before restoring into a disposable PostgreSQL database.
+
+### Phase 9 backup metadata decision
+
+Phase 9 adds a minimal `backup_records` table because authorized operators need
+to view the latest backup status and verification metadata in the local app. The
+table stores labels and checksums, not backup content or secrets. Full backup
+content remains on the local filesystem outside `public/`.
 
 The `student_imports` table is deliberately temporary workflow state:
 
@@ -773,6 +799,13 @@ invalidation, failed replacement compensation, safe audit payloads, approved-onl
 stage payloads, replay rejection for unapproved audio, and next-audio preload
 state.
 
+Phase 9 adds tests for log authorization, safe serializers, filter behavior,
+CSV export privacy and formula-injection mitigation, ceremony summary accuracy,
+backup destination/failure safety, backup metadata privacy, and operational
+reset history preservation. Real Docker backup creation and disposable restore
+verification are exercised with `scripts/gss-backup-docker.sh` and
+`scripts/gss-restore-verify-docker.sh`.
+
 ## 17. Phase boundary and future architecture
 
 Phase 7 implements the durable waiting queue, controlled presentation,
@@ -780,33 +813,47 @@ automatic initial presentation with persisted pause, selected presentation,
 completion, skip/return, replay, holding, and HTTP/WebSocket reconciliation
 without bypassing the transaction, version, event, or recovery principles.
 
-Still deferred after Phase 8:
+Phase 10 adds the deployment layer around the existing architecture:
+
+- `compose.deploy.yaml` is the single production-oriented Compose override.
+- `docker/php/Dockerfile.deploy` builds a release image containing the Laravel
+  app and compiled frontend assets.
+- `scripts/gss-start.sh` starts PostgreSQL, Laravel, and Reverb in order and
+  can apply `php artisan migrate --force`.
+- `scripts/gss-stop.sh` stops services without removing volumes and can request
+  a final backup.
+- `scripts/gss-health-check.sh` verifies service health, assets, ports, disk,
+  writable storage, migrations, Reverb, and PostgreSQL loopback exposure.
+- `scripts/gss-build-release.sh` validates the local release before event use.
+
+The deployment layer does not change scan validation, queue transactions,
+post-commit broadcasts, Echo recovery, audio rules, backups, or reporting.
+
+Still deferred after Phase 10:
 
 - CSV update/synchronization/export;
 - device authentication/registration;
 - arbitrary reorder, bulk queue mutation, and mode switching during a ceremony;
 - browser recording, automatic normalization, and advanced media-production
   tooling;
-- operational logs/reports and exports;
-- backup/restore and standby;
-- reverse proxy/TLS, production process supervision, firewall policy, kiosk
-  automation, and full physical rehearsal.
+- public hosting, reverse proxy/TLS, external process supervision, firewall
+  automation, kiosk automation, automatic failover, and full physical rehearsal.
 
 ## 18. Risks and unresolved decisions
 
 | Risk | Current response | Remaining decision |
 | --- | --- | --- |
-| LAN host/origin mismatch | Browser host fallback and origin allowlist | Fixed IP/hostname/firewall plan |
-| Broadcast outage | Commit first, catch delivery failure, HTTP recovery | Operator monitoring and process supervisor |
-| Browser autoplay | One-time stage interaction | Final kiosk/audio startup procedure |
+| LAN host/origin mismatch | Browser host fallback, origin allowlist, deployment env example, network plan | Final venue IP/hostname |
+| Broadcast outage | Commit first, catch delivery failure, HTTP recovery, Reverb health/start scripts | Final operator monitoring model |
+| Browser autoplay | One-time stage interaction and device setup checklist | Physical venue audio test |
 | Long/missing media | Responsive text and visual-only fallback | Institutional media standards |
 | Physical hardware mismatch | Manual checklist | Approved scanner/display/sound hardware |
 | Session on audience device | Stage role session and private channel | Final device credential/kiosk model |
-| HTTP on development LAN | Controlled local-only setup | Local TLS/WSS decision |
+| HTTP on local LAN | Controlled local-only setup and firewall guidance | Local TLS/WSS decision |
 | Ceremony ambiguity | Reject zero/multiple | Final multi-ceremony policy |
 | Concurrent stage commands | Ceremony/stage/item row locks plus partial unique indexes and safe conflicts | Final load/latency target |
 | Queue position gaps | Monotonic positions preserve history; UI does not imply dense numbering | Whether later reporting needs a separate display rank |
-| No process supervisor | Compose health/restart commands | Production supervision and startup |
+| No external process supervisor | Compose health checks and restart policies | Whether a later service manager is approved |
 | Public local media URL | Generated names, controlled LAN, no external origin | Whether production delivery requires a policy-authorized media controller |
 | Upload filesystem/DB split | Store-first compensation and managed-prefix cleanup | Backup/restore and orphan reconciliation procedure |
 | Media standards | Actual-type and size validation | Final dimensions, duration, loudness, approval, and retention |
@@ -817,5 +864,5 @@ Still deferred after Phase 8:
 | Lost/replaced paper cards | Immediate server-side invalidation and redacted replacement audit | Institutional custody/reprint/destruction procedure |
 | Staff card identity | Student number appears only on protected staff print cards | Final privacy approval for printed matching fields |
 
-The implementation may not advance to Phase 8 until Phase 7 is reviewed and
+The implementation may not advance to Phase 11 until Phase 10 is reviewed and
 approved.

@@ -2,7 +2,12 @@
 
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\CeremonyController;
+use App\Http\Controllers\Admin\CeremonyOperationalResetController;
+use App\Http\Controllers\Admin\CeremonySummaryController;
+use App\Http\Controllers\Admin\ScanLogController;
+use App\Http\Controllers\Admin\StageEventController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudentImportController;
 use App\Http\Controllers\Admin\StudentQrCodeController;
@@ -92,9 +97,23 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', AdminDashboardController::class)->name('index');
-        Route::get('/audit-logs', AuditLogController::class)->name('audit-logs.index');
+        Route::get('/scan-logs', [ScanLogController::class, 'index'])->name('scan-logs.index');
+        Route::get('/scan-logs/export', [ScanLogController::class, 'export'])->name('scan-logs.export');
+        Route::get('/stage-events', [StageEventController::class, 'index'])->name('stage-events.index');
+        Route::get('/stage-events/export', [StageEventController::class, 'export'])->name('stage-events.export');
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+        Route::get('/audit-logs/export', [AuditLogController::class, 'export'])->name('audit-logs.export');
+        Route::get('/reports/ceremony-summary', [CeremonySummaryController::class, 'index'])->name('reports.ceremony-summary');
+        Route::get('/reports/ceremony-summary/export', [CeremonySummaryController::class, 'export'])->name('reports.ceremony-summary.export');
+        Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
+        Route::post('/backups', [BackupController::class, 'store'])->name('backups.store');
+        Route::post('/backups/{backup}/verify', [BackupController::class, 'verify'])->name('backups.verify');
 
         Route::resource('ceremonies', CeremonyController::class);
+        Route::post(
+            '/ceremonies/{ceremony}/operational-reset',
+            CeremonyOperationalResetController::class,
+        )->name('ceremonies.operational-reset');
 
         Route::prefix('students/import')
             ->name('students.import.')

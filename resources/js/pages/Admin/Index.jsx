@@ -5,6 +5,7 @@ import StatusText from '../../components/Admin/StatusText';
 
 export default function AdminIndex({
     activeCeremonyState,
+    lastBackup,
     referenceCeremony,
     readiness,
 }) {
@@ -21,8 +22,8 @@ export default function AdminIndex({
             <Head title="Administration" />
             <PageHeader
                 description="Review ceremony readiness and open the data task that needs attention."
-                eyebrow="Phase 8"
-                title="Ceremony preparation"
+                eyebrow="Phase 9"
+                title="Ceremony operations"
             />
 
             <section
@@ -63,6 +64,18 @@ export default function AdminIndex({
                                 <div>
                                     <dt>Eligible</dt>
                                     <dd>{readiness.eligible}</dd>
+                                </div>
+                                <div>
+                                    <dt>Waiting</dt>
+                                    <dd>{readiness.waiting}</dd>
+                                </div>
+                                <div>
+                                    <dt>Presenting</dt>
+                                    <dd>{readiness.presenting}</dd>
+                                </div>
+                                <div>
+                                    <dt>Completed</dt>
+                                    <dd>{readiness.completed}</dd>
                                 </div>
                                 <div>
                                     <dt>Needs eligibility review</dt>
@@ -127,7 +140,7 @@ export default function AdminIndex({
             </section>
 
             <section aria-labelledby="tasks-heading" className="admin-task-list">
-                <h2 id="tasks-heading">Preparation tasks</h2>
+                <h2 id="tasks-heading">Operational tasks</h2>
                 {abilities.view_ceremonies && (
                     <Link href="/admin/ceremonies">
                         <span>
@@ -168,6 +181,44 @@ export default function AdminIndex({
                             <strong>Administrative audit history</strong>
                             <small>
                                 Review important ceremony, graduate, and media changes.
+                            </small>
+                        </span>
+                        <span aria-hidden="true">→</span>
+                    </Link>
+                )}
+                {abilities.view_operational_logs && (
+                    <Link href="/admin/scan-logs">
+                        <span>
+                            <strong>Operational logs</strong>
+                            <small>
+                                Review scanner attempts and stage-event history with
+                                safe filters.
+                            </small>
+                        </span>
+                        <span aria-hidden="true">→</span>
+                    </Link>
+                )}
+                {abilities.view_ceremony_reports && (
+                    <Link href="/admin/reports/ceremony-summary">
+                        <span>
+                            <strong>Ceremony summary</strong>
+                            <small>
+                                Review completion, readiness, media, and exception
+                                counts.
+                            </small>
+                        </span>
+                        <span aria-hidden="true">→</span>
+                    </Link>
+                )}
+                {abilities.view_backups && (
+                    <Link href="/admin/backups">
+                        <span>
+                            <strong>Backups and recovery</strong>
+                            <small>
+                                Last backup:{' '}
+                                {lastBackup
+                                    ? `${lastBackup.status} · ${lastBackup.verification_status || 'pending'}`
+                                    : 'none recorded'}
                             </small>
                         </span>
                         <span aria-hidden="true">→</span>

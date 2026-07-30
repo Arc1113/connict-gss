@@ -11,6 +11,14 @@ function formatDateTime(value) {
     }).format(new Date(value));
 }
 
+function exportHref(filters) {
+    const parameters = new URLSearchParams(
+        Object.entries(filters).filter(([, value]) => value),
+    );
+
+    return `/admin/audit-logs/export?${parameters.toString()}`;
+}
+
 function ChangeValues({ title, values }) {
     if (!values || Object.keys(values).length === 0) {
         return null;
@@ -33,13 +41,20 @@ function ChangeValues({ title, values }) {
     );
 }
 
-export default function AuditLogIndex({ filters, logs }) {
+export default function AuditLogIndex({ canExport, filterOptions, filters, logs }) {
     const hasFilters = Object.values(filters).some(Boolean);
 
     return (
         <AdminLayout>
             <Head title="Administrative audit history" />
             <PageHeader
+                actions={
+                    canExport && (
+                        <a className="admin-button admin-button-primary" href={exportHref(filters)}>
+                            Export CSV
+                        </a>
+                    )
+                }
                 description="Important local data changes with safe, redacted values."
                 eyebrow="Administrator only"
                 title="Administrative audit history"
@@ -64,10 +79,54 @@ export default function AuditLogIndex({ filters, logs }) {
                         name="entity_type"
                     >
                         <option value="">All record types</option>
-                        <option value="ceremony">Ceremony</option>
-                        <option value="student">Graduate</option>
-                        <option value="student_import">Graduate import</option>
+                        {filterOptions.entityTypes.map((entityType) => (
+                            <option key={entityType} value={entityType}>
+                                {entityType.replaceAll('_', ' ')}
+                            </option>
+                        ))}
                     </select>
+                </div>
+                <div>
+                    <label htmlFor="entity_id">Record ID</label>
+                    <input
+                        defaultValue={filters.entity_id}
+                        id="entity_id"
+                        inputMode="numeric"
+                        name="entity_id"
+                    />
+                </div>
+                <div>
+                    <label htmlFor="actor_id">Actor</label>
+                    <select
+                        defaultValue={filters.actor_id}
+                        id="actor_id"
+                        name="actor_id"
+                    >
+                        <option value="">All actors</option>
+                        {filterOptions.actors.map((actor) => (
+                            <option key={actor.id} value={actor.id}>
+                                {actor.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label htmlFor="from">From</label>
+                    <input
+                        defaultValue={filters.from}
+                        id="from"
+                        name="from"
+                        type="datetime-local"
+                    />
+                </div>
+                <div>
+                    <label htmlFor="to">To</label>
+                    <input
+                        defaultValue={filters.to}
+                        id="to"
+                        name="to"
+                        type="datetime-local"
+                    />
                 </div>
                 <div className="admin-filter-actions">
                     <button className="admin-button admin-button-primary" type="submit">
@@ -103,6 +162,7 @@ export default function AuditLogIndex({ filters, logs }) {
                                     <th scope="col">Actor</th>
                                     <th scope="col">Action</th>
                                     <th scope="col">Record</th>
+                                    <th scope="col">IP</th>
                                     <th scope="col">Safe change summary</th>
                                 </tr>
                             </thead>
@@ -117,6 +177,7 @@ export default function AuditLogIndex({ filters, logs }) {
                                         <td>
                                             {log.entity_type} #{log.entity_id ?? '—'}
                                         </td>
+                                        <td>{log.ip_address || 'Restricted'}</td>
                                         <td>
                                             <details className="admin-audit-details">
                                                 <summary>Review changes</summary>

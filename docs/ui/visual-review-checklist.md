@@ -125,6 +125,33 @@ required viewports.
 - [ ] Audio review controls and native preview remain keyboard reachable.
 - [ ] Long announcement names and review notes wrap without horizontal overflow.
 
+## Phase 9 operational-support states
+
+- [ ] Scan-log, stage-event, audit-log, report, and backup pages use calm
+      operational hierarchy, not analytics cards or charts.
+- [ ] Filter rows wrap without horizontal page overflow at 1024×768.
+- [ ] Export and reset actions are visually distinct and not adjacent in a way
+      that invites operator mistakes.
+- [ ] Backup and restore guidance is concise and does not expose secrets.
+- [ ] No CSV output, page, or manifest metadata exposes QR tokens or storage
+      paths in ordinary browser views.
+
+## Phase 10 deployment-device pass
+
+- [ ] Scanner `/scanner` is viewed from the server LAN URL in the approved
+      browser profile.
+- [ ] Audience `/stage` is viewed from the server LAN URL on the projected
+      display.
+- [ ] Browser fullscreen hides chrome, tabs, taskbars, notifications, and mouse
+      pointer from the audience.
+- [ ] Stage text remains readable at the actual projector/LED resolution.
+- [ ] Stage audio activation and output-device selection are visibly confirmed
+      before audience arrival.
+- [ ] Refreshing scanner, stage-control, and stage after service restart does not
+      reveal debug or technical details.
+- [ ] No deployment script output, terminal, admin page, or backup page appears
+      on the audience display.
+
 ## Anti–AI-slop final pass
 
 - [ ] No equal card grid drives hierarchy.

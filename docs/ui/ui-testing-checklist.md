@@ -142,6 +142,36 @@ and results in the phase report.
 - [ ] Admin and stage-control routes are checked at 1440×900, 1366×768, and
       1024×768; stage is checked at 1920×1080 and 1366×768.
 
+## Phase 9 operational support
+
+- [ ] Scan logs show filtered safe fields and no raw QR token/hash.
+- [ ] Stage events show safe descriptions and no raw event JSON.
+- [ ] Audit logs show safe old/new summaries and redact paths/secrets.
+- [ ] CSV exports preserve Unicode and neutralize formula-leading cells.
+- [ ] Ceremony summary counts match seeded PostgreSQL data.
+- [ ] Backup page shows status/manifest metadata without secrets or full paths.
+- [ ] Operational reset requires typed confirmation, blocks presenting, and
+      preserves history.
+- [ ] Technical, stage, encoder, scanner, inactive, and guest access rules match
+      Phase 9 requirements.
+
+## Phase 10 deployment and devices
+
+- [ ] Runtime browser checks use compiled production assets, not the Vite dev
+      server.
+- [ ] Scanner, stage-control, and stage URLs use the server LAN address.
+- [ ] Scanner browser profile is separate from admin/stage profiles.
+- [ ] Stage browser is fullscreen, zoom 100%, notifications disabled, and audio
+      activation is performed.
+- [ ] Stage-control is not opened on the projected audience display.
+- [ ] Reverb outage/restart recovers through HTTP state refresh.
+- [ ] Application restart recovers scanner, stage-control, and stage after
+      browser refresh.
+- [ ] No audience-facing route exposes terminal output, admin navigation, QR
+      tokens, server paths, or raw connection diagnostics.
+- [ ] Three physical devices, router, projector/LED, USB scanner, and venue
+      audio are checked before event certification.
+
 ## Regression
 
 - [ ] Relevant Laravel tests pass.
