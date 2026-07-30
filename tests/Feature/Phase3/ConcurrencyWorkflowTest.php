@@ -19,7 +19,7 @@ class ConcurrencyWorkflowTest extends TestCase
 {
     use DatabaseMigrations;
 
-    public function test_simultaneous_valid_scans_cannot_create_two_presentations(): void
+    public function test_simultaneous_valid_scans_create_two_unique_waiting_positions(): void
     {
         $this->requireProcessSupport();
         $ceremony = $this->activeCeremony();
@@ -40,18 +40,25 @@ class ConcurrencyWorkflowTest extends TestCase
 
         $statuses = collect($results)->pluck('status')->sort()->values()->all();
 
-        $this->assertSame(['accepted', 'stage_busy'], $statuses);
-        $this->assertSame(1, StageQueueItem::query()
+        $this->assertSame(['queued', 'queued'], $statuses);
+        $this->assertSame(0, StageQueueItem::query()
             ->where('status', StageQueueStatus::Presenting)
             ->count());
-        $this->assertSame(1, StageQueueItem::query()->count());
+        $this->assertSame(2, StageQueueItem::query()->count());
+        $this->assertSame(
+            [1, 2],
+            StageQueueItem::query()
+                ->orderBy('queue_position')
+                ->pluck('queue_position')
+                ->all(),
+        );
         $this->assertDatabaseCount('scan_logs', 2);
-        $this->assertDatabaseCount('stage_events', 1);
+        $this->assertDatabaseCount('stage_events', 2);
 
         $state = StageState::query()->whereBelongsTo($ceremony)->sole();
 
-        $this->assertNotNull($state->current_queue_item_id);
-        $this->assertSame(1, $state->version);
+        $this->assertNull($state->current_queue_item_id);
+        $this->assertSame(2, $state->version);
     }
 
     public function test_completion_racing_a_scan_leaves_a_consistent_stage(): void
@@ -88,32 +95,22 @@ class ConcurrencyWorkflowTest extends TestCase
         ]);
 
         $this->assertSame('completed', $results[0]['status']);
-        $this->assertContains($results[1]['status'], ['accepted', 'stage_busy']);
+        $this->assertSame('queued', $results[1]['status']);
         $this->assertDatabaseHas('stage_queue_items', [
             'id' => $currentItem->id,
             'status' => StageQueueStatus::Completed->value,
         ]);
-        $this->assertLessThanOrEqual(
-            1,
-            StageQueueItem::query()
-                ->where('status', StageQueueStatus::Presenting)
-                ->count(),
-        );
+        $this->assertSame(0, StageQueueItem::query()
+            ->where('status', StageQueueStatus::Presenting)
+            ->count());
 
         $state = StageState::query()->whereBelongsTo($ceremony)->sole();
-        $presenting = StageQueueItem::query()
-            ->where('status', StageQueueStatus::Presenting)
-            ->first();
-
-        if ($results[1]['status'] === 'accepted') {
-            $this->assertNotNull($presenting);
-            $this->assertSame($presenting->id, $state->current_queue_item_id);
-            $this->assertSame(3, $state->version);
-        } else {
-            $this->assertNull($presenting);
-            $this->assertNull($state->current_queue_item_id);
-            $this->assertSame(2, $state->version);
-        }
+        $this->assertNull($state->current_queue_item_id);
+        $this->assertSame(3, $state->version);
+        $this->assertDatabaseHas('stage_queue_items', [
+            'student_id' => $nextStudent->id,
+            'status' => StageQueueStatus::Waiting->value,
+        ]);
     }
 
     private function activeCeremony(): Ceremony

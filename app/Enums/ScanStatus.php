@@ -6,25 +6,27 @@ use Symfony\Component\HttpFoundation\Response;
 
 enum ScanStatus: string
 {
-    case Accepted = 'accepted';
+    case Queued = 'queued';
     case InvalidToken = 'invalid_token';
     case CeremonyInactive = 'ceremony_inactive';
     case StudentIneligible = 'student_ineligible';
-    case DuplicateActive = 'duplicate_active';
+    case AlreadyQueued = 'already_queued';
+    case AlreadyPresenting = 'already_presenting';
     case AlreadyCompleted = 'already_completed';
-    case StageBusy = 'stage_busy';
+    case SkippedRequiresStageAction = 'skipped_requires_stage_action';
     case Unauthorized = 'unauthorized';
     case RequestFailed = 'request_failed';
 
     public function httpStatus(): int
     {
         return match ($this) {
-            self::Accepted => Response::HTTP_CREATED,
+            self::Queued => Response::HTTP_CREATED,
             self::InvalidToken, self::StudentIneligible => Response::HTTP_UNPROCESSABLE_ENTITY,
             self::CeremonyInactive,
-            self::DuplicateActive,
+            self::AlreadyQueued,
+            self::AlreadyPresenting,
             self::AlreadyCompleted,
-            self::StageBusy => Response::HTTP_CONFLICT,
+            self::SkippedRequiresStageAction => Response::HTTP_CONFLICT,
             self::Unauthorized => Response::HTTP_FORBIDDEN,
             self::RequestFailed => Response::HTTP_INTERNAL_SERVER_ERROR,
         };

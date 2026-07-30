@@ -5,7 +5,7 @@ namespace Tests\Feature\Phase6;
 use App\Enums\CeremonyStatus;
 use App\Enums\EligibilityStatus;
 use App\Enums\UserRole;
-use App\Events\StudentPresented;
+use App\Events\QueueUpdated;
 use App\Models\Ceremony;
 use App\Models\ScanLog;
 use App\Models\Student;
@@ -73,7 +73,7 @@ class ScannerManualFallbackTest extends TestCase
 
     public function test_manual_selection_uses_the_same_transaction_and_duplicate_rules(): void
     {
-        Event::fake([StudentPresented::class]);
+        Event::fake([QueueUpdated::class]);
         $student = Student::factory()->create([
             'ceremony_id' => $this->ceremony->id,
             'display_name' => 'Ana Marie dela Cruz',
@@ -84,18 +84,18 @@ class ScannerManualFallbackTest extends TestCase
         $this->actingAs($this->scanner)
             ->postJson('/scans/manual', ['student_id' => $student->id])
             ->assertCreated()
-            ->assertJsonPath('status', 'accepted')
+            ->assertJsonPath('status', 'queued')
             ->assertJsonPath('student.display_name', 'Ana Marie dela Cruz');
 
         $log = ScanLog::query()->sole();
         $this->assertNull($log->raw_token_hash);
         $this->assertSame($student->id, $log->student_id);
-        Event::assertDispatched(StudentPresented::class);
+        Event::assertDispatched(QueueUpdated::class);
 
         $this->actingAs($this->scanner)
             ->postJson('/scans/manual', ['student_id' => $student->id])
             ->assertConflict()
-            ->assertJsonPath('status', 'duplicate_active');
+            ->assertJsonPath('status', 'already_queued');
     }
 
     public function test_manual_selection_rejects_other_ceremonies_and_unauthorized_roles(): void

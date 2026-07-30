@@ -3,6 +3,57 @@
 UI changes are recorded by project phase. Functional backend changes belong in
 the main project documentation.
 
+## Phase 7 — Persistent Queue and Stage Control
+
+Status: completed
+Date: 2026-07-30
+
+Completed:
+
+- Reframed `/scanner` around durable queue acceptance, position-specific
+  feedback, precise already-waiting/presenting/completed/skipped recovery, and
+  automatic-presentation confirmation while preserving USB focus, Enter input,
+  manual lookup, and one-request locking.
+- Added `/stage-control` with one dominant current-presentation area, a
+  deterministic queue table, selected and next presentation, completion,
+  skip/return, replay readiness, holding/restore, automatic pause/resume, compact
+  skipped/recent context, and textual connection recovery.
+- Used the existing restrained navy/gold system, thin borders, moderate radius,
+  minimal shadow, local fonts/assets, visible focus, and table-owned overflow.
+  At 1024 px the current task stacks before queue detail.
+- Extended `/stage` with a neutral formal holding state and local-audio replay
+  handling while keeping every queue, operator, connection, and diagnostic
+  detail off the audience output.
+- Preserved HTTP commands, PostgreSQL source of truth, post-commit Reverb
+  broadcasts, Echo delivery, local audio, and HTTP refresh/reconnect recovery.
+  No UI library, remote asset, polling path, or internet runtime dependency was
+  introduced.
+
+Verification:
+
+- The full PostgreSQL suite passes 148 tests with 1,217 assertions. Pint,
+  ESLint, the Vite production build, Composer validation/security audit, npm
+  audit, Compose validation, route inspection, and the local health endpoint
+  pass.
+- Authenticated Chromium used separate scanner, control, and audience profiles
+  for controlled ordering, scan-without-preemption, next/selected presentation,
+  completion, skip/return, replay, holding/restore, missing audio, automatic
+  initial presentation, persisted pause/resume, role denial, focus, reduced
+  motion, refresh, and deliberate Reverb outage/recovery.
+- `/stage-control` was inspected at 1440×900, 1366×768, and 1024×768; `/stage`
+  was inspected at 1920×1080 and 1366×768. Long names/programs, hierarchy,
+  wrapping, overflow, audience safety, and compact stacking were visually
+  reviewed.
+- PNG evidence under `docs/evidence/phase-7/` is intentionally ignored by Git.
+
+Known limitations:
+
+- Physical USB scanner, projector/LED, venue audio, final kiosk startup, and
+  three-laptop rehearsal remain manual venue checks.
+- Audio recording, normalization, approval, and bulk preparation remain Phase 8.
+- Phase 7 intentionally does not add arbitrary drag reorder, bulk queue edits,
+  or mode switching during an active ceremony.
+
 ## Phase 6 — QR Generation, Printing, and Scanner Hardening
 
 Status: completed

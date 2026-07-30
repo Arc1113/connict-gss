@@ -2,7 +2,12 @@
 
 use App\Actions\Admin\CeremonyAdministration;
 use App\Actions\CompleteCurrentPresentation;
+use App\Actions\PresentStageQueueItem;
+use App\Actions\ReplayCurrentAnnouncement;
+use App\Actions\ReturnStageQueueItem;
 use App\Actions\ScanStudentForPresentation;
+use App\Actions\SetAutomaticPresentationPaused;
+use App\Actions\SkipStageQueueItem;
 use App\Models\Ceremony;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
@@ -32,6 +37,34 @@ try {
             ->toArray(),
         'complete' => app(CompleteCurrentPresentation::class)
             ->execute(
+                User::query()->findOrFail((int) $arguments[0]),
+            )['data'],
+        'present_next' => app(PresentStageQueueItem::class)
+            ->next(
+                User::query()->findOrFail((int) $arguments[0]),
+            )['data'],
+        'present_selected' => app(PresentStageQueueItem::class)
+            ->selected(
+                (int) $arguments[0],
+                User::query()->findOrFail((int) $arguments[1]),
+            )['data'],
+        'skip' => app(SkipStageQueueItem::class)
+            ->execute(
+                (int) $arguments[0],
+                User::query()->findOrFail((int) $arguments[1]),
+            )['data'],
+        'return' => app(ReturnStageQueueItem::class)
+            ->execute(
+                (int) $arguments[0],
+                User::query()->findOrFail((int) $arguments[1]),
+            )['data'],
+        'replay' => app(ReplayCurrentAnnouncement::class)
+            ->execute(
+                User::query()->findOrFail((int) $arguments[0]),
+            )['data'],
+        'pause_automatic' => app(SetAutomaticPresentationPaused::class)
+            ->execute(
+                true,
                 User::query()->findOrFail((int) $arguments[0]),
             )['data'],
         'activate_ceremony' => activateCeremony(

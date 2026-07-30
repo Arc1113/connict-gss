@@ -6,4 +6,5 @@ enum StageDisplayMode: string
 {
     case Idle = 'idle';
     case Graduate = 'graduate';
+    case Holding = 'holding';
 }

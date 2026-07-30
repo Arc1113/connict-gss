@@ -1,6 +1,6 @@
 # Graduation Stage System
 
-Status: **Phase 6 — QR Generation, Printing, and Scanner Hardening implemented**
+Status: **Phase 7 — Persistent Queue and Stage Control implemented**
 
 The Graduation Stage System is a local-network-only application for reliable,
 QR-driven graduation presentation. Phase 3 established the complete operational
@@ -30,6 +30,13 @@ print sheets, administrator-only token replacement, readiness review, and a
 controlled scanner lookup fallback. It preserves the Phase 3 scan transaction,
 post-commit Reverb event, Echo stage update, and HTTP recovery path.
 
+Phase 7 replaces the temporary immediate-presentation rule with a durable
+PostgreSQL queue and a dedicated stage-control workspace. Scans now create
+ordered queue entries; controlled mode waits for an operator, while automatic
+mode presents only the first eligible scan when the stage is idle and the queue
+has no earlier graduate. Every command remains HTTP-first, transactionally
+persisted, broadcast after commit, and recoverable through HTTP.
+
 ## Approved architecture
 
 - Laravel 13 backend
@@ -49,23 +56,29 @@ post-commit Reverb event, Echo stage update, and HTTP recovery path.
 There is no SQLite fallback, polling replacement, cloud runtime service, hosted
 font, CDN, browser speech synthesis, or internet runtime dependency.
 
-## Phase 3 behavior
-
-The temporary vertical-slice policy is intentionally small:
+## Phase 7 queue and presentation behavior
 
 1. Exactly one ceremony must have PostgreSQL status `active`.
-2. A valid, eligible scan immediately becomes `presenting` only when the stage is
-   idle.
-3. A scan never preempts the current graduate.
-4. While a graduate is presenting, another graduate receives `stage_busy`.
-5. A repeat of the active graduate receives `duplicate_active`.
-6. A completed graduate receives `already_completed`.
-7. A stage operator or administrator may complete the current presentation. This
-   marks its queue row `completed`, clears stage state, increments the state
-   version, records an event, and broadcasts the clear after commit.
-
-Queue ordering, present-next, selected presentation, skip, return, replay controls,
-mode automation, and advanced recovery remain Phase 7 work.
+2. Every valid eligible scan first creates one durable `waiting` queue row and a
+   monotonically increasing ceremony-local position.
+3. Controlled mode leaves the row waiting until **Present next** or
+   **Present selected** succeeds.
+4. Automatic mode may promote that new row to `presenting` in the same
+   transaction only when the stage is idle, automation is not paused, and no
+   earlier waiting row exists. It never preempts and never auto-advances after
+   completion.
+5. Completion marks the current row `completed`, clears the audience state, and
+   leaves later graduates waiting.
+6. Skip removes a waiting row from ordered positions while preserving history;
+   return appends it to the current tail with a new position.
+7. Replay versions and records an announcement request without changing queue
+   status. Missing audio is rejected safely.
+8. Holding temporarily replaces the audience content without completing or
+   losing the current graduate; restore retrieves the persisted current state.
+9. Repeated scans report precise `already_queued`, `already_presenting`,
+   `already_completed`, or `skipped_requires_stage_action` outcomes.
+10. PostgreSQL remains authoritative. Queue and stage browsers refetch after
+    reconnect, refresh, a version gap, and compact control-channel events.
 
 ## Phase 4 administration behavior
 
@@ -155,6 +168,35 @@ mode automation, and advanced recovery remain Phase 7 work.
   scanner was attached and configured printers were offline during Phase 6
   development. Exact rehearsal steps are documented below.
 
+## Phase 7 stage-control behavior
+
+- `/stage-control` makes the current graduate and next safe action dominant,
+  with the ordered queue, skipped graduates, recent actions, connection state,
+  and audio readiness kept secondary.
+- Queue positions are never renumbered during the ceremony. New scans and
+  returned graduates receive `MAX(queue_position) + 1` while the ceremony and
+  stage state are locked. A PostgreSQL partial unique index rejects duplicate
+  non-null positions.
+- Present-next and present-selected lock authoritative state, reject
+  busy/stale/cross-ceremony commands, record the action, and publish only after
+  commit.
+- Controlled scans remain waiting. Automatic scans can present only the first
+  idle, unpaused item and do not bypass an existing queue. Automatic pause is
+  persisted; resuming does not silently present a backlog item.
+- Completion is explicit in both modes and never auto-advances.
+- Skip and return preserve the same queue item and its complete history. A
+  returned graduate joins the tail rather than reclaiming an old position.
+- Replay is available only when the current graduate has approved local audio.
+  It versions and records the request without changing queue status.
+- Holding mode preserves the current pointer and shows only neutral ceremony
+  identity to the audience. Restoring returns to the persisted graduate or idle
+  state.
+- Buttons use a single pending-command lock and risky actions request
+  confirmation. Both operator and audience views reconcile from HTTP after
+  refresh, a version gap, or Reverb reconnection.
+- The audience display receives no queue positions, tokens, student numbers,
+  operator history, commands, or technical diagnostics.
+
 ## Implemented routes
 
 | Route | Purpose | Access |
@@ -165,7 +207,18 @@ mode automation, and advanced recovery remain Phase 7 work.
 | `POST /scans/manual` | Process one verified fallback selection through the scan transaction | Scanner operator, administrator |
 | `GET /stage` | Audience presentation display | Stage operator, administrator |
 | `GET /stage/state` | Authoritative safe stage snapshot | Stage operator, administrator |
-| `POST /stage/complete-current` | Minimal completion/clear command | Stage operator, administrator |
+| `GET /stage-control` | Durable queue and current-presentation workspace | Stage operator, administrator |
+| `GET /stage/queue` | Authoritative safe queue/control snapshot | Stage operator, administrator |
+| `POST /stage/present-next` | Present the earliest waiting graduate | Stage operator, administrator |
+| `POST /stage/present/{queueItem}` | Present one selected waiting graduate | Stage operator, administrator |
+| `POST /stage/complete-current` | Complete current and clear the stage | Stage operator, administrator |
+| `POST /stage/skip/{queueItem}` | Preserve history and skip a waiting graduate | Stage operator, administrator |
+| `POST /stage/return/{queueItem}` | Append a skipped graduate to the queue tail | Stage operator, administrator |
+| `POST /stage/replay` | Replay approved local audio without changing queue state | Stage operator, administrator |
+| `POST /stage/holding/activate` | Show the neutral audience holding screen | Stage operator, administrator |
+| `POST /stage/holding/deactivate` | Restore the persisted live audience state | Stage operator, administrator |
+| `POST /stage/automatic/pause` | Persistently pause automatic initial presentation | Stage operator, administrator |
+| `POST /stage/automatic/resume` | Resume automatic initial presentation | Stage operator, administrator |
 | `GET\|POST /broadcasting/auth` | Private Echo channel authorization | Authorized active session |
 | `GET /admin` | Ceremony readiness and preparation tasks | Administrator, data encoder |
 | `GET /admin/ceremonies` | Search/filter/paginated ceremony list | Administrator, data encoder |
@@ -196,19 +249,22 @@ The corresponding `POST`, `PUT/PATCH`, and `DELETE` resource actions are
 server-authorized. Separate `DELETE /admin/students/{student}/photo` and
 `DELETE /admin/students/{student}/audio` actions remove managed media safely.
 
-The private Echo channel is `private-stage.{ceremonyId}`. It is authorized only
-for stage operators and administrators when exactly one active ceremony exists
-and the channel ID matches it.
+The audience Echo channel is `private-stage.{ceremonyId}`. The operator channel
+is `private-stage-control.{ceremonyId}`. Both are authorized only for stage
+operators and administrators when exactly one active ceremony exists and the
+channel ID matches it. Audience events contain presentation-safe fields only;
+compact control events trigger an authoritative queue/state refetch.
 
 `POST /scans` returns one of:
 
-- `accepted` (`201`)
+- `queued` (`201`)
 - `invalid_token` (`422`)
 - `ceremony_inactive` (`409`)
 - `student_ineligible` (`422`)
-- `duplicate_active` (`409`)
+- `already_queued` (`409`)
+- `already_presenting` (`409`)
 - `already_completed` (`409`)
-- `stage_busy` (`409`)
+- `skipped_requires_stage_action` (`409`)
 - `unauthorized` (`403`)
 - `request_failed` (`500`, safe unexpected-failure response)
 
@@ -377,23 +433,28 @@ or expose an error on the audience display.
 
 ## Manual vertical-slice check
 
-Use separate browser profiles so scanner and stage sessions do not replace each
-other.
+Use separate scanner, stage-control, and audience browser profiles.
 
-1. Sign in as `stage@example.test`, open `/stage`, and select **Enable ceremony
-   audio** once.
-2. Sign in as `scanner@example.test` in another profile and open `/scanner`.
-3. Scan or enter the first sample token and press Enter.
-4. Confirm immediate scanner acceptance and live stage presentation.
-5. Refresh `/stage`; the same committed graduate must return through
-   `GET /stage/state`.
-6. From the stage operator dashboard, complete the current presentation.
-7. Scan the second token and confirm the stage changes only after completion.
-8. Re-scan the active token and verify `duplicate_active`.
-9. Scan a different token while busy and verify `stage_busy`.
-10. Stop Reverb with `docker compose stop reverb`, complete or scan as applicable,
-    and confirm PostgreSQL state still commits. Start it again with
-    `docker compose start reverb`; the stage must reconnect and reconcile through
+1. Sign in as `stage@example.test` in two profiles. Open `/stage-control` in one
+   and `/stage` in the other; select **Enable ceremony audio** once on `/stage`.
+2. Sign in as `scanner@example.test` in a third profile and open `/scanner`.
+3. Scan the first three sample tokens. Confirm distinct queue positions and no
+   audience preemption in controlled mode.
+4. Select **Present next graduate** and verify the earliest row appears on
+   `/stage` with local audio. Refresh both stage pages and confirm HTTP recovery.
+5. Scan a fourth graduate while presenting. Confirm the row waits and the
+   audience graduate does not change.
+6. Replay, then complete the current presentation. Confirm the stage clears and
+   does not automatically advance.
+7. Present one selected graduate out of order, skip another, return the skipped
+   graduate, and confirm it joins the queue tail.
+8. Show and restore the holding screen. Confirm the current graduate is
+   preserved and no operator/technical detail appears to the audience.
+9. Re-scan waiting, presenting, completed, and skipped graduates and verify the
+   precise status/recovery guidance.
+10. Stop Reverb with `docker compose stop reverb`, scan while it is unavailable,
+    and confirm PostgreSQL still commits. Start it with
+    `docker compose start reverb`; both views must reconnect and reconcile via
     HTTP.
 
 Repeat on the physical three-laptop setup before ceremony use. This development
@@ -462,10 +523,10 @@ browser or printer option that rescales the sheet.
    input regains focus. Scan each printed sample once. Exactly one HTTP request
    and one accepted/rejected result must appear, the field must clear, and focus
    must return.
-7. Scan rapidly, hold the trigger, press Enter twice, retry the active graduate,
-   try another graduate while the stage is busy, and try a completed graduate.
-   Confirm `duplicate_active`, `stage_busy`, and `already_completed` remain
-   specific and no second presentation is created.
+7. Scan rapidly, hold the trigger, press Enter twice, retry a waiting graduate,
+   retry the current graduate, and try a completed graduate. Confirm
+   `already_queued`, `already_presenting`, and `already_completed` remain
+   specific and no duplicate queue row is created.
 8. As an administrator, replace one non-presenting/non-completed test graduate’s
    token. Confirm the old printed card returns **QR code not recognized**, print
    the replacement, and confirm the replacement is accepted.
@@ -495,10 +556,11 @@ npm audit
 docker compose config --quiet
 ```
 
-The completed Phase 6 verification passed 124 PostgreSQL tests with 1,028
-assertions. Focused regressions passed Phase 3 at 22 tests/157 assertions
-(including both independent-process races), Phase 4 at 23/251, Phase 5 at
-22/286, and Phase 6 at 16/160.
+The completed Phase 7 verification passes 148 PostgreSQL tests with 1,217
+assertions across authentication/domain behavior and Phases 3–7. The suite
+includes the original critical path, administration, CSV preparation, QR
+preparation/scanner fallback, the durable queue, and all independent-process
+race coverage.
 
 The Phase 3 tests include HTTP/access checks, all scan outcomes, scan-log and
 payload privacy checks, post-transaction event ordering, rollback behavior,
@@ -520,6 +582,12 @@ readiness filters, deterministic/deduplicated/bounded batches, administrator-onl
 replacement, HMAC stale-request protection, transaction rollback, old/new-token
 scan behavior, scanner fallback scoping, and manual-selection transaction tests.
 
+Phase 7 adds queue transition, position, authorization, safe-payload,
+controlled/automatic mode, replay, holding, recovery, and PostgreSQL uniqueness
+tests. Independent-process races cover duplicate scans, two present-next
+commands, next versus selected, skip versus present, duplicate return,
+completion versus replay, and pause versus an automatic scan.
+
 An optional live Chromium check exercises two authenticated browser profiles,
 private-channel delivery, local audio playback events, refresh recovery, and a
 deliberate Reverb stop/restart:
@@ -534,6 +602,8 @@ docker compose exec -T app php artisan migrate:fresh --seed --force
 node tests/Support/phase5-browser-check.mjs
 docker compose exec -T app php artisan migrate:fresh --seed --force
 node tests/Support/phase6-browser-check.mjs
+docker compose exec -T app php artisan migrate:fresh --seed --force
+GSS_APP_URL=http://127.0.0.1:8001 node tests/Support/phase7-browser-check.mjs
 ```
 
 These checks require Google Chrome at `/usr/bin/google-chrome` and must run only
@@ -546,6 +616,12 @@ removes only clearly prefixed temporary graduates, including one through the
 actual Phase 5 confirmation action, and records QR/print/scanner evidence under
 `docs/evidence/phase-6/`. It also verifies data-encoder restrictions, old/new
 replacement scans, repeated Enter locking, and controlled manual acceptance.
+The Phase 7 harness uses three authenticated Chromium profiles, exercises
+controlled and automatic presentation, pause/resume, selected presentation,
+completion, skip/return, holding, replay and missing audio, refresh recovery, a
+deliberate Reverb outage, role denial, long content, focus, reduced motion, and
+the approved control/audience viewports. Its PNG evidence is written under
+`docs/evidence/phase-7/` and remains ignored by Git.
 Set `GSS_APP_URL` when the local app uses a non-default host port.
 
 ## Troubleshooting
@@ -593,13 +669,13 @@ Set `GSS_APP_URL` when the local app uses a non-default host port.
 
 ## Phase boundary
 
-Phase 6 does not add CSV update/synchronization/export, camera scanning, device
-credentials, a general queue,
-present-next/selected, reorder, skip, return, replay/mute controls, operational
-scan/stage reports, backups, deployment automation, cloud media, or
-text-to-speech. Those features remain deferred to their approved phases,
-especially full queue/mode behavior in Phase 7.
+Phase 7 does not add CSV update/synchronization/export, camera scanning, device
+credentials, drag-and-drop queue reorder, bulk queue editing, microphone
+recording, audio normalization/approval, operational reports, backups,
+deployment automation, cloud media, or text-to-speech. Audio preparation and
+approval remain Phase 8; later operational and deployment capabilities remain
+in their assigned phases.
 
 See [requirements](docs/requirements.md) and
-[architecture](docs/architecture.md) for the normative Phase 3 through Phase 6
-contracts. Do not begin Phase 7 until Phase 6 receives explicit human approval.
+[architecture](docs/architecture.md) for the normative Phase 3 through Phase 7
+contracts. Do not begin Phase 8 until Phase 7 receives explicit human approval.

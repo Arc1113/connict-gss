@@ -15,9 +15,13 @@ const REJECTION_FEEDBACK = {
         title: 'QR code not recognized',
         message: 'Check that the correct QR code is visible, then scan it again.',
     },
-    duplicate_active: {
-        title: 'Graduate is already on stage',
-        message: 'Do not scan again. Wait for the stage operator to finish the current presentation.',
+    already_queued: {
+        title: 'Graduate is already in the queue',
+        message: 'Do not scan again. Keep the graduate in line for the stage operator.',
+    },
+    already_presenting: {
+        title: 'Graduate is already being presented',
+        message: 'Do not scan again. Wait for the stage operator to complete the presentation.',
     },
     student_ineligible: {
         title: 'Graduate is not eligible',
@@ -31,9 +35,9 @@ const REJECTION_FEEDBACK = {
         title: 'Presentation already completed',
         message: 'Do not scan again. Ask the stage operator if the graduate needs to be presented another time.',
     },
-    stage_busy: {
-        title: 'Stage is still occupied',
-        message: 'Wait until the current presentation is cleared, then scan this QR code again.',
+    skipped_requires_stage_action: {
+        title: 'Graduate is on the skipped list',
+        message: 'Do not scan again. Ask the stage operator to return the graduate to the queue.',
     },
     unauthorized: {
         title: 'Scanner access expired',
@@ -81,7 +85,7 @@ function realtimeStatus(state) {
     if (state === 'connected') {
         return {
             label: 'Live updates connected',
-            detail: 'Stage updates are available.',
+            detail: 'Queue updates are available.',
             tone: 'ready',
         };
     }
@@ -89,7 +93,7 @@ function realtimeStatus(state) {
     if (state === 'reconnected') {
         return {
             label: 'Live updates reconnected',
-            detail: 'The stage will recover the latest saved state.',
+            detail: 'The queue will recover the latest saved state.',
             tone: 'ready',
         };
     }
@@ -104,7 +108,7 @@ function realtimeStatus(state) {
 
     return {
         label: 'Live updates disconnected',
-        detail: 'Keep using HTTP scans. The stage will recover after reconnection.',
+        detail: 'Keep using HTTP scans. Stage control will recover after reconnection.',
         tone: 'warning',
     };
 }
@@ -184,25 +188,31 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
     function applyScanResult(data, manual = false) {
         setServerState(data.status === 'request_failed' ? 'unavailable' : 'available');
 
-        if (data.status === 'accepted') {
+        if (data.status === 'queued') {
             const displayName = data.student?.display_name?.trim();
 
             if (!displayName) {
                 setFeedback({
                     status: 'missing_student_information',
                     tone: 'warning',
-                    title: 'Scan saved — information incomplete',
-                    message: 'Ask the stage operator to verify the graduate display before continuing.',
+                    title: 'Queued — information incomplete',
+                    message: 'Ask the stage operator to verify the graduate before presenting.',
                 });
                 setLastAccepted('Graduate information unavailable');
             } else {
                 setFeedback({
-                    status: 'accepted',
+                    status: 'queued',
                     tone: 'accepted',
-                    title: manual ? 'Manual selection accepted' : 'Successful scan',
-                    message: data.broadcast_delivered
-                        ? `${displayName} is ready on the stage display.`
-                        : `${displayName} was saved while live delivery was unavailable. The stage will recover from server state.`,
+                    title: data.automatically_presented
+                        ? 'Queued and presented automatically'
+                        : manual
+                          ? 'Manual selection queued'
+                          : 'Graduate added to queue',
+                    message: data.automatically_presented
+                        ? `${displayName} is now on the audience display. Explicit completion is still required.`
+                        : data.broadcast_delivered
+                          ? `${displayName} is waiting at queue position ${data.queue_position}.`
+                          : `${displayName} is saved at queue position ${data.queue_position}. Stage control will recover from server state.`,
                 });
                 setLastAccepted(displayName);
             }
@@ -359,7 +369,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
 
             applyScanResult(data, true);
 
-            if (data.status === 'accepted') {
+            if (data.status === 'queued') {
                 setLookupQuery('');
                 setLookupStudents([]);
                 setSelectedStudentId(null);

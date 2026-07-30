@@ -19,4 +19,22 @@ enum StageQueueStatus: string
             self::Completed, self::Skipped, self::Cancelled => false,
         };
     }
+
+    public function canTransitionTo(self $next): bool
+    {
+        return match ($this) {
+            self::Waiting, self::Ready => in_array(
+                $next,
+                [self::Presenting, self::Skipped, self::Cancelled],
+                true,
+            ),
+            self::Skipped => in_array(
+                $next,
+                [self::Waiting, self::Cancelled],
+                true,
+            ),
+            self::Presenting, self::Announced => $next === self::Completed,
+            self::Completed, self::Cancelled => false,
+        };
+    }
 }

@@ -152,6 +152,7 @@ class DatabaseSeeder extends Seeder
                 'display_mode' => StageDisplayMode::Idle,
                 'audio_status' => StageAudioStatus::Stopped,
                 'is_muted' => false,
+                'automatic_paused' => false,
                 'version' => 0,
             ],
         );

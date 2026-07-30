@@ -1,6 +1,6 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 6 QR preparation and scanner contract implemented**
+Document status: **Phase 7 persistent queue and stage-control contract implemented**
 
 Last updated: 2026-07-30
 
@@ -18,6 +18,9 @@ Phase 5 adds controlled create-only CSV preparation without changing the
 scanner, presentation, event, or recovery contracts.
 Phase 6 adds protected local QR rendering, print preparation, explicit token
 replacement, and controlled scanner fallback without changing those contracts.
+Phase 7 replaces the temporary immediate-presentation rule with durable queue
+transitions, controlled and automatic initial presentation, and recoverable
+stage-control commands.
 
 ## 2. Fixed architecture and device requirements
 
@@ -42,8 +45,9 @@ replacement, and controlled scanner fallback without changing those contracts.
 | --- | --- |
 | `/scanner` and `POST /scans` | `scanner_operator`, `administrator` |
 | `/stage`, `GET /stage/state` | `stage_operator`, `administrator` |
-| `POST /stage/complete-current` | `stage_operator`, `administrator` |
+| `/stage-control`, queue reads, and all stage commands | `stage_operator`, `administrator` |
 | `private-stage.{ceremonyId}` subscription | Active `stage_operator` or `administrator` session for the sole active ceremony |
+| `private-stage-control.{ceremonyId}` subscription | Active `stage_operator` or `administrator` session for the sole active ceremony |
 | Administration readiness and ceremony viewing | `data_encoder`, `administrator` |
 | Ceremony create/edit/status/delete | `administrator` |
 | Graduate list/detail/create/edit and local media | `data_encoder`, `administrator` |
@@ -84,23 +88,26 @@ Both zero and multiple cases produce a safe `ceremony_inactive` scan response.
 The operator message distinguishes missing from ambiguous configuration without
 exposing graduate data.
 
-## 5. Temporary presentation policy
+## 5. Persistent queue and presentation policy
 
-The following policy is explicit and temporary:
-
-1. When the stage is idle, one valid eligible scan immediately becomes
-   `presenting`.
-2. When the stage is presenting, another student is rejected as `stage_busy`.
-3. A scan never replaces or preempts the current graduate.
-4. A duplicate active graduate is rejected as `duplicate_active`.
-5. A graduate with completed history is rejected as `already_completed`.
-6. The only Phase 3 stage command is complete-current, which completes the current
-   row and clears the stage.
-7. There is no waiting queue behavior, present-next, present-selected, reorder,
-   skip, return, replay command, mode switch, or automatic advancement.
-
-Phase 7 must replace this temporary policy with the approved full queue and
-automatic/controlled mode transition rules.
+1. A valid eligible scan creates one durable queue row before any presentation
+   decision.
+2. Controlled mode leaves the new row `waiting`.
+3. Automatic mode may promote the new row to `presenting` in the same
+   transaction only when the stage is idle, automatic presentation is not
+   paused, and the row is the earliest waiting item.
+4. A scan never replaces or preempts the current graduate.
+5. Present-next selects the smallest non-null waiting position. Present-selected
+   may choose any waiting row in the active ceremony without renumbering others.
+6. Completion is always explicit and never automatically advances the queue.
+7. Skip changes a waiting row to `skipped` and clears its position. Return
+   changes that same row back to `waiting` at the new tail position.
+8. Replay does not alter queue status. Holding does not complete or detach the
+   current row.
+9. Automatic pause is persisted in PostgreSQL. Resuming affects future scans
+   only and does not silently consume existing backlog.
+10. All transitions are HTTP commands with PostgreSQL locks, recorded stage
+    events, monotonic state versions, post-commit broadcasts, and HTTP recovery.
 
 ## 6. Scanner requirements
 
@@ -139,13 +146,14 @@ a safe message and one status:
 
 | Status | HTTP | Meaning |
 | --- | ---: | --- |
-| `accepted` | 201 | Eligible graduate committed and is now presenting |
+| `queued` | 201 | Eligible graduate committed; response includes position/status and whether automatic presentation occurred |
 | `invalid_token` | 422 | No graduate in the active ceremony matches |
 | `ceremony_inactive` | 409 | Active ceremony state is zero or ambiguous |
 | `student_ineligible` | 422 | Matching graduate is not eligible |
-| `duplicate_active` | 409 | Graduate already has an active queue row |
+| `already_queued` | 409 | Graduate is already waiting |
+| `already_presenting` | 409 | Graduate is currently presented |
 | `already_completed` | 409 | Graduate has completed history |
-| `stage_busy` | 409 | Another graduate is presenting |
+| `skipped_requires_stage_action` | 409 | Graduate was skipped and must be returned by stage control |
 | `unauthorized` | 403 | Authenticated user lacks scanner permission |
 
 Malformed/missing/overlong input receives a structured `invalid_token` validation
@@ -159,15 +167,17 @@ response. No raw invalid token may be echoed back.
 2. Lock or initialize its `stage_states` row.
 3. Resolve the normalized token within that ceremony.
 4. Verify eligibility.
-5. check active and completed queue history.
-6. Verify the stage is idle.
-7. Insert one `stage_queue_items` row with status `presenting`.
-8. Set `stage_states.current_queue_item_id`, display mode `graduate`, and increment
-   the state version.
-9. Insert one `student_presented` stage event.
-10. Insert an accepted scan log.
+5. Check active, completed, and skipped queue history.
+6. Allocate `MAX(queue_position) + 1` while holding the ceremony/stage lock.
+7. Insert one `stage_queue_items` row with status `waiting`.
+8. Insert a `student_queued` event and accepted scan log; increment version.
+9. In automatic mode only, promote the earliest new waiting row to
+   `presenting` when the persisted stage is idle and automation is unpaused.
+10. When promoted, update stage state and record a
+    `student_presented_automatically` event.
 11. Commit all changes.
-12. Dispatch the safe synchronous broadcast only after the transaction returns.
+12. Dispatch `QueueUpdated` and any safe audience presentation event only after
+    the transaction returns.
 
 Rejected attempts must log safely when practical but must not change queue, stage
 state, or stage events. A transaction exception must roll back all related writes
@@ -198,16 +208,22 @@ exception reporter.
 
 ## 10. Real-time requirements
 
-The success event is `StudentPresented`; the clear event is
-`StagePresentationCleared`.
+Audience events are `StudentPresented`, `StagePresentationCleared`,
+`AudioReplayRequested`, and `StageHoldingChanged`. The control event is
+`QueueUpdated`.
 
-Both:
+All events:
 
 - implement synchronous Laravel broadcasting so no queue worker is required;
 - are dispatched after the database transaction completes;
-- publish on `private-stage.{ceremonyId}`;
-- use Echo event names `.student.presented` and `.stage.cleared`; and
+- publish on the purpose-specific private audience or control channel;
 - may fail to deliver without rolling back committed PostgreSQL state.
+
+`QueueUpdated` publishes `.queue.updated` on
+`private-stage-control.{ceremonyId}` and contains only version, action, and an
+optional queue item ID. It tells the operator client to refetch; it is not an
+authoritative queue snapshot. Audience event names are `.student.presented`,
+`.stage.cleared`, `.audio.replay-requested`, and `.stage.holding-changed`.
 
 `StudentPresented` contains only:
 
@@ -313,9 +329,15 @@ intentionally has no audio to test the missing-audio path.
 | Scenario | Required result |
 | --- | --- |
 | Rapid repeated Enter/submission | UI blocks pending repeat; server rules remain authoritative |
-| Two valid simultaneous scans | Exactly one presenting item; the other receives a safe conflict |
-| Same graduate retried | One active item; later attempt receives `duplicate_active` |
-| Completion races a scan | Row lock determines order; final queue/state/version remain consistent |
+| Two valid simultaneous controlled scans | Both persist once with unique ordered positions |
+| Two automatic scans on idle stage | At most one presents; the other waits without preemption |
+| Same graduate retried | One active item; later attempt receives the precise current-state conflict |
+| Two present-next commands | At most one graduate presents |
+| Present-next races present-selected | At most one graduate presents; other waiting history remains legal |
+| Skip races selected presentation | One legal transition wins; no split state |
+| Two returns of one skipped row | One return appends exactly once |
+| Completion races replay | Completion remains authoritative and replay never resurrects state |
+| Pause races automatic scan | Persisted lock order produces either a safe waiting scan or one legal initial presentation |
 | Transaction throws | No partial queue, state, log, event, or success broadcast |
 | Broadcast fails after commit | Command remains committed; client later retrieves HTTP state |
 | Stage refresh/crash | Restore current state from PostgreSQL via HTTP |
@@ -790,36 +812,89 @@ required pre-ceremony manual check; no physical verification is claimed.
 - Physical scanner/printer certification is explicitly pending with reproducible
   steps.
 
-## 21. MVP and deferred boundaries
+## 21. Phase 7 persistent queue and stage control
+
+### 21.1 Queue states and positions
+
+The implemented transition graph is:
+
+```text
+scan → waiting
+waiting → presenting → completed
+waiting → skipped → waiting (new tail position)
+```
+
+`ready`, `announced`, and `cancelled` remain schema-compatible states but Phase 7
+does not add operator commands that produce them. A non-null queue position is
+unique within its ceremony. Positions are positive, monotonic, and never
+renumbered or reused during normal operation. Skipping clears the position;
+returning assigns the current maximum plus one.
+
+### 21.2 Operator commands
+
+`/stage-control` and `GET /stage/queue` expose a safe, recoverable view of the
+current graduate, waiting order, skipped rows, recent actions, display mode,
+automatic pause, connection, and local-audio readiness. They never expose QR
+tokens or student numbers.
+
+Stage operators and administrators may present next/selected, complete, skip,
+return, replay, activate/deactivate holding, and pause/resume automatic initial
+presentation. All buttons prevent duplicate submission; high-consequence
+actions request confirmation and failures explain that the operator must
+refresh authoritative state before retrying.
+
+### 21.3 Mode behavior
+
+Controlled mode never presents from a scan. Automatic mode is intentionally
+limited to initial presentation of the newly scanned, earliest waiting graduate
+when the stage is idle. It never preempts, bypasses backlog, or auto-advances
+after completion. Pause is durable and scan-safe; resume does not consume the
+backlog without an explicit present command.
+
+### 21.4 Recovery, audience safety, and acceptance
+
+- PostgreSQL row locks and partial unique indexes are the concurrency authority.
+- Every successful mutation increments the stage version and records a stage
+  event before any broadcast.
+- Compact control events cause HTTP refetch; audience events remain
+  presentation-safe.
+- Refresh, subscription, reconnect, and version gaps reconcile via HTTP.
+- Holding and transport failure show no technical details to the audience.
+- Missing audio disables replay but never blocks visual presentation.
+- The control layout is keyboard-operable and verified at 1440×900, 1366×768,
+  and 1024×768; audience output is verified at 1920×1080 and 1366×768.
+
+## 22. MVP and deferred boundaries
 
 The eventual MVP includes the completed ceremony/student administration,
 import/validation, QR creation/custody, durable queue operation, automatic and
 controlled modes, stage controls, local media, logs/reporting, backup/restore,
 deployment hardening, and rehearsal.
 
-Deferred beyond Phase 6:
+Deferred beyond Phase 7:
 
 - CSV update/synchronization/export;
 - camera scanning;
 - device registration/authentication;
-- general queue and ordering;
-- present-next/selected, reorder, skip, return, undo, and replay;
-- automatic/controlled mode execution and switching;
+- drag-and-drop/arbitrary queue reorder, bulk editing, and destructive queue
+  deletion;
+- mid-ceremony switching of the ceremony's configured presentation mode;
 - recording, normalization, and final media-production workflow;
 - operational scan/stage reports and export;
 - backup/restore and standby tooling;
 - production process supervision, TLS, firewall automation, and kiosk setup; and
 - full physical rehearsal.
 
-## 22. Assumptions and unresolved questions
+## 23. Assumptions and unresolved questions
 
 Current assumptions:
 
 - Tokens are compared case-insensitively after trim/uppercase normalization.
 - The sole active ceremony and its stage state represent the current operation.
-- A completed graduate cannot be re-presented in the temporary Phase 3 slice.
-- Cancelled/skipped historical rows do not occur because current commands do not
-  create them.
+- A completed graduate cannot be re-presented in Phase 7.
+- Skipped graduates require an explicit stage-control return; rescanning cannot
+  silently requeue them.
+- Queue positions are operational sequence identifiers, not dense row numbers.
 - Stage, scanner, and administration browsers use appropriate authenticated
   accounts.
 - A fixed server address and TCP `8000`/`8080` are acceptable for development.
@@ -838,26 +913,25 @@ Still requiring approval:
 
 1. Can more than one ceremony ever be active, or is the Phase 4 single-active
    rule permanent?
-2. What are the final duplicate, retry, exception, and manual-override rules?
-3. What triggers automatic mode, and may mode change mid-ceremony?
-4. What is the legal queue transition table for Phase 7?
-5. Are scanner/stage device credentials required in addition to user sessions?
-6. What final browser, kiosk, branding, safe-area, and assistive-technology
+2. May presentation mode change mid-ceremony in a future phase, and what
+   safeguards would that require?
+3. Are scanner/stage device credentials required in addition to user sessions?
+4. What final browser, kiosk, branding, safe-area, and assistive-technology
    standards apply?
-7. What graduate fields and honors formatting are institutionally approved?
-8. What final photo dimensions, audio loudness/duration, pronunciation, approval,
+5. What graduate fields and honors formatting are institutionally approved?
+6. What final photo dimensions, audio loudness/duration, pronunciation, approval,
    retention, and protected-delivery process is required?
-9. What fixed IP, hostname, wired/wireless, firewall, TLS, and backup-network
+7. What fixed IP, hostname, wired/wireless, firewall, TLS, and backup-network
    design is approved?
-10. What are the expected graduate count, scan burst, latency target, retention,
+8. What are the expected graduate count, scan burst, latency target, retention,
     privacy notice, RPO, and RTO?
-11. Where will the completion/control view run in the final three-laptop setup?
-12. What backup, restore, standby, UPS, and power-loss process is required?
-13. What physical scanner, projector/LED, and audio hardware is standardized?
-14. Should a later phase support CSV update/synchronization, and if so, what
+9. Where will the completion/control view run in the final three-laptop setup?
+10. What backup, restore, standby, UPS, and power-loss process is required?
+11. What physical scanner, projector/LED, and audio hardware is standardized?
+12. Should a later phase support CSV update/synchronization, and if so, what
     immutable identifier and field-level conflict rules are approved?
-15. What retention or immediate-deletion period is approved for completed safe
+13. What retention or immediate-deletion period is approved for completed safe
     import summaries and import audit metadata?
 
-Phase 7 must not begin until the Phase 6 implementation and these documented
+Phase 8 must not begin until the Phase 7 implementation and these documented
 boundaries are reviewed.

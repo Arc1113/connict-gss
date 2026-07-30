@@ -7,7 +7,7 @@ use App\Enums\CeremonyStatus;
 use App\Enums\EligibilityStatus;
 use App\Enums\StageQueueStatus;
 use App\Enums\UserRole;
-use App\Events\StudentPresented;
+use App\Events\QueueUpdated;
 use App\Models\AuditLog;
 use App\Models\Ceremony;
 use App\Models\ScanLog;
@@ -50,7 +50,7 @@ class QrTokenRegenerationTest extends TestCase
 
     public function test_administrator_replacement_invalidates_old_cards_and_is_safely_audited(): void
     {
-        Event::fake([StudentPresented::class]);
+        Event::fake([QueueUpdated::class]);
         $oldToken = $this->student->qr_token;
         $version = $this->version();
         $history = ScanLog::factory()->create([
@@ -90,8 +90,8 @@ class QrTokenRegenerationTest extends TestCase
         $this->actingAs($scanner)
             ->postJson('/scans', ['token' => $newToken])
             ->assertCreated()
-            ->assertJsonPath('status', 'accepted');
-        Event::assertDispatched(StudentPresented::class);
+            ->assertJsonPath('status', 'queued');
+        Event::assertDispatched(QueueUpdated::class);
     }
 
     public function test_replacement_requires_administrator_confirmation_and_current_version(): void

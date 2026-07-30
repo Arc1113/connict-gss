@@ -11,6 +11,7 @@ use App\Http\Controllers\CompleteCurrentPresentationController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\ScannerController;
 use App\Http\Controllers\ScannerLookupController;
+use App\Http\Controllers\StageControlController;
 use App\Http\Controllers\StageController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -18,7 +19,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'appName' => config('app.name'),
-        'phase' => 'Phase 6',
+        'phase' => 'Phase 7',
         'stack' => [
             'Laravel',
             'React',
@@ -60,6 +61,34 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/stage/complete-current', CompleteCurrentPresentationController::class)
         ->middleware('can:operate-stage')
         ->name('stage.complete-current');
+    Route::get('/stage-control', [StageControlController::class, 'show'])
+        ->middleware('can:operate-stage')
+        ->name('stage-control');
+    Route::middleware('can:operate-stage')->group(function (): void {
+        Route::get('/stage/queue', [StageControlController::class, 'queue'])
+            ->name('stage.queue');
+        Route::post('/stage/present-next', [StageControlController::class, 'presentNext'])
+            ->name('stage.present-next');
+        Route::post('/stage/present/{queueItem}', [StageControlController::class, 'presentSelected'])
+            ->whereNumber('queueItem')
+            ->name('stage.present-selected');
+        Route::post('/stage/skip/{queueItem}', [StageControlController::class, 'skip'])
+            ->whereNumber('queueItem')
+            ->name('stage.skip');
+        Route::post('/stage/return/{queueItem}', [StageControlController::class, 'returnToQueue'])
+            ->whereNumber('queueItem')
+            ->name('stage.return');
+        Route::post('/stage/replay', [StageControlController::class, 'replay'])
+            ->name('stage.replay');
+        Route::post('/stage/holding/activate', [StageControlController::class, 'activateHolding'])
+            ->name('stage.holding.activate');
+        Route::post('/stage/holding/deactivate', [StageControlController::class, 'deactivateHolding'])
+            ->name('stage.holding.deactivate');
+        Route::post('/stage/automatic/pause', [StageControlController::class, 'pauseAutomatic'])
+            ->name('stage.automatic.pause');
+        Route::post('/stage/automatic/resume', [StageControlController::class, 'resumeAutomatic'])
+            ->name('stage.automatic.resume');
+    });
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', AdminDashboardController::class)->name('index');

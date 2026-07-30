@@ -5,6 +5,7 @@ namespace Tests\Feature\Phase4;
 use App\Actions\Admin\StudentAdministration;
 use App\Enums\CeremonyStatus;
 use App\Enums\EligibilityStatus;
+use App\Enums\PresentationMode;
 use App\Enums\UserRole;
 use App\Events\StudentPresented;
 use App\Models\AuditLog;
@@ -265,6 +266,7 @@ class StudentMediaAndAuditTest extends TestCase
         $this->ceremony->update([
             'status' => CeremonyStatus::Active,
             'activated_at' => now(),
+            'presentation_mode' => PresentationMode::Automatic,
         ]);
         StageState::factory()->create(['ceremony_id' => $this->ceremony->id]);
         $scanner = User::factory()->role(UserRole::ScannerOperator)->create();

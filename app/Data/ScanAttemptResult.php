@@ -8,13 +8,14 @@ final class ScanAttemptResult
 {
     public bool $broadcastDelivered = true;
 
-    /**
-     * @param  array<string, mixed>|null  $presentation
-     */
     public function __construct(
         public readonly ScanStatus $status,
         public readonly string $message,
-        public readonly ?array $presentation = null,
+        public readonly ?int $studentId = null,
+        public readonly ?string $displayName = null,
+        public readonly ?int $queuePosition = null,
+        public readonly ?string $queueStatus = null,
+        public readonly bool $automaticallyPresented = false,
     ) {}
 
     /**
@@ -27,12 +28,23 @@ final class ScanAttemptResult
             'message' => $this->message,
         ];
 
-        if ($this->status === ScanStatus::Accepted && $this->presentation !== null) {
-            $data['stage_version'] = $this->presentation['version'];
+        if ($this->studentId !== null) {
             $data['student'] = [
-                'id' => $this->presentation['student_id'],
-                'display_name' => $this->presentation['display_name'],
+                'id' => $this->studentId,
+                'display_name' => $this->displayName,
             ];
+        }
+
+        if ($this->queuePosition !== null) {
+            $data['queue_position'] = $this->queuePosition;
+        }
+
+        if ($this->queueStatus !== null) {
+            $data['queue_status'] = $this->queueStatus;
+        }
+
+        if ($this->status === ScanStatus::Queued) {
+            $data['automatically_presented'] = $this->automaticallyPresented;
             $data['broadcast_delivered'] = $this->broadcastDelivered;
         }
 

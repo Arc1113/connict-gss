@@ -49,9 +49,11 @@ export default function Stage({ ceremony }) {
     );
 
     const reconcile = useCallback(async (markLoaded = false) => {
+        let nextState = stageStateRef.current;
+
         try {
             const { data } = await requestJson('/stage/state');
-            const nextState = data.state ?? IDLE_STATE;
+            nextState = data.state ?? IDLE_STATE;
 
             versionRef.current = nextState.version;
             setStageState(nextState);
@@ -62,6 +64,8 @@ export default function Stage({ ceremony }) {
                 setHasLoaded(true);
             }
         }
+
+        return nextState;
     }, []);
 
     useEffect(() => {
@@ -119,6 +123,38 @@ export default function Stage({ ceremony }) {
                         presentation: null,
                     });
                 })
+                .listen('.audio.replay-requested', (event) => {
+                    if (event.version <= versionRef.current) {
+                        return;
+                    }
+
+                    if (event.version > versionRef.current + 1) {
+                        void reconcile();
+
+                        return;
+                    }
+
+                    versionRef.current = event.version;
+                    setStageState((current) => ({
+                        ...current,
+                        version: event.version,
+                    }));
+
+                    if (
+                        stageStateRef.current.mode === 'graduate' &&
+                        stageStateRef.current.presentation?.student_id ===
+                            event.student_id
+                    ) {
+                        void playAudio(stageStateRef.current.presentation);
+                    }
+                })
+                .listen('.stage.holding-changed', (event) => {
+                    if (event.version <= versionRef.current) {
+                        return;
+                    }
+
+                    void reconcile();
+                })
                 .subscribed(() => {
                     void reconcile();
                 });
@@ -134,7 +170,7 @@ export default function Stage({ ceremony }) {
                 getEcho()?.leave(`stage.${ceremony.id}`);
             }
         };
-    }, [ceremony, reconcile, stopAudio]);
+    }, [ceremony, playAudio, reconcile, stopAudio]);
 
     useEffect(() => {
         stageStateRef.current = stageState;
@@ -184,19 +220,25 @@ export default function Stage({ ceremony }) {
     }, [playAudio]);
 
     useEffect(() => {
-        if (stageState.presentation) {
+        if (stageState.mode === 'graduate' && stageState.presentation) {
             void playAudio(stageState.presentation);
         } else {
             stopAudio();
         }
-    }, [playAudio, stageState.presentation, stopAudio]);
+    }, [playAudio, stageState.mode, stageState.presentation, stopAudio]);
 
     const presentation = stageState.presentation;
     const displayName = presentation?.display_name?.trim() || 'Graduate';
     const program = presentation?.program?.trim();
     const major = presentation?.major?.trim();
     const honors = presentation?.honors?.trim();
-    const stageStatus = hasLoaded ? (presentation ? 'presented' : 'idle') : 'loading';
+    const stageStatus = hasLoaded
+        ? stageState.mode === 'holding'
+            ? 'holding'
+            : presentation
+              ? 'presented'
+              : 'idle'
+        : 'loading';
 
     return (
         <>
@@ -212,6 +254,15 @@ export default function Stage({ ceremony }) {
                     >
                         <p>{ceremony?.name ?? 'Graduation Ceremony'}</p>
                         <h1 id="stage-loading-title">Preparing ceremony display</h1>
+                    </section>
+                ) : stageState.mode === 'holding' ? (
+                    <section
+                        className="stage-idle stage-holding"
+                        aria-labelledby="stage-holding-title"
+                    >
+                        <p>{ceremony?.name ?? 'Graduation Ceremony'}</p>
+                        <h1 id="stage-holding-title">Ceremony program continues</h1>
+                        <span>Please remain seated</span>
                     </section>
                 ) : presentation ? (
                     <section

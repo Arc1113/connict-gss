@@ -1,6 +1,6 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 6 QR preparation and scanner hardening architecture implemented**
+Document status: **Phase 7 persistent queue and stage-control architecture implemented**
 
 Last updated: 2026-07-30
 
@@ -121,7 +121,10 @@ service.
 - `ScanController` accepts the validated scan request and delegates to
   `ScanStudentForPresentation`.
 - `StageController` renders `/stage` and returns safe `GET /stage/state` JSON.
-- `CompleteCurrentPresentationController` delegates the minimal clear action.
+- `CompleteCurrentPresentationController` delegates the clear action.
+- `StageControlController` renders `/stage-control`, returns the authoritative
+  safe queue snapshot, and delegates present, skip/return, replay, holding, and
+  automatic-pause commands.
 - `StoreScanRequest` normalizes input, validates length, and produces structured
   authorization/validation failures.
 
@@ -148,11 +151,16 @@ instead of bypassing the scan transaction.
 
 ### 6.2 Domain actions
 
-`ScanStudentForPresentation` owns the scan transaction, safe result mapping, scan
-logging, and post-transaction presentation dispatch.
+`ScanStudentForPresentation` owns queue insertion, optional automatic initial
+presentation, safe result mapping, scan logging, and post-transaction dispatch.
 
 `CompleteCurrentPresentation` owns the completion transaction and post-transaction
 clear dispatch.
+
+`PresentStageQueueItem`, `SkipStageQueueItem`, `ReturnStageQueueItem`,
+`ReplayCurrentAnnouncement`, `SetStageHolding`, and
+`SetAutomaticPresentationPaused` each own one locked transition and its
+post-commit events. `StageQueueTransitions` centralizes legal status changes.
 
 Both catch transport exceptions only after commit, log identifiers and exception
 class without credentials/payloads, and return a delivery flag to the authorized
@@ -181,6 +189,8 @@ transaction.
   `multiple_active_ceremonies`; it can lock the active ceremony rows.
 - `StageStatePayload` is the one serializer for safe HTTP/broadcast presentation
   fields and relative local media URLs.
+- `StageControlPayload` builds the current/waiting/skipped/recent operator
+  snapshot without tokens or student numbers.
 - `ScanAttemptResult` centralizes the public scan response.
 - `StudentMediaStorage` is the only writer/deleter for managed Phase 4 media.
   It recognizes only `storage/graduates/...` paths for cleanup.
@@ -223,9 +233,13 @@ No import upload path or public temporary file exists.
 
 - `StudentPresented` broadcasts `.student.presented`.
 - `StagePresentationCleared` broadcasts `.stage.cleared`.
+- `AudioReplayRequested` broadcasts `.audio.replay-requested`.
+- `StageHoldingChanged` broadcasts `.stage.holding-changed`.
+- `QueueUpdated` broadcasts `.queue.updated` on the separate operator channel.
 
 The event objects contain only ceremony ID and a purpose-built safe array. They do
-not serialize Eloquent models.
+not serialize Eloquent models. Queue updates are deliberately compact and cause
+the control browser to refetch HTTP state.
 
 ## 7. Scan transaction
 
@@ -243,16 +257,22 @@ POST /scans
          │    └─ create idle row only if absent
          ├─ find student inside active ceremony
          ├─ check eligible
-         ├─ check active/completed history
-         ├─ check current stage is idle
-         ├─ INSERT stage_queue_items(status = presenting)
-         ├─ UPDATE stage_states(current, mode, version + 1)
-         ├─ INSERT stage_events(student_presented)
-         └─ INSERT scan_logs(hash, result, reason, actor)
+         ├─ check active/completed/skipped history
+         ├─ allocate MAX(queue_position) + 1
+         ├─ INSERT stage_queue_items(status = waiting)
+         ├─ INSERT stage_events(student_queued)
+         ├─ INSERT scan_logs(hash, result, reason, actor)
+         ├─ version + 1
+         └─ if automatic + idle + unpaused + earliest:
+              ├─ mark row presenting
+              ├─ update current/display state
+              ├─ version + 1
+              └─ INSERT student_presented_automatically
               │
               └─ COMMIT
                    │
-                   └─ dispatch StudentPresented synchronously
+                   ├─ dispatch QueueUpdated synchronously
+                   └─ if promoted, dispatch StudentPresented synchronously
 ```
 
 Expected rejections return from inside the transaction after inserting a safe
@@ -264,25 +284,31 @@ failure test proves queue, state, log, and event writes roll back together.
 
 ## 8. Concurrency design
 
-All scan and complete commands for a ceremony serialize on its stage-state row.
-The active ceremony row is also locked to keep ceremony resolution stable during
-the command.
+All scan and stage-control commands for a ceremony serialize on its stage-state
+row. The active ceremony row is also locked to keep ceremony resolution stable
+during the command.
 
 Layered invariants:
 
 1. Application checks return precise operator outcomes.
-2. `FOR UPDATE` prevents two commands from both observing an idle stage.
+2. `FOR UPDATE` prevents two commands from both observing an idle stage or
+   allocating the same queue position.
 3. PostgreSQL partial unique index
    `stage_queue_items_one_presenting_unique` prevents two presenting rows.
 4. PostgreSQL partial unique index
    `stage_queue_items_one_active_student_unique` prevents duplicate active rows
    for one student.
-5. Stage-state `version` creates an ordered client reconciliation boundary.
+5. PostgreSQL partial unique index
+   `stage_queue_items_ceremony_position_unique` prevents duplicate non-null
+   positions.
+6. Stage-state `version` creates an ordered client reconciliation boundary.
 
 Separate-process integration tests start two independent PHP/PostgreSQL
-connections behind a shared barrier. They verify simultaneous valid scans and
-completion racing a scan. Acceptable race order differs, but final persisted
-state is always consistent and has at most one presenting row.
+connections behind a shared barrier. Phase 7 verifies duplicate scan, two
+present-next, next versus selected, skip versus selected presentation,
+duplicate return, completion versus replay, and pause versus automatic-scan
+races. Acceptable winners differ, but final persisted state always follows one
+legal transition and has at most one presenting row.
 
 ### 8.1 Ceremony administration concurrency
 
@@ -343,12 +369,14 @@ Laravel registers:
 
 ```text
 stage.{ceremonyId}
+stage-control.{ceremonyId}
 ```
 
 Echo subscribes as:
 
 ```text
 private-stage.{ceremonyId}
+private-stage-control.{ceremonyId}
 ```
 
 The channel callback requires:
@@ -424,7 +452,20 @@ For each event:
 After a disconnected connection returns to connected, the client retrieves HTTP
 state. Refresh therefore restores current state without any event replay system.
 
-### 12.4 Phase 4 administration
+### 12.4 Phase 7 stage control
+
+The control browser first retrieves `GET /stage/queue` and `GET /stage/state`,
+then subscribes to `private-stage-control.{ceremonyId}`. Every newer
+`.queue.updated` event triggers a fresh pair of HTTP reads. Reconnection does the
+same. The browser never reconstructs queue order from events.
+
+One in-memory command lock and disabled controls prevent rapid duplicate HTTP
+actions. This is only a usability boundary; PostgreSQL row locks, state checks,
+and unique indexes remain authoritative. Current presentation and primary
+action dominate the layout, the deterministic waiting table is secondary, and
+skipped/recent history is tertiary.
+
+### 12.5 Phase 4 administration
 
 All administration pages are Inertia views in the same application:
 
@@ -442,7 +483,7 @@ All administration pages are Inertia views in the same application:
 The administration UI has no stage commands, queue controls, fake analytics, or
 runtime WebSocket dependency.
 
-### 12.5 Phase 5 import workspace
+### 12.6 Phase 5 import workspace
 
 The CSV workflow is four separate Inertia pages sharing `AdminLayout`,
 `ImportProgress`, validation support, and a compact count definition list:
@@ -461,7 +502,7 @@ There is no frontend CSV parser, client-side import authority, drag-and-drop
 library, analytics panel, WebSocket dependency, cloud upload, or added UI
 framework.
 
-### 12.6 Phase 6 QR preparation
+### 12.7 Phase 6 QR preparation
 
 The protected QR workspace is an Inertia administration screen that derives
 readiness from PostgreSQL and offers filters, pagination, individual review, and
@@ -536,8 +577,9 @@ validate → store new file → DB transaction + audit
 
 The documentation gives provisional clip-duration and loudness preparation
 targets, but the application does not normalize or automatically approve audio.
-Pronunciation recording, server-side normalization, preloading, replay/mute,
-final institutional loudness standards, and operator warnings remain deferred.
+Phase 7 adds an explicit replay command for the current approved local clip.
+Pronunciation recording, server-side normalization, preloading, mute controls,
+final institutional loudness standards, and approval workflow remain deferred.
 
 ## 14. Failure and recovery
 
@@ -549,8 +591,10 @@ final institutional loudness standards, and operator warnings remain deferred.
 | Reverb restart | No business state lost | Echo reconnect then HTTP fetch |
 | Laravel restart | PostgreSQL/media remain | Restart app; session/login; HTTP fetch |
 | PostgreSQL unavailable | No command may claim success | Restore DB, validate, retry |
-| Two scans | Locked row + unique indexes | One accepted; other conflict |
-| Completion/scan race | Locked row defines order | Consistent idle or next-presenting state |
+| Concurrent scans | Locked state + position/active indexes | Each eligible graduate persists once; automatic mode presents at most one |
+| Concurrent stage commands | Locked state/item + transition checks | One legal winner; safe conflict and HTTP reconciliation |
+| Completion/replay race | Locked current state | Completion cannot be undone by replay |
+| Reconnect with queue changes | PostgreSQL queue/version | Compact event or reconnect triggers HTTP refetch |
 | Transaction exception | Rollback | No partial rows or success event |
 | CSV malformed/oversized | No temporary import | Correct local file and inspect again |
 | Import mapping/row error | Encrypted temporary row | Remap or correct/re-upload; confirm stays absent |
@@ -684,18 +728,31 @@ individual and batch print views, replacement warning, scanner QR/manual paths,
 visible focus, reduced motion, long content, contained overflow, same-origin
 resources, and Chromium print-to-PDF at the approved laptop/A4 viewports.
 
+Phase 7 adds PostgreSQL-backed tests for legal queue transitions, monotonic
+positions and the position index, controlled/automatic behavior, persisted
+pause, stage-command authorization, event privacy, post-commit dispatch, replay,
+holding, and recovery. Independent-process tests cover all identified
+stage-command races.
+
+`tests/Support/phase7-browser-check.mjs` drives scanner, stage-control, and
+audience profiles through the compiled application. It checks controlled and
+automatic workflows, pause/resume, selection, completion, skip/return, replay,
+holding, missing audio, refresh and Reverb recovery, role denial, long content,
+focus, reduced motion, audience safety, overflow, and every approved Phase 7
+viewport. PNG evidence is local and ignored by Git.
+
 ## 17. Phase boundary and future architecture
 
-Phase 3 deliberately has no durable waiting-queue workflow. A scan is either the
-current presentation or a conflict. Phase 7 must define and implement the full
-queue transition graph and both presentation modes without bypassing the
-transaction, version, event, or recovery principles established here.
+Phase 7 implements the durable waiting queue, controlled presentation,
+automatic initial presentation with persisted pause, selected presentation,
+completion, skip/return, replay, holding, and HTTP/WebSocket reconciliation
+without bypassing the transaction, version, event, or recovery principles.
 
-Still deferred after Phase 6:
+Still deferred after Phase 7:
 
 - CSV update/synchronization/export;
 - device authentication/registration;
-- advanced stage controls and queue commands;
+- arbitrary reorder, bulk queue mutation, and mode switching during a ceremony;
 - recording, media normalization, and production approval workflow;
 - operational logs/reports and exports;
 - backup/restore and standby;
@@ -714,7 +771,8 @@ Still deferred after Phase 6:
 | Session on audience device | Stage role session and private channel | Final device credential/kiosk model |
 | HTTP on development LAN | Controlled local-only setup | Local TLS/WSS decision |
 | Ceremony ambiguity | Reject zero/multiple | Final multi-ceremony policy |
-| Temporary immediate-present rule | Explicit Phase 3 boundary | Phase 7 queue/mode policy |
+| Concurrent stage commands | Ceremony/stage/item row locks plus partial unique indexes and safe conflicts | Final load/latency target |
+| Queue position gaps | Monotonic positions preserve history; UI does not imply dense numbering | Whether later reporting needs a separate display rank |
 | No process supervisor | Compose health/restart commands | Production supervision and startup |
 | Public local media URL | Generated names, controlled LAN, no external origin | Whether production delivery requires a policy-authorized media controller |
 | Upload filesystem/DB split | Store-first compensation and managed-prefix cleanup | Backup/restore and orphan reconciliation procedure |
@@ -726,5 +784,5 @@ Still deferred after Phase 6:
 | Lost/replaced paper cards | Immediate server-side invalidation and redacted replacement audit | Institutional custody/reprint/destruction procedure |
 | Staff card identity | Student number appears only on protected staff print cards | Final privacy approval for printed matching fields |
 
-The implementation may not advance to Phase 7 until Phase 6 is reviewed and
+The implementation may not advance to Phase 8 until Phase 7 is reviewed and
 approved.

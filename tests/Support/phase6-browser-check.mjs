@@ -469,7 +469,7 @@ echo App\\Models\\Student::query()
 
     await submitScannerToken(testData.students.lourdes.token);
     await client.waitFor(
-        'document.querySelector(".scan-feedback")?.dataset.feedbackStatus === "accepted"',
+        'document.querySelector(".scan-feedback")?.dataset.feedbackStatus === "queued"',
     );
     await client.waitFor('document.activeElement?.id === "scan-token"');
     const scanResult = await client.evaluate(`(() => ({
@@ -479,7 +479,7 @@ echo App\\Models\\Student::query()
     }))()`);
 
     if (
-        !scanResult.feedback.includes('Successful scan') ||
+        !scanResult.feedback.includes('Queued and presented automatically') ||
         !scanResult.last.includes('Ma. Lourdes P. Reyes') ||
         scanResult.tokenRetained !== ''
     ) {
@@ -582,7 +582,7 @@ echo App\\Models\\Student::query()
         document.querySelector('.scanner-manual-submit').click();
     })()`);
     await client.waitFor(
-        'document.querySelector(".scan-feedback")?.dataset.feedbackStatus === "accepted"',
+        'document.querySelector(".scan-feedback")?.dataset.feedbackStatus === "queued"',
     );
     await client.waitFor('document.activeElement?.id === "scan-token"');
     const manualResult = await client.evaluate(`(() => ({
@@ -591,7 +591,7 @@ echo App\\Models\\Student::query()
     }))()`);
 
     if (
-        !manualResult.feedback.includes('Manual selection accepted') ||
+        !manualResult.feedback.includes('Queued and presented automatically') ||
         !manualResult.last.includes('Ana Marie dela Cruz')
     ) {
         throw new Error(
@@ -888,6 +888,7 @@ $ceremony = App\\Models\\Ceremony::query()
     ->where('status', 'active')
     ->orderBy('id')
     ->firstOrFail();
+$ceremony->update(['presentation_mode' => 'automatic']);
 $state = App\\Models\\StageState::query()
     ->where('ceremony_id', $ceremony->id)
     ->first();

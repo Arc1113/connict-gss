@@ -98,6 +98,19 @@ required viewports.
 - [ ] Duplicate Enter preserves the confirmed result
 - [ ] Pointer focus recovery does not trap keyboard navigation
 
+## Phase 7 stage-control states
+
+- [ ] Empty controlled queue with dominant current/next action
+- [ ] Ordered queue with long graduate and program names
+- [ ] Current graduate, local audio ready, and missing-audio guidance
+- [ ] Selected out-of-order graduate with explicit confirmation
+- [ ] Skipped graduate and returned tail position
+- [ ] Command pending, safe failure, disconnected, and recovered
+- [ ] Holding active and restored current graduate
+- [ ] Automatic active, automatic paused, and paused scan remaining waiting
+- [ ] Stacked 1024 px layout preserves hierarchy and table-owned overflow
+- [ ] Audience stage remains free of queue, controls, and technical status
+
 ## Anti–AI-slop final pass
 
 - [ ] No equal card grid drives hierarchy.

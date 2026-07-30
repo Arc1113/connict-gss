@@ -164,7 +164,7 @@ the name remains dominant. Missing media does not reserve blank space.
 - Clearing returns to the approved idle ceremony identity.
 - Optional content disappears cleanly.
 
-## Future stage control — Phase 7
+## Stage control — Phase 7 implemented
 
 | Item | Specification |
 | --- | --- |
@@ -172,7 +172,7 @@ the name remains dominant. Missing media does not reserve blank space.
 | Primary user/device | Stage operator on the stage laptop |
 | Goal | Present and complete the correct graduate without losing queue context |
 | Dominant information | Current graduate and one approved next action |
-| Primary actions | Present next/selected, complete, clear; final action set belongs to Phase 7 |
+| Primary actions | Present next/selected, complete, skip/return, replay, holding/restore, pause/resume automatic |
 | Secondary information | Upcoming queue, ceremony mode, compact connection/audio status, recent actions |
 | Required states | Loading, empty queue, queued, presenting, paused, command pending/failed, disconnected, recovered |
 | Keyboard | Predictable tab order and shortcuts only when documented and non-conflicting |
@@ -196,8 +196,18 @@ the name remains dominant. Missing media does not reserve blank space.
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-Phase 7 must confirm controlled/automatic mode behavior, command permissions,
-queue recovery, and destructive-action safeguards before implementation.
+The selected layout uses a dominant current-presentation area beside the
+deterministic queue at wide viewports, followed by compact skipped/recent
+history. At 1024 px the current area stacks above the table so the primary
+action remains visible before secondary queue detail. Automatic mode exposes
+only a clearly labeled persisted pause/resume control; it does not imply
+auto-advance. Pending commands disable every mutation until HTTP reconciliation
+finishes. Holding and transport warnings stay operator-only.
+
+Acceptance requires safe empty/loading/pending/failure/disconnected/recovered
+states; long names/programs without horizontal page overflow; visible focus and
+textual status; explicit confirmation for completion, skip, out-of-order
+selection, and holding; and no token/student-number content.
 
 ## Administration index — Phase 4 implemented
 

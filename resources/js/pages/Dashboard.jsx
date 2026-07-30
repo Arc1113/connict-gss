@@ -1,28 +1,9 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
-import { requestJson } from '../lib/http';
 
 export default function Dashboard() {
     const { auth } = usePage().props;
     const user = auth.user;
     const abilities = auth.abilities;
-    const [completion, setCompletion] = useState(null);
-    const [completing, setCompleting] = useState(false);
-
-    async function completeCurrent() {
-        setCompleting(true);
-
-        try {
-            const { data } = await requestJson('/stage/complete-current', {
-                method: 'POST',
-            });
-            setCompletion(data.message);
-        } catch {
-            setCompletion('The server could not confirm the action.');
-        } finally {
-            setCompleting(false);
-        }
-    }
 
     return (
         <>
@@ -83,26 +64,17 @@ export default function Dashboard() {
                                 <>
                                     <Link
                                         className="primary-action"
+                                        href="/stage-control"
+                                    >
+                                        Open stage control
+                                    </Link>
+                                    <Link
+                                        className="secondary-action"
                                         href="/stage"
                                     >
                                         Open audience stage
                                     </Link>
-                                    <button
-                                        className="secondary-action"
-                                        type="button"
-                                        onClick={completeCurrent}
-                                        disabled={completing}
-                                    >
-                                        {completing
-                                            ? 'Completing…'
-                                            : 'Complete current presentation'}
-                                    </button>
                                 </>
-                            )}
-                            {completion && (
-                                <p className="operation-feedback" role="status">
-                                    {completion}
-                                </p>
                             )}
                         </div>
                     )}

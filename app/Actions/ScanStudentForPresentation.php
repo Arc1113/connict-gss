@@ -4,11 +4,13 @@ namespace App\Actions;
 
 use App\Data\ScanAttemptResult;
 use App\Enums\EligibilityStatus;
+use App\Enums\PresentationMode;
 use App\Enums\ScanResult;
 use App\Enums\ScanStatus;
 use App\Enums\StageAudioStatus;
 use App\Enums\StageDisplayMode;
 use App\Enums\StageQueueStatus;
+use App\Events\QueueUpdated;
 use App\Events\StudentPresented;
 use App\Models\ScanLog;
 use App\Models\StageEvent;
@@ -17,6 +19,7 @@ use App\Models\StageState;
 use App\Models\Student;
 use App\Models\User;
 use App\Support\ActiveCeremonyResolver;
+use App\Support\StageQueueTransitions;
 use App\Support\StageStatePayload;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,14 +29,17 @@ final readonly class ScanStudentForPresentation
 {
     public function __construct(
         private ActiveCeremonyResolver $ceremonies,
+        private StageQueueTransitions $transitions,
         private StageStatePayload $stagePayload,
     ) {}
 
     public function execute(string $token, User $operator): ScanAttemptResult
     {
-        $normalizedToken = mb_strtoupper(trim($token));
-
-        return $this->executeSubject($normalizedToken, null, $operator);
+        return $this->executeSubject(
+            mb_strtoupper(trim($token)),
+            null,
+            $operator,
+        );
     }
 
     public function executeStudent(int $studentId, User $operator): ScanAttemptResult
@@ -50,7 +56,15 @@ final readonly class ScanStudentForPresentation
             ? null
             : hash('sha256', $normalizedToken);
 
-        /** @var array{result: ScanAttemptResult, ceremony_id: int|null, broadcast: array<string, mixed>|null} $committed */
+        /**
+         * @var array{
+         *     result: ScanAttemptResult,
+         *     ceremony_id: int|null,
+         *     version: int|null,
+         *     queue_item_id: int|null,
+         *     presentation: array<string, mixed>|null
+         * } $committed
+         */
         $committed = DB::transaction(function () use (
             $normalizedToken,
             $manualStudentId,
@@ -61,31 +75,27 @@ final readonly class ScanStudentForPresentation
 
             if (! $resolution->isResolved()) {
                 $this->logAttempt(
-                    ceremonyId: null,
-                    studentId: null,
-                    tokenHash: $tokenHash,
-                    result: ScanResult::Rejected,
-                    reason: $resolution->status,
-                    operator: $operator,
+                    null,
+                    null,
+                    $tokenHash,
+                    ScanResult::Rejected,
+                    $resolution->status,
+                    $operator,
                 );
 
-                $message = $resolution->status === 'multiple_active_ceremonies'
-                    ? 'Multiple active ceremonies require administrator correction.'
-                    : 'No active ceremony is configured.';
-
-                return [
-                    'result' => new ScanAttemptResult(
+                return $this->transactionResult(
+                    new ScanAttemptResult(
                         ScanStatus::CeremonyInactive,
-                        $message,
+                        $resolution->status === 'multiple_active_ceremonies'
+                            ? 'Multiple active ceremonies require administrator correction.'
+                            : 'No active ceremony is configured.',
                     ),
-                    'ceremony_id' => null,
-                    'broadcast' => null,
-                ];
+                );
             }
 
             $ceremony = $resolution->ceremony;
             $stageState = StageState::query()
-                ->where('ceremony_id', $ceremony->id)
+                ->whereBelongsTo($ceremony)
                 ->lockForUpdate()
                 ->first();
 
@@ -96,173 +106,256 @@ final readonly class ScanStudentForPresentation
                     'display_mode' => StageDisplayMode::Idle,
                     'audio_status' => StageAudioStatus::Stopped,
                     'is_muted' => false,
+                    'automatic_paused' => false,
                     'version' => 0,
                 ]);
             }
 
             $studentQuery = Student::query()
-                ->where('ceremony_id', $ceremony->id);
+                ->whereBelongsTo($ceremony);
             $student = $manualStudentId === null
                 ? $studentQuery->where('qr_token', $normalizedToken)->first()
                 : $studentQuery->whereKey($manualStudentId)->first();
 
             if ($student === null) {
                 return $this->rejected(
-                    ceremonyId: $ceremony->id,
-                    studentId: null,
-                    tokenHash: $tokenHash,
-                    result: ScanResult::Invalid,
-                    reason: 'invalid_token',
-                    status: ScanStatus::InvalidToken,
-                    message: 'Code not recognized for the active ceremony.',
-                    operator: $operator,
+                    $ceremony->id,
+                    null,
+                    $tokenHash,
+                    ScanResult::Invalid,
+                    'invalid_token',
+                    ScanStatus::InvalidToken,
+                    'Code not recognized for the active ceremony.',
+                    $operator,
                 );
             }
 
             if ($student->eligibility_status !== EligibilityStatus::Eligible) {
                 return $this->rejected(
-                    ceremonyId: $ceremony->id,
-                    studentId: $student->id,
-                    tokenHash: $tokenHash,
-                    result: ScanResult::Ineligible,
-                    reason: 'student_ineligible',
-                    status: ScanStatus::StudentIneligible,
-                    message: 'This graduate is not eligible for presentation.',
-                    operator: $operator,
+                    $ceremony->id,
+                    $student,
+                    $tokenHash,
+                    ScanResult::Ineligible,
+                    'student_ineligible',
+                    ScanStatus::StudentIneligible,
+                    'This graduate is not eligible for presentation.',
+                    $operator,
                 );
             }
 
-            $activeStatuses = [
-                StageQueueStatus::Waiting->value,
-                StageQueueStatus::Ready->value,
-                StageQueueStatus::Presenting->value,
-                StageQueueStatus::Announced->value,
-            ];
+            $activeItem = StageQueueItem::query()
+                ->whereBelongsTo($ceremony)
+                ->whereBelongsTo($student)
+                ->whereIn('status', [
+                    StageQueueStatus::Waiting,
+                    StageQueueStatus::Ready,
+                    StageQueueStatus::Presenting,
+                    StageQueueStatus::Announced,
+                ])
+                ->lockForUpdate()
+                ->latest('id')
+                ->first();
 
-            $hasActiveItem = StageQueueItem::query()
-                ->where('ceremony_id', $ceremony->id)
-                ->where('student_id', $student->id)
-                ->whereIn('status', $activeStatuses)
-                ->exists();
+            if ($activeItem !== null) {
+                $presenting = in_array($activeItem->status, [
+                    StageQueueStatus::Presenting,
+                    StageQueueStatus::Announced,
+                ], true);
 
-            if ($hasActiveItem) {
                 return $this->rejected(
-                    ceremonyId: $ceremony->id,
-                    studentId: $student->id,
-                    tokenHash: $tokenHash,
-                    result: ScanResult::Duplicate,
-                    reason: 'duplicate_active',
-                    status: ScanStatus::DuplicateActive,
-                    message: 'This graduate already has an active presentation.',
-                    operator: $operator,
+                    $ceremony->id,
+                    $student,
+                    $tokenHash,
+                    ScanResult::Duplicate,
+                    $presenting ? 'already_presenting' : 'already_queued',
+                    $presenting
+                        ? ScanStatus::AlreadyPresenting
+                        : ScanStatus::AlreadyQueued,
+                    $presenting
+                        ? 'This graduate is already being presented.'
+                        : 'This graduate is already waiting in the stage queue.',
+                    $operator,
+                    $activeItem,
                 );
             }
 
-            $hasCompletedItem = StageQueueItem::query()
-                ->where('ceremony_id', $ceremony->id)
-                ->where('student_id', $student->id)
+            $completedItem = StageQueueItem::query()
+                ->whereBelongsTo($ceremony)
+                ->whereBelongsTo($student)
                 ->where('status', StageQueueStatus::Completed)
-                ->exists();
+                ->latest('id')
+                ->first();
 
-            if ($hasCompletedItem) {
+            if ($completedItem !== null) {
                 return $this->rejected(
-                    ceremonyId: $ceremony->id,
-                    studentId: $student->id,
-                    tokenHash: $tokenHash,
-                    result: ScanResult::Duplicate,
-                    reason: 'already_completed',
-                    status: ScanStatus::AlreadyCompleted,
-                    message: 'This graduate has already been completed.',
-                    operator: $operator,
+                    $ceremony->id,
+                    $student,
+                    $tokenHash,
+                    ScanResult::Duplicate,
+                    'already_completed',
+                    ScanStatus::AlreadyCompleted,
+                    'This graduate has already completed the stage.',
+                    $operator,
+                    $completedItem,
                 );
             }
 
-            if (
-                $stageState->current_queue_item_id !== null
-                || $stageState->display_mode !== StageDisplayMode::Idle
-            ) {
+            $skippedItem = StageQueueItem::query()
+                ->whereBelongsTo($ceremony)
+                ->whereBelongsTo($student)
+                ->where('status', StageQueueStatus::Skipped)
+                ->latest('id')
+                ->first();
+
+            if ($skippedItem !== null) {
                 return $this->rejected(
-                    ceremonyId: $ceremony->id,
-                    studentId: $student->id,
-                    tokenHash: $tokenHash,
-                    result: ScanResult::Rejected,
-                    reason: 'stage_busy',
-                    status: ScanStatus::StageBusy,
-                    message: 'The stage is busy. Complete the current presentation first.',
-                    operator: $operator,
+                    $ceremony->id,
+                    $student,
+                    $tokenHash,
+                    ScanResult::Duplicate,
+                    'skipped_requires_stage_action',
+                    ScanStatus::SkippedRequiresStageAction,
+                    'This graduate was skipped. Ask the stage operator to return them to the queue.',
+                    $operator,
+                    $skippedItem,
                 );
             }
 
-            $presentedAt = now();
+            $queuedAt = now();
             $queueItem = StageQueueItem::query()->create([
                 'ceremony_id' => $ceremony->id,
                 'student_id' => $student->id,
-                'status' => StageQueueStatus::Presenting,
-                'queue_position' => null,
-                'scanned_at' => $presentedAt,
-                'presented_at' => $presentedAt,
+                'status' => StageQueueStatus::Waiting,
+                'queue_position' => $this->transitions->nextPosition($ceremony->id),
+                'scanned_at' => $queuedAt,
                 'scanned_by' => $operator->id,
-                'presented_by' => null,
             ]);
 
-            $stageState->fill([
-                'current_queue_item_id' => $queueItem->id,
-                'display_mode' => StageDisplayMode::Graduate,
-                'audio_status' => StageAudioStatus::Stopped,
-                'version' => $stageState->version + 1,
-            ])->save();
+            $stageState->version++;
+            $stageState->save();
 
-            $stageEvent = StageEvent::query()->create([
+            StageEvent::query()->create([
                 'ceremony_id' => $ceremony->id,
                 'queue_item_id' => $queueItem->id,
-                'event_type' => 'student_presented',
+                'event_type' => 'student_queued',
                 'payload' => [
                     'version' => $stageState->version,
-                    'student_id' => $student->id,
+                    'queue_position' => $queueItem->queue_position,
                 ],
                 'performed_by' => $operator->id,
-                'created_at' => $presentedAt,
+                'created_at' => $queuedAt,
             ]);
 
-            $this->logAttempt(
-                ceremonyId: $ceremony->id,
-                studentId: $student->id,
-                tokenHash: $tokenHash,
-                result: ScanResult::Accepted,
-                reason: 'accepted',
-                operator: $operator,
-            );
+            $presentation = null;
+            $automaticallyPresented = false;
 
-            $queueItem->setRelation('student', $student);
-            $presentation = $this->stagePayload->presentation(
-                $queueItem,
-                $stageState->version,
-                $stageEvent->id,
+            if (
+                $ceremony->presentation_mode === PresentationMode::Automatic
+                && ! $stageState->automatic_paused
+                && $stageState->current_queue_item_id === null
+                && $stageState->display_mode === StageDisplayMode::Idle
+            ) {
+                $firstWaitingId = StageQueueItem::query()
+                    ->whereBelongsTo($ceremony)
+                    ->whereIn('status', [
+                        StageQueueStatus::Waiting,
+                        StageQueueStatus::Ready,
+                    ])
+                    ->orderBy('queue_position')
+                    ->orderBy('scanned_at')
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->value('id');
+
+                if ((int) $firstWaitingId === $queueItem->id) {
+                    $presentedAt = now();
+                    $this->transitions->transition(
+                        $queueItem,
+                        StageQueueStatus::Presenting,
+                    );
+                    $queueItem->fill([
+                        'presented_at' => $presentedAt,
+                        'presented_by' => $operator->id,
+                    ])->save();
+
+                    $stageState->fill([
+                        'current_queue_item_id' => $queueItem->id,
+                        'display_mode' => StageDisplayMode::Graduate,
+                        'audio_status' => StageAudioStatus::Stopped,
+                        'version' => $stageState->version + 1,
+                    ])->save();
+
+                    $presentedEvent = StageEvent::query()->create([
+                        'ceremony_id' => $ceremony->id,
+                        'queue_item_id' => $queueItem->id,
+                        'event_type' => 'student_presented_automatically',
+                        'payload' => [
+                            'version' => $stageState->version,
+                            'student_id' => $student->id,
+                        ],
+                        'performed_by' => $operator->id,
+                        'created_at' => $presentedAt,
+                    ]);
+
+                    $queueItem->setRelation('student', $student);
+                    $presentation = $this->stagePayload->presentation(
+                        $queueItem,
+                        $stageState->version,
+                        $presentedEvent->id,
+                    );
+                    $automaticallyPresented = true;
+                }
+            }
+
+            $this->logAttempt(
+                $ceremony->id,
+                $student->id,
+                $tokenHash,
+                ScanResult::Accepted,
+                $automaticallyPresented ? 'queued_and_presented' : 'queued',
+                $operator,
             );
 
             return [
                 'result' => new ScanAttemptResult(
-                    ScanStatus::Accepted,
-                    'Graduate accepted and presented.',
-                    $presentation,
+                    ScanStatus::Queued,
+                    $automaticallyPresented
+                        ? 'Graduate queued and presented automatically.'
+                        : 'Graduate added to the stage queue.',
+                    $student->id,
+                    $student->display_name,
+                    $queueItem->queue_position,
+                    $queueItem->status->value,
+                    $automaticallyPresented,
                 ),
                 'ceremony_id' => $ceremony->id,
-                'broadcast' => $presentation,
+                'version' => $stageState->version,
+                'queue_item_id' => $queueItem->id,
+                'presentation' => $presentation,
             ];
         }, attempts: 3);
 
-        if ($committed['broadcast'] !== null && $committed['ceremony_id'] !== null) {
+        if ($committed['ceremony_id'] !== null && $committed['version'] !== null) {
             try {
-                StudentPresented::dispatch(
+                QueueUpdated::dispatch(
                     $committed['ceremony_id'],
-                    $committed['broadcast'],
+                    $committed['version'],
+                    'student_queued',
+                    $committed['queue_item_id'],
                 );
+
+                if ($committed['presentation'] !== null) {
+                    StudentPresented::dispatch(
+                        $committed['ceremony_id'],
+                        $committed['presentation'],
+                    );
+                }
             } catch (Throwable $exception) {
                 $committed['result']->broadcastDelivered = false;
 
-                Log::warning('Presentation committed but real-time delivery failed.', [
+                Log::warning('Queue change committed but real-time delivery failed.', [
                     'ceremony_id' => $committed['ceremony_id'],
-                    'event_id' => $committed['broadcast']['event_id'],
+                    'queue_item_id' => $committed['queue_item_id'],
                     'exception' => $exception::class,
                 ]);
             }
@@ -272,31 +365,67 @@ final readonly class ScanStudentForPresentation
     }
 
     /**
-     * @return array{result: ScanAttemptResult, ceremony_id: int, broadcast: null}
+     * @return array{
+     *     result: ScanAttemptResult,
+     *     ceremony_id: int|null,
+     *     version: int|null,
+     *     queue_item_id: int|null,
+     *     presentation: null
+     * }
+     */
+    private function transactionResult(ScanAttemptResult $result): array
+    {
+        return [
+            'result' => $result,
+            'ceremony_id' => null,
+            'version' => null,
+            'queue_item_id' => null,
+            'presentation' => null,
+        ];
+    }
+
+    /**
+     * @return array{
+     *     result: ScanAttemptResult,
+     *     ceremony_id: int,
+     *     version: null,
+     *     queue_item_id: null,
+     *     presentation: null
+     * }
      */
     private function rejected(
         int $ceremonyId,
-        ?int $studentId,
+        ?Student $student,
         ?string $tokenHash,
         ScanResult $result,
         string $reason,
         ScanStatus $status,
         string $message,
         User $operator,
+        ?StageQueueItem $queueItem = null,
     ): array {
         $this->logAttempt(
-            ceremonyId: $ceremonyId,
-            studentId: $studentId,
-            tokenHash: $tokenHash,
-            result: $result,
-            reason: $reason,
-            operator: $operator,
+            $ceremonyId,
+            $student?->id,
+            $tokenHash,
+            $result,
+            $reason,
+            $operator,
         );
 
         return [
-            'result' => new ScanAttemptResult($status, $message),
+            'result' => new ScanAttemptResult(
+                $status,
+                $message,
+                $student?->id,
+                $student?->display_name,
+                $queueItem?->queue_position,
+                $queueItem?->status->value,
+            ),
             'ceremony_id' => $ceremonyId,
-            'broadcast' => null,
+            'version' => null,
+            'queue_item_id' => null,
+            'presentation' => null,
         ];
     }
 

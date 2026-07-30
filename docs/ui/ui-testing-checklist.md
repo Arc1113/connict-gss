@@ -97,6 +97,30 @@ and results in the phase report.
 - [ ] USB HID mode, keyboard layout, Enter suffix, enabled 2D symbology, beep,
       prefix, timeout, and printed-output checks are documented.
 
+## Phase 7 queue and stage control
+
+- [ ] Controlled scans append one durable waiting row and never preempt.
+- [ ] Automatic mode presents only the first idle/unpaused scan with no earlier
+      waiting row; pause is persisted and resume does not consume backlog.
+- [ ] Present next and selected use the intended row; completion clears without
+      auto-advancing.
+- [ ] Skip preserves history, return appends to the tail, and repeated commands
+      produce a safe conflict rather than duplicate state.
+- [ ] Replay stops/restarts approved local audio without changing queue status;
+      missing audio disables replay with operator guidance.
+- [ ] Holding hides the current graduate from the audience and restore recovers
+      the same persisted presentation.
+- [ ] Pending controls cannot double-submit; risky actions confirm; failures
+      instruct refresh/recovery.
+- [ ] Queue/control HTTP responses and audience content contain no QR token,
+      student number, credentials, debug text, or technical logs.
+- [ ] Refresh, version gap, Reverb stop/restart, and reconnect recover both
+      queue and audience state from HTTP.
+- [ ] Scanner, control, and stage remain keyboard-operable and do not overflow
+      with realistic long names/programs.
+- [ ] `/stage-control` is checked at 1440×900, 1366×768, and 1024×768;
+      `/stage` is checked at 1920×1080 and 1366×768.
+
 ## Regression
 
 - [ ] Relevant Laravel tests pass.

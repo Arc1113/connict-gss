@@ -8,6 +8,7 @@ use App\Enums\EligibilityStatus;
 use App\Enums\ScanResult;
 use App\Enums\StageQueueStatus;
 use App\Enums\UserRole;
+use App\Events\QueueUpdated;
 use App\Events\StudentPresented;
 use App\Models\Ceremony;
 use App\Models\ScanLog;
@@ -48,9 +49,9 @@ class ScannerWorkflowTest extends TestCase
         $this->scanner = User::factory()->role(UserRole::ScannerOperator)->create();
     }
 
-    public function test_a_valid_scan_commits_the_vertical_slice_and_broadcasts_safe_data(): void
+    public function test_a_valid_scan_commits_a_waiting_queue_item_and_broadcasts_safe_control_data(): void
     {
-        Event::fake([StudentPresented::class]);
+        Event::fake([QueueUpdated::class, StudentPresented::class]);
         $student = $this->eligibleStudent([
             'qr_token' => 'GSS-VALID-ALPHA',
             'display_name' => 'Amara Santos',
@@ -66,20 +67,23 @@ class ScannerWorkflowTest extends TestCase
 
         $response
             ->assertCreated()
-            ->assertJsonPath('status', 'accepted')
+            ->assertJsonPath('status', 'queued')
             ->assertJsonPath('student.id', $student->id)
             ->assertJsonPath('student.display_name', 'Amara Santos')
-            ->assertJsonPath('stage_version', 1)
+            ->assertJsonPath('queue_position', 1)
+            ->assertJsonPath('queue_status', 'waiting')
+            ->assertJsonPath('automatically_presented', false)
             ->assertJsonPath('broadcast_delivered', true);
 
         $queueItem = StageQueueItem::query()->sole();
 
-        $this->assertSame(StageQueueStatus::Presenting, $queueItem->status);
+        $this->assertSame(StageQueueStatus::Waiting, $queueItem->status);
+        $this->assertSame(1, $queueItem->queue_position);
         $this->assertSame($this->scanner->id, $queueItem->scanned_by);
         $this->assertDatabaseHas('stage_states', [
             'ceremony_id' => $this->ceremony->id,
-            'current_queue_item_id' => $queueItem->id,
-            'display_mode' => 'graduate',
+            'current_queue_item_id' => null,
+            'display_mode' => 'idle',
             'version' => 1,
         ]);
         $this->assertDatabaseHas('scan_logs', [
@@ -87,41 +91,25 @@ class ScannerWorkflowTest extends TestCase
             'student_id' => $student->id,
             'raw_token_hash' => hash('sha256', 'GSS-VALID-ALPHA'),
             'result' => ScanResult::Accepted->value,
-            'message' => 'accepted',
+            'message' => 'queued',
             'scanned_by' => $this->scanner->id,
         ]);
         $this->assertDatabaseHas('stage_events', [
             'ceremony_id' => $this->ceremony->id,
             'queue_item_id' => $queueItem->id,
-            'event_type' => 'student_presented',
+            'event_type' => 'student_queued',
         ]);
 
         Event::assertDispatched(
-            StudentPresented::class,
-            function (StudentPresented $event) use ($student): bool {
+            QueueUpdated::class,
+            function (QueueUpdated $event) use ($student): bool {
                 $payload = $event->broadcastWith();
 
                 $this->assertSame(
-                    [
-                        'event_id',
-                        'version',
-                        'student_id',
-                        'display_name',
-                        'program',
-                        'major',
-                        'honors',
-                        'photo_url',
-                        'audio_url',
-                        'presented_at',
-                    ],
+                    ['version', 'action', 'queue_item_id'],
                     array_keys($payload),
                 );
-                $this->assertSame($student->id, $payload['student_id']);
-                $this->assertSame('/media/graduate-photo.jpg', $payload['photo_url']);
-                $this->assertSame(
-                    '/media/phase3/audio/student-01.wav',
-                    $payload['audio_url'],
-                );
+                $this->assertSame('student_queued', $payload['action']);
 
                 $encoded = json_encode($payload, JSON_THROW_ON_ERROR);
                 $this->assertStringNotContainsString($student->qr_token, $encoded);
@@ -132,6 +120,7 @@ class ScannerWorkflowTest extends TestCase
                 return true;
             },
         );
+        Event::assertNotDispatched(StudentPresented::class);
     }
 
     public function test_the_success_event_is_dispatched_only_after_the_transaction_commits(): void
@@ -141,7 +130,7 @@ class ScannerWorkflowTest extends TestCase
         $callingTransactionLevel = DB::transactionLevel();
 
         Event::listen(
-            StudentPresented::class,
+            QueueUpdated::class,
             function () use (&$transactionLevel): void {
                 $transactionLevel = DB::transactionLevel();
             },
@@ -248,7 +237,7 @@ class ScannerWorkflowTest extends TestCase
         $this->actingAs($this->scanner)
             ->postJson('/scans', ['token' => $student->qr_token])
             ->assertConflict()
-            ->assertJsonPath('status', 'duplicate_active');
+            ->assertJsonPath('status', 'already_queued');
 
         $this->assertSame(1, StageQueueItem::query()->count());
         $this->assertSame(2, ScanLog::query()->count());
@@ -275,7 +264,7 @@ class ScannerWorkflowTest extends TestCase
         Event::assertNotDispatched(StudentPresented::class);
     }
 
-    public function test_a_busy_stage_rejects_another_student_without_preemption(): void
+    public function test_a_busy_stage_queues_another_student_without_preemption(): void
     {
         Event::fake([StudentPresented::class]);
         $current = $this->eligibleStudent(['qr_token' => 'CURRENT']);
@@ -294,15 +283,21 @@ class ScannerWorkflowTest extends TestCase
 
         $this->actingAs($this->scanner)
             ->postJson('/scans', ['token' => $next->qr_token])
-            ->assertConflict()
-            ->assertJsonPath('status', 'stage_busy');
+            ->assertCreated()
+            ->assertJsonPath('status', 'queued')
+            ->assertJsonPath('queue_status', 'waiting');
 
         $this->assertDatabaseHas('stage_states', [
             'id' => $this->stageState->id,
             'current_queue_item_id' => $currentItem->id,
-            'version' => 4,
+            'version' => 5,
         ]);
-        $this->assertSame(1, StageQueueItem::query()->count());
+        $this->assertSame(2, StageQueueItem::query()->count());
+        $this->assertDatabaseHas('stage_queue_items', [
+            'student_id' => $next->id,
+            'status' => StageQueueStatus::Waiting->value,
+            'queue_position' => 1,
+        ]);
         Event::assertNotDispatched(StudentPresented::class);
     }
 

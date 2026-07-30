@@ -38,7 +38,12 @@ final class StageStatePayload
                 $eventId = StageEvent::query()
                     ->where('ceremony_id', $ceremony->id)
                     ->where('queue_item_id', $queueItem->id)
-                    ->where('event_type', 'student_presented')
+                    ->whereIn('event_type', [
+                        'student_presented',
+                        'student_presented_automatically',
+                        'present_next',
+                        'present_selected',
+                    ])
                     ->latest('id')
                     ->value('id');
 
@@ -58,7 +63,9 @@ final class StageStatePayload
             ],
             'state' => [
                 'version' => $state->version,
-                'mode' => $presentation === null ? 'idle' : 'graduate',
+                'mode' => $state->display_mode === StageDisplayMode::Holding
+                    ? 'holding'
+                    : ($presentation === null ? 'idle' : 'graduate'),
                 'presentation' => $presentation,
             ],
         ];

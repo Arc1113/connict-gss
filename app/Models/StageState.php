@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'display_mode',
     'audio_status',
     'is_muted',
+    'automatic_paused',
     'version',
 ])]
 class StageState extends Model
@@ -29,6 +30,7 @@ class StageState extends Model
             'display_mode' => StageDisplayMode::class,
             'audio_status' => StageAudioStatus::class,
             'is_muted' => 'boolean',
+            'automatic_paused' => 'boolean',
             'version' => 'integer',
         ];
     }

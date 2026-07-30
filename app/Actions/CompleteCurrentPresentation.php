@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Enums\StageAudioStatus;
 use App\Enums\StageDisplayMode;
 use App\Enums\StageQueueStatus;
+use App\Events\QueueUpdated;
 use App\Events\StagePresentationCleared;
 use App\Models\StageEvent;
 use App\Models\StageQueueItem;
@@ -26,7 +27,7 @@ final readonly class CompleteCurrentPresentation
      */
     public function execute(User $operator): array
     {
-        /** @var array{data: array<string, mixed>, http_status: int, ceremony_id: int|null, broadcast: array<string, mixed>|null} $committed */
+        /** @var array{data: array<string, mixed>, http_status: int, ceremony_id: int|null, queue_item_id: int|null, broadcast: array<string, mixed>|null} $committed */
         $committed = DB::transaction(function () use ($operator): array {
             $resolution = $this->ceremonies->resolve(lockForUpdate: true);
 
@@ -38,6 +39,7 @@ final readonly class CompleteCurrentPresentation
                     ],
                     'http_status' => 409,
                     'ceremony_id' => null,
+                    'queue_item_id' => null,
                     'broadcast' => null,
                 ];
             }
@@ -56,6 +58,7 @@ final readonly class CompleteCurrentPresentation
                     ],
                     'http_status' => 409,
                     'ceremony_id' => $ceremony->id,
+                    'queue_item_id' => null,
                     'broadcast' => null,
                 ];
             }
@@ -65,7 +68,13 @@ final readonly class CompleteCurrentPresentation
                 ->lockForUpdate()
                 ->find($stageState->current_queue_item_id);
 
-            if ($queueItem === null || $queueItem->status !== StageQueueStatus::Presenting) {
+            if (
+                $queueItem === null
+                || ! in_array($queueItem->status, [
+                    StageQueueStatus::Presenting,
+                    StageQueueStatus::Announced,
+                ], true)
+            ) {
                 return [
                     'data' => [
                         'status' => 'state_conflict',
@@ -73,6 +82,7 @@ final readonly class CompleteCurrentPresentation
                     ],
                     'http_status' => 409,
                     'ceremony_id' => $ceremony->id,
+                    'queue_item_id' => null,
                     'broadcast' => null,
                 ];
             }
@@ -119,6 +129,7 @@ final readonly class CompleteCurrentPresentation
                 ],
                 'http_status' => 200,
                 'ceremony_id' => $ceremony->id,
+                'queue_item_id' => $queueItem->id,
                 'broadcast' => $payload,
             ];
         }, attempts: 3);
@@ -128,6 +139,12 @@ final readonly class CompleteCurrentPresentation
                 StagePresentationCleared::dispatch(
                     $committed['ceremony_id'],
                     $committed['broadcast'],
+                );
+                QueueUpdated::dispatch(
+                    $committed['ceremony_id'],
+                    $committed['broadcast']['version'],
+                    'student_completed',
+                    $committed['queue_item_id'],
                 );
             } catch (Throwable $exception) {
                 $committed['data']['broadcast_delivered'] = false;
