@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\ActiveCeremonyResolver;
 use App\Support\StageStatePayload;
+use App\Support\StageTheme;
 use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,6 +19,7 @@ class StageController extends Controller
             'ceremony' => $resolution->ceremony === null ? null : [
                 'id' => $resolution->ceremony->id,
                 'name' => $resolution->ceremony->name,
+                'theme' => StageTheme::forCeremony($resolution->ceremony),
             ],
         ]);
     }

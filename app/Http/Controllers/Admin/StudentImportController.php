@@ -29,7 +29,8 @@ class StudentImportController extends Controller
 
         StudentImport::query()
             ->where('expires_at', '<=', now()->utc())
-            ->delete();
+            ->get()
+            ->each->delete();
 
         return Inertia::render('Admin/Students/Import/Index', [
             'ceremonies' => $this->ceremonyOptions(),
@@ -44,6 +45,7 @@ class StudentImportController extends Controller
     ): RedirectResponse {
         $studentImport = $inspect->execute(
             $request->file('csv_file'),
+            $request->file('media_package'),
             $request->integer('ceremony_id'),
             $request->user(),
         );
@@ -204,6 +206,8 @@ class StudentImportController extends Controller
             'honors',
             'sequence_number',
             'eligibility_status',
+            'photo_filename',
+            'audio_filename',
         ];
         $examples = [
             [
@@ -221,6 +225,8 @@ class StudentImportController extends Controller
                 'Magna Cum Laude',
                 '101',
                 'eligible',
+                'photos/SAMPLE-2027-001.jpg',
+                'audio/SAMPLE-2027-001.webm',
             ],
             [
                 'SAMPLE-2027-002',
@@ -237,6 +243,8 @@ class StudentImportController extends Controller
                 '',
                 '102',
                 'pending',
+                '',
+                '',
             ],
         ];
 

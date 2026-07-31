@@ -12,6 +12,7 @@ use App\Actions\SetAutomaticPresentationPaused;
 use App\Actions\SkipStageQueueItem;
 use App\Models\Ceremony;
 use App\Models\User;
+use App\Support\StageTheme;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Validation\ValidationException;
 
@@ -113,7 +114,10 @@ function activateCeremony(int $ceremonyId, int $actorId): array
                 'event_date' => $ceremony->event_date?->format('Y-m-d'),
                 'status' => 'active',
                 'presentation_mode' => $ceremony->presentation_mode->value,
+                'stage_theme' => $ceremony->stage_theme ?? StageTheme::defaults(),
             ],
+            null,
+            null,
             $actor,
             null,
         );

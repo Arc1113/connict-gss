@@ -527,7 +527,7 @@ async function login(client, email) {
         return { status: response.status, url: response.url };
     })()`);
 
-    if (response.status !== 200 || !response.url.endsWith('/dashboard')) {
+    if (response.status !== 200 || response.url.endsWith('/login')) {
         throw new Error(`Login failed for ${email}: ${JSON.stringify(response)}`);
     }
 }

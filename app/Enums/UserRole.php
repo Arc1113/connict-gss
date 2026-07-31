@@ -20,4 +20,15 @@ enum UserRole: string
             self::TechnicalOperator => 'Technical operator',
         };
     }
+
+    public function homePath(): string
+    {
+        return match ($this) {
+            self::Administrator => '/admin',
+            self::DataEncoder => '/admin/students',
+            self::ScannerOperator => '/scanner',
+            self::StageOperator => '/stage-control',
+            self::TechnicalOperator => '/admin/scan-logs',
+        };
+    }
 }

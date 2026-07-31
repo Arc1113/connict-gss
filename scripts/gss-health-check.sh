@@ -80,7 +80,9 @@ else
 fi
 
 app_url="$(gss_env_value "${env_file}" APP_URL || true)"
+app_port="$(gss_env_value "${env_file}" APP_FORWARD_PORT || true)"
 reverb_port="$(gss_env_value "${env_file}" REVERB_FORWARD_PORT || true)"
+https_port="$(gss_env_value "${env_file}" HTTPS_FORWARD_PORT || true)"
 backup_path="$(gss_env_value "${env_file}" GSS_BACKUP_PATH || true)"
 [[ -n "${backup_path}" ]] || backup_path="storage/app/gss-backups"
 
@@ -107,21 +109,32 @@ else
     fail 'PostgreSQL service is not available through Compose'
 fi
 
-if [[ -n "${app_url}" ]] && php -r "exit(@file_get_contents('${app_url}/up') ? 0 : 1);" >/dev/null 2>&1; then
+if [[ -n "${app_port}" ]] && php -r "exit(@file_get_contents('http://127.0.0.1:${app_port}/up') ? 0 : 1);" >/dev/null 2>&1; then
     pass 'Laravel /up endpoint is reachable'
 else
     fail 'Laravel /up endpoint is not reachable'
 fi
 
-if [[ -n "${app_url}" && -n "${reverb_port}" ]]; then
-    reverb_host="$(printf '%s' "${app_url}" | sed -E 's#^https?://([^/:]+).*$#\1#')"
-    if php -r "exit(@fsockopen('${reverb_host}', (int) '${reverb_port}') ? 0 : 1);" >/dev/null 2>&1; then
+if [[ -n "${reverb_port}" ]]; then
+    if php -r "exit(@fsockopen('127.0.0.1', (int) '${reverb_port}') ? 0 : 1);" >/dev/null 2>&1; then
         pass 'Reverb port is reachable'
     else
         fail 'Reverb port is not reachable'
     fi
 else
-    fail 'APP_URL or REVERB_FORWARD_PORT is missing'
+    fail 'REVERB_FORWARD_PORT is missing'
+fi
+
+if [[ -n "${https_port}" ]] && php -r "exit(@fsockopen('127.0.0.1', (int) '${https_port}') ? 0 : 1);" >/dev/null 2>&1; then
+    pass 'Local HTTPS proxy is reachable'
+else
+    fail 'Local HTTPS proxy is not reachable'
+fi
+
+if gss_compose "${env_file}" exec -T proxy test -f /data/caddy/pki/authorities/local/root.crt >/dev/null 2>&1; then
+    pass 'Local HTTPS certificate authority is available for workstation enrollment'
+else
+    fail 'Local HTTPS certificate authority is unavailable'
 fi
 
 if gss_compose "${env_file}" exec -T app php artisan migrate:status >/dev/null 2>&1; then

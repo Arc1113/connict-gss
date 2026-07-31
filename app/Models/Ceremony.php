@@ -18,6 +18,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'event_date',
     'status',
     'presentation_mode',
+    'stage_theme',
+    'stage_logo_path',
+    'stage_background_path',
     'activated_at',
     'completed_at',
 ])]
@@ -32,6 +35,7 @@ class Ceremony extends Model
             'event_date' => 'immutable_date',
             'status' => CeremonyStatus::class,
             'presentation_mode' => PresentationMode::class,
+            'stage_theme' => 'array',
             'activated_at' => 'immutable_datetime',
             'completed_at' => 'immutable_datetime',
         ];

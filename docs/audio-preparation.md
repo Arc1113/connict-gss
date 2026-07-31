@@ -8,7 +8,7 @@ browser speech synthesis, or full audio editing inside the application.
 
 ## Supported formats and limits
 
-- Formats accepted by upload validation: MP3, WAV, and OGG.
+- Formats accepted by upload validation: MP3, WAV, OGG, and WebM.
 - Maximum file size: 15 MB.
 - Storage: local Laravel `public` disk under generated
   `storage/graduates/audio/...` paths.
@@ -16,6 +16,41 @@ browser speech synthesis, or full audio editing inside the application.
 - Browser compatibility: MP3 and WAV are the safest cross-browser targets for
   the approved stage browser. OGG is accepted, but must be checked on the final
   target browser before ceremony use.
+
+## Recording in the application
+
+The graduate create/edit form can record directly from the workstation
+microphone using the browser's local `MediaRecorder`. Recording requires the
+installed HTTPS PWA or `localhost`; browsers do not expose the microphone to an
+ordinary insecure LAN page. The operator must grant microphone permission.
+
+The operator starts and stops the recording explicitly, previews it, and saves
+the graduate. The recording is then handled exactly like a file upload: it is
+stored locally with a generated name and enters `uploaded` status. A separate
+administrator approval is still required before stage playback.
+
+No recording is sent to a cloud service and no speech synthesis or recognition
+is used.
+
+## Bulk audio package
+
+The graduate CSV may include `audio_filename` and `photo_filename`. Upload one
+optional ZIP alongside the CSV with this structure:
+
+```text
+graduate-media.zip
+├── audio/
+│   ├── 2027-0001.wav
+│   └── 2027-0002.mp3
+└── photos/
+    ├── 2027-0001.jpg
+    └── 2027-0002.png
+```
+
+The CSV can contain either `2027-0001.wav` or `audio/2027-0001.wav`; portraits
+follow the same rule. Preview blocks missing, unsafe, oversized, or mismatched
+media before confirmation. Imported audio always enters `uploaded` status and
+must be reviewed.
 
 ## Readiness states
 

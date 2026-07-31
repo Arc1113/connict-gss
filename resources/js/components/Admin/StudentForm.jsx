@@ -1,5 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import AudioPreview from './AudioPreview';
+import AnnouncementRecorder from './AnnouncementRecorder';
 import { FieldError, RequiredNote, ValidationSummary } from './FormSupport';
 
 function describedBy(field, error, hint = false) {
@@ -45,6 +47,7 @@ export default function StudentForm({
     submitLabel,
 }) {
     const editing = Boolean(student?.id);
+    const [isRecording, setIsRecording] = useState(false);
     const { data, errors, processing, setData, post } = useForm({
         _method: editing ? 'put' : undefined,
         ceremony_id: student?.ceremony_id ?? '',
@@ -68,6 +71,11 @@ export default function StudentForm({
 
     function submit(event) {
         event.preventDefault();
+
+        if (isRecording) {
+            return;
+        }
+
         post(action, { forceFormData: true, preserveScroll: true });
     }
 
@@ -367,11 +375,17 @@ export default function StudentForm({
                             label={`Current announcement audio for ${student?.display_name ?? 'graduate'}`}
                             src={student?.audio_url}
                         />
+                        <AnnouncementRecorder
+                            disabled={processing}
+                            graduateName={data.announcement_name || data.display_name}
+                            onRecorded={(file) => setData('audio', file)}
+                            onRecordingChange={setIsRecording}
+                        />
                         <label htmlFor="audio">
                             {student?.audio_url ? 'Replace audio' : 'Upload audio'}
                         </label>
                         <input
-                            accept=".mp3,.wav,.ogg,audio/mpeg,audio/wav,audio/ogg"
+                            accept=".mp3,.wav,.ogg,.webm,audio/mpeg,audio/wav,audio/ogg,audio/webm"
                             aria-describedby={describedBy(
                                 'audio',
                                 errors.audio,
@@ -385,7 +399,7 @@ export default function StudentForm({
                             type="file"
                         />
                         <p className="admin-field-hint" id="audio-hint">
-                            MP3, WAV, or OGG; maximum 15 MB. Replacing audio clears
+                            MP3, WAV, OGG, or WebM; maximum 15 MB. Replacing audio clears
                             approval and requires review before stage playback.
                         </p>
                         <FieldError id="audio-error" message={errors.audio} />
@@ -416,10 +430,14 @@ export default function StudentForm({
             <div className="admin-form-actions">
                 <button
                     className="admin-button admin-button-primary"
-                    disabled={processing}
+                    disabled={processing || isRecording}
                     type="submit"
                 >
-                    {processing ? 'Saving…' : submitLabel}
+                    {processing
+                        ? 'Saving…'
+                        : isRecording
+                          ? 'Finish recording first'
+                          : submitLabel}
                 </button>
                 <Link
                     className="admin-button admin-button-secondary"

@@ -251,6 +251,8 @@ class StudentImportAccessAndUploadTest extends TestCase
 
         $this->assertStringStartsWith("\xEF\xBB\xBFstudent_number", $content);
         $this->assertStringContainsString('eligibility_status', $content);
+        $this->assertStringContainsString('photo_filename', $content);
+        $this->assertStringContainsString('audio_filename', $content);
         $this->assertStringNotContainsString('qr_token', $content);
         $this->assertStringNotContainsString('photo_path', $content);
         $this->assertStringNotContainsString('audio_path', $content);

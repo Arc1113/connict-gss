@@ -2,12 +2,15 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\CeremonyStatus;
 use App\Models\AuditLog;
 use App\Models\Ceremony;
 use App\Models\Student;
 use App\Models\StudentImport;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Throwable;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -80,6 +83,50 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'warning' => fn () => $request->session()->get('warning'),
             ],
+            'ceremonyContext' => fn (): array => $this->ceremonyContext($user),
         ];
+    }
+
+    /**
+     * @return array{state: string, active: array<string, mixed>|null}
+     */
+    private function ceremonyContext(?User $user): array
+    {
+        if ($user === null) {
+            return [
+                'state' => 'none',
+                'active' => null,
+            ];
+        }
+
+        try {
+            $activeCeremonies = Ceremony::query()
+                ->where('status', CeremonyStatus::Active)
+                ->orderBy('id')
+                ->limit(2)
+                ->get(['id', 'name', 'academic_year', 'event_date']);
+            $activeCeremony = $activeCeremonies->count() === 1
+                ? $activeCeremonies->first()
+                : null;
+
+            return [
+                'state' => match ($activeCeremonies->count()) {
+                    0 => 'none',
+                    1 => 'ready',
+                    default => 'conflict',
+                },
+                'active' => $activeCeremony === null ? null : [
+                    'id' => $activeCeremony->id,
+                    'name' => $activeCeremony->name,
+                    'academic_year' => $activeCeremony->academic_year,
+                    'event_date' => $activeCeremony->event_date?->format('Y-m-d'),
+                ],
+            ];
+        } catch (Throwable) {
+            return [
+                'state' => 'unavailable',
+                'active' => null,
+            ];
+        }
     }
 }

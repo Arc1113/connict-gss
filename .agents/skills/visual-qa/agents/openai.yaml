@@ -1,4 +1,0 @@
-interface:
-  display_name: "GSS Visual QA"
-  short_description: "Verify GSS routes, states, and responsive layouts"
-  default_prompt: "Use $visual-qa to verify an affected route at its required states and viewports."

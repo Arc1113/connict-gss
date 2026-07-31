@@ -23,8 +23,9 @@ browser must have:
 - notifications disabled;
 - password-manager popups suppressed where practical.
 
-The ceremony runtime is local HTTP unless a separate approved local TLS setup is
-implemented and tested.
+The ceremony runtime uses local HTTPS. Install the exported local certificate
+authority on every approved ceremony device and resolve any certificate warning
+before rehearsal.
 
 ## Browser session strategy
 
@@ -70,7 +71,7 @@ Preparation:
 Setup:
 
 1. Connect to the event router.
-2. Open the server URL, for example `http://SERVER_LAN_IP:8000/login`.
+2. Open the server URL, for example `https://SERVER_LAN_IP/login`.
 3. Log in as the scanner operator.
 4. Open `/scanner`.
 5. Confirm the QR input receives focus automatically.
@@ -82,9 +83,10 @@ Setup:
 11. Test an invalid QR code.
 12. Test a duplicate QR code.
 13. Test rapid scans without double submission.
-14. Keep browser zoom at 100%.
-15. Disable sleep, notifications, and extension popups.
-16. Keep manual keyboard entry available as fallback.
+14. Install the workstation PWA and pin it to the taskbar or start menu.
+15. Keep application zoom at 100%.
+16. Disable sleep, notifications, and extension popups.
+17. Keep manual keyboard entry available as fallback.
 
 Emergency recovery:
 
@@ -115,6 +117,20 @@ Setup:
 13. Verify missing-audio fallback does not expose technical details.
 14. Refresh `/stage` and confirm HTTP state recovery.
 15. Restart Reverb in a controlled test and confirm safe reconnect.
+
+The one-time audio control is required by browser autoplay policy. If it remains
+visible, automatic playback is not armed for that stage tab. Only approved,
+readable local audio is played.
+
+## Announcer recording workstation
+
+1. Open the installed HTTPS PWA or use `localhost`; an insecure LAN URL cannot
+   request microphone permission.
+2. Select the intended microphone in the operating system.
+3. Open a graduate and choose **Start recording** under Announcement audio.
+4. Stop and preview the clip, then save the graduate.
+5. Review pronunciation and venue level in Audio Readiness, then approve it.
+6. Keep the live-announcer name list ready as fallback.
 
 Keep admin screens, terminals, queue details, QR tokens, and technical logs away
 from the audience display.

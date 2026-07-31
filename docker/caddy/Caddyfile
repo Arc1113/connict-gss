@@ -1,0 +1,14 @@
+https://{$GSS_HTTPS_HOST} {
+    tls internal
+    encode zstd gzip
+
+    @reverb path /app/* /apps/*
+    reverse_proxy @reverb reverb:8080
+    reverse_proxy app:8000
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy same-origin
+    }
+}

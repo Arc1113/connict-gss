@@ -1,10 +1,34 @@
 import { Link, useForm } from '@inertiajs/react';
+import { useEffect, useMemo } from 'react';
+import { DEFAULT_STAGE_THEME } from '../../lib/stageTheme';
 import { FieldError, RequiredNote, ValidationSummary } from './FormSupport';
+import StageThemePreview from './StageThemePreview';
 
 function describedBy(field, error, hint) {
     return [hint ? `${field}-hint` : null, error ? `${field}-error` : null]
         .filter(Boolean)
         .join(' ') || undefined;
+}
+
+function useObjectUrl(file) {
+    const url = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+
+    useEffect(() => () => {
+        if (url) {
+            URL.revokeObjectURL(url);
+        }
+    }, [url]);
+
+    return url;
+}
+
+function editableTheme(theme) {
+    return Object.fromEntries(
+        Object.keys(DEFAULT_STAGE_THEME).map((key) => [
+            key,
+            theme?.[key] ?? DEFAULT_STAGE_THEME[key],
+        ]),
+    );
 }
 
 export default function CeremonyForm({
@@ -15,24 +39,25 @@ export default function CeremonyForm({
     submitLabel,
 }) {
     const editing = Boolean(ceremony?.id);
-    const { data, errors, processing, setData, post, put } = useForm({
+    const { data, errors, processing, setData, post } = useForm({
+        _method: editing ? 'put' : undefined,
         name: ceremony?.name ?? '',
         academic_year: ceremony?.academic_year ?? '',
         venue: ceremony?.venue ?? '',
         event_date: ceremony?.event_date ?? '',
         status: ceremony?.status ?? 'draft',
         presentation_mode: ceremony?.presentation_mode ?? 'controlled',
+        stage_theme: editableTheme(ceremony?.stage_theme),
+        stage_logo: null,
+        stage_background: null,
     });
+    const localLogoUrl = useObjectUrl(data.stage_logo);
+    const localBackgroundUrl = useObjectUrl(data.stage_background);
 
     function submit(event) {
         event.preventDefault();
 
-        if (editing) {
-            put(action, { preserveScroll: true });
-            return;
-        }
-
-        post(action, { preserveScroll: true });
+        post(action, { forceFormData: true, preserveScroll: true });
     }
 
     return (
@@ -123,6 +148,113 @@ export default function CeremonyForm({
                         />
                         <FieldError id="venue-error" message={errors.venue} />
                     </div>
+                </div>
+            </fieldset>
+
+            <fieldset className="admin-form-section stage-theme-editor">
+                <legend>Audience stage design</legend>
+                <p className="admin-form-note">
+                    This ceremony-scoped design is stored locally and applied to the
+                    projector display. Preview it here before ceremony day.
+                </p>
+
+                <StageThemePreview
+                    backgroundUrl={localBackgroundUrl ?? ceremony?.stage_theme?.background_url}
+                    logoUrl={localLogoUrl ?? ceremony?.stage_theme?.logo_url}
+                    theme={data.stage_theme}
+                />
+
+                <div className="admin-form-grid stage-theme-controls">
+                    <div className="admin-field">
+                        <label htmlFor="stage_theme_preset">Visual preset</label>
+                        <select
+                            id="stage_theme_preset"
+                            onChange={(event) => setData('stage_theme', {
+                                ...data.stage_theme,
+                                preset: event.target.value,
+                            })}
+                            value={data.stage_theme.preset}
+                        >
+                            <option value="institutional">Institutional</option>
+                            <option value="modern">Modern minimal</option>
+                            <option value="classic">Classic ceremony</option>
+                        </select>
+                    </div>
+                    <div className="admin-field">
+                        <label htmlFor="stage_theme_layout">Graduate layout</label>
+                        <select
+                            id="stage_theme_layout"
+                            onChange={(event) => setData('stage_theme', {
+                                ...data.stage_theme,
+                                layout: event.target.value,
+                            })}
+                            value={data.stage_theme.layout}
+                        >
+                            <option value="centered">Centered</option>
+                            <option value="split">Portrait split</option>
+                            <option value="banner">Lower banner</option>
+                        </select>
+                    </div>
+
+                    {[
+                        ['background_color', 'Background'],
+                        ['surface_color', 'Surface'],
+                        ['text_color', 'Text'],
+                        ['accent_color', 'Accent'],
+                    ].map(([field, label]) => (
+                        <div className="admin-field stage-theme-color" key={field}>
+                            <label htmlFor={`stage_theme_${field}`}>{label} color</label>
+                            <div>
+                                <input
+                                    id={`stage_theme_${field}`}
+                                    onChange={(event) => setData('stage_theme', {
+                                        ...data.stage_theme,
+                                        [field]: event.target.value,
+                                    })}
+                                    type="color"
+                                    value={data.stage_theme[field]}
+                                />
+                                <code>{data.stage_theme[field]}</code>
+                            </div>
+                        </div>
+                    ))}
+
+                    <div className="admin-field">
+                        <label htmlFor="stage_logo">Ceremony logo</label>
+                        <input
+                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                            id="stage_logo"
+                            onChange={(event) =>
+                                setData('stage_logo', event.target.files?.[0] ?? null)
+                            }
+                            type="file"
+                        />
+                        <FieldError id="stage_logo-error" message={errors.stage_logo} />
+                    </div>
+                    <div className="admin-field">
+                        <label htmlFor="stage_background">Background image</label>
+                        <input
+                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                            id="stage_background"
+                            onChange={(event) =>
+                                setData('stage_background', event.target.files?.[0] ?? null)
+                            }
+                            type="file"
+                        />
+                        <FieldError id="stage_background-error" message={errors.stage_background} />
+                    </div>
+
+                    <label className="stage-theme-checkbox">
+                        <input
+                            checked={Boolean(data.stage_theme.show_photo)}
+                            onChange={(event) => setData('stage_theme', {
+                                ...data.stage_theme,
+                                show_photo: event.target.checked,
+                            })}
+                            type="checkbox"
+                        />
+                        Show graduate portrait when available
+                    </label>
                 </div>
             </fieldset>
 

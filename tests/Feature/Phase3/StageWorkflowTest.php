@@ -12,6 +12,7 @@ use App\Models\StageQueueItem;
 use App\Models\StageState;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\StageTheme;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
@@ -53,6 +54,11 @@ class StageWorkflowTest extends TestCase
                 'ceremony' => [
                     'id' => $this->ceremony->id,
                     'name' => $this->ceremony->name,
+                    'theme' => [
+                        ...StageTheme::defaults(),
+                        'logo_url' => null,
+                        'background_url' => null,
+                    ],
                 ],
                 'state' => [
                     'version' => 0,

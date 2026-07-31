@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getEcho, observeEchoConnection } from '../lib/echo';
 import { requestJson } from '../lib/http';
+import { DEFAULT_STAGE_THEME } from '../lib/stageTheme';
 
 const IDLE_STATE = {
     version: 0,
@@ -12,6 +13,11 @@ const IDLE_STATE = {
 export default function Stage({ ceremony }) {
     const [stageState, setStageState] = useState(IDLE_STATE);
     const [hasLoaded, setHasLoaded] = useState(false);
+    const [audioEnabled, setAudioEnabled] = useState(false);
+    const [theme, setTheme] = useState(() => ({
+        ...DEFAULT_STAGE_THEME,
+        ...(ceremony?.theme ?? {}),
+    }));
     const versionRef = useRef(0);
     const audioRef = useRef(null);
     const preloadRef = useRef(null);
@@ -65,12 +71,29 @@ export default function Stage({ ceremony }) {
         preloadRef.current = audio;
     }, []);
 
+    const enableAudio = useCallback(() => {
+        if (audioEnabledRef.current) {
+            return;
+        }
+
+        audioEnabledRef.current = true;
+        setAudioEnabled(true);
+
+        if (stageStateRef.current.presentation?.audio_url) {
+            void playAudio(stageStateRef.current.presentation);
+        }
+    }, [playAudio]);
+
     const reconcile = useCallback(async (markLoaded = false) => {
         let nextState = stageStateRef.current;
 
         try {
             const { data } = await requestJson('/stage/state');
             nextState = data.state ?? IDLE_STATE;
+
+            if (data.ceremony?.theme) {
+                setTheme({ ...DEFAULT_STAGE_THEME, ...data.ceremony.theme });
+            }
 
             versionRef.current = nextState.version;
             setStageState(nextState);
@@ -216,18 +239,6 @@ export default function Stage({ ceremony }) {
     }, [reconcile]);
 
     useEffect(() => {
-        const enableAudio = () => {
-            if (audioEnabledRef.current) {
-                return;
-            }
-
-            audioEnabledRef.current = true;
-
-            if (stageStateRef.current.presentation?.audio_url) {
-                void playAudio(stageStateRef.current.presentation);
-            }
-        };
-
         window.addEventListener('pointerdown', enableAudio, { once: true });
         window.addEventListener('keydown', enableAudio, { once: true });
 
@@ -235,7 +246,7 @@ export default function Stage({ ceremony }) {
             window.removeEventListener('pointerdown', enableAudio);
             window.removeEventListener('keydown', enableAudio);
         };
-    }, [playAudio]);
+    }, [enableAudio]);
 
     useEffect(() => {
         if (stageState.mode === 'graduate' && stageState.presentation) {
@@ -266,12 +277,39 @@ export default function Stage({ ceremony }) {
               ? 'presented'
               : 'idle'
         : 'loading';
+    const stageStyle = {
+        '--stage-theme-accent': theme.accent_color,
+        '--stage-theme-background': theme.background_color,
+        '--stage-theme-surface': theme.surface_color,
+        '--stage-theme-text': theme.text_color,
+        backgroundImage: theme.background_url
+            ? `linear-gradient(rgb(0 0 0 / 0.46), rgb(0 0 0 / 0.46)), url(${theme.background_url})`
+            : undefined,
+    };
 
     return (
         <>
             <Head title="Ceremony Stage" />
 
-            <main className="stage-page" data-stage-status={stageStatus}>
+            <main
+                className="stage-page"
+                data-stage-layout={theme.layout}
+                data-stage-preset={theme.preset}
+                data-stage-status={stageStatus}
+                style={stageStyle}
+            >
+                {!audioEnabled && (
+                    <button
+                        className="stage-audio-enable"
+                        onClick={enableAudio}
+                        type="button"
+                    >
+                        Enable ceremony audio
+                    </button>
+                )}
+                {theme.logo_url && (
+                    <img className="stage-theme-logo" src={theme.logo_url} alt="" />
+                )}
                 {!hasLoaded ? (
                     <section
                         className="stage-loading"
@@ -296,11 +334,11 @@ export default function Stage({ ceremony }) {
                         className="stage-presentation"
                         aria-labelledby="graduate-name"
                     >
-                        {presentation.photo_url && (
+                        {presentation.photo_url && theme.show_photo && (
                             <img
                                 className="stage-photo"
                                 src={presentation.photo_url}
-                                alt=""
+                                alt={`Portrait of ${displayName}`}
                             />
                         )}
                         <p className="stage-ceremony-name">

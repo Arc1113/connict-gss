@@ -5,9 +5,11 @@ namespace App\Http\Requests;
 use App\Enums\CeremonyStatus;
 use App\Enums\PresentationMode;
 use App\Models\Ceremony;
+use App\Support\StageTheme;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\File;
 
 class SaveCeremonyRequest extends FormRequest
 {
@@ -48,6 +50,22 @@ class SaveCeremonyRequest extends FormRequest
             'event_date' => ['nullable', 'date_format:Y-m-d'],
             'status' => ['required', Rule::enum(CeremonyStatus::class)],
             'presentation_mode' => ['required', Rule::enum(PresentationMode::class)],
+            'stage_theme' => ['required', 'array'],
+            'stage_theme.preset' => ['required', Rule::in(['institutional', 'modern', 'classic'])],
+            'stage_theme.layout' => ['required', Rule::in(['centered', 'split', 'banner'])],
+            'stage_theme.background_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'stage_theme.surface_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'stage_theme.text_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'stage_theme.accent_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'stage_theme.show_photo' => ['required', 'boolean'],
+            'stage_logo' => [
+                'nullable',
+                File::types(['jpg', 'jpeg', 'png', 'webp'])->max(5 * 1024),
+            ],
+            'stage_background' => [
+                'nullable',
+                File::types(['jpg', 'jpeg', 'png', 'webp'])->max(12 * 1024),
+            ],
         ];
     }
 
@@ -58,6 +76,7 @@ class SaveCeremonyRequest extends FormRequest
             'academic_year' => $this->blankToNull('academic_year'),
             'venue' => $this->blankToNull('venue'),
             'event_date' => $this->blankToNull('event_date'),
+            'stage_theme' => $this->input('stage_theme', StageTheme::defaults()),
         ]);
     }
 

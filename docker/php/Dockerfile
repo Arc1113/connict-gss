@@ -20,6 +20,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/gss-uploads.ini
 
 WORKDIR /app
 

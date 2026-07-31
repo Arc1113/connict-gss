@@ -95,8 +95,8 @@ if [[ "$(gss_compose "${env_file}" ps database --format json | php -r '$json = s
     exit 1
 fi
 
-printf 'Starting application and Reverb...\n'
-gss_compose "${env_file}" up -d app reverb
+printf 'Starting application, Reverb, and HTTPS proxy...\n'
+gss_compose "${env_file}" up -d app reverb proxy
 
 if [[ "${migration_mode}" == "migrate" ]]; then
     printf 'Applying pending migrations with php artisan migrate --force.\n'
@@ -107,25 +107,25 @@ else
 fi
 
 app_url="$(gss_required_env_value "${env_file}" APP_URL)"
-reverb_port="$(gss_required_env_value "${env_file}" REVERB_FORWARD_PORT)"
+app_port="$(gss_required_env_value "${env_file}" APP_FORWARD_PORT)"
+https_port="$(gss_required_env_value "${env_file}" HTTPS_FORWARD_PORT)"
 
 printf 'Checking application health...\n'
 for _ in $(seq 1 30); do
-    if php -r "exit(@file_get_contents('${app_url}/up') ? 0 : 1);" >/dev/null 2>&1; then
+    if php -r "exit(@file_get_contents('http://127.0.0.1:${app_port}/up') ? 0 : 1);" >/dev/null 2>&1; then
         break
     fi
     sleep 2
 done
 
-if ! php -r "exit(@file_get_contents('${app_url}/up') ? 0 : 1);" >/dev/null 2>&1; then
-    printf 'Application health check failed: %s/up\n' "${app_url}" >&2
+if ! php -r "exit(@file_get_contents('http://127.0.0.1:${app_port}/up') ? 0 : 1);" >/dev/null 2>&1; then
+    printf 'Application health check failed on loopback port %s.\n' "${app_port}" >&2
     exit 1
 fi
 
-printf 'Checking Reverb port...\n'
-reverb_host="$(printf '%s' "${app_url}" | sed -E 's#^https?://([^/:]+).*$#\1#')"
-if ! php -r "exit(@fsockopen('${reverb_host}', (int) '${reverb_port}') ? 0 : 1);" >/dev/null 2>&1; then
-    printf 'Reverb port check failed: %s:%s\n' "${reverb_host}" "${reverb_port}" >&2
+printf 'Checking HTTPS proxy port...\n'
+if ! php -r "exit(@fsockopen('127.0.0.1', (int) '${https_port}') ? 0 : 1);" >/dev/null 2>&1; then
+    printf 'HTTPS proxy port check failed: 127.0.0.1:%s\n' "${https_port}" >&2
     exit 1
 fi
 
@@ -134,4 +134,4 @@ printf 'Application: %s\n' "${app_url}"
 printf 'Scanner:     %s/scanner\n' "${app_url}"
 printf 'Stage:       %s/stage\n' "${app_url}"
 printf 'Control:     %s/stage-control\n' "${app_url}"
-printf 'Reverb:      ws://%s:%s\n' "${reverb_host}" "${reverb_port}"
+printf 'Reverb:      wss://%s:%s\n' "$(gss_required_env_value "${env_file}" GSS_HTTPS_HOST)" "${https_port}"

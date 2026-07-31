@@ -353,6 +353,12 @@ correct graduate.
 The one-time **Enable ceremony audio** interaction is allowed because browsers
 block unprompted audio. It is not a stage-state command.
 
+Each ceremony may select one safe local stage theme made from an approved preset
+(`institutional`, `modern`, or `classic`), layout (`centered`, `split`, or
+`banner`), validated colors, optional local logo/background, and a graduate
+portrait visibility setting. The administration form must provide a preview.
+Arbitrary HTML, CSS, remote assets, and executable templates are prohibited.
+
 ## 14. Local audio requirements
 
 - Audio must come from local application paths.
@@ -597,6 +603,8 @@ again by request validation and confirmation.
 - The supported delimiters are comma, semicolon, and tab. Detection must produce
   one deterministic winner; ambiguous or single-column input is rejected.
 - Maximum file size is 2 MiB.
+- An optional local ZIP media package may be uploaded with the CSV. Its maximum
+  compressed size is 256 MiB and maximum inspected expanded size is 512 MiB.
 - Maximum data rows is 2,000, excluding the header and blank records.
 - Maximum columns is 40.
 - Maximum header or cell length is 2,000 Unicode characters.
@@ -630,8 +638,10 @@ Required targets are:
 - eligibility.
 
 Optional approved targets are middle name, suffix, stage display name,
-announcement name, pronunciation guide, college, major, and honors. Every
-unmapped source column is explicitly reported as ignored.
+announcement name, pronunciation guide, college, major, honors,
+`photo_filename`, and `audio_filename`. Media references resolve only inside the
+ZIP's `photos/` and `audio/` folders. Every unmapped source column is explicitly
+reported as ignored.
 
 Normalization trims mapped values, converts empty optional values to null,
 removes Unicode whitespace from student numbers, parses a positive whole

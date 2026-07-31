@@ -154,7 +154,9 @@ export default function ScanLogs({ canExport, filterOptions, filters, logs }) {
                                         <td>{log.operator}</td>
                                         <td>
                                             {log.message || log.queue_outcome}
-                                            <small className="admin-table-note">{log.queue_outcome}</small>
+                                            {log.message && log.message !== log.queue_outcome && (
+                                                <small className="admin-table-note">{log.queue_outcome}</small>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

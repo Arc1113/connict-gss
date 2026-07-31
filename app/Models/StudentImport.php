@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
     'token',
@@ -17,14 +18,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'headers',
     'mapping',
     'source_content',
+    'media_package_path',
     'row_count',
     'summary',
     'expires_at',
     'consumed_at',
 ])]
-#[Hidden(['source_content'])]
+#[Hidden(['source_content', 'media_package_path'])]
 class StudentImport extends Model
 {
+    protected static function booted(): void
+    {
+        static::deleted(function (StudentImport $studentImport): void {
+            if ($studentImport->media_package_path !== null) {
+                Storage::disk('local')
+                    ->delete($studentImport->media_package_path);
+            }
+        });
+    }
+
     public function getRouteKeyName(): string
     {
         return 'token';

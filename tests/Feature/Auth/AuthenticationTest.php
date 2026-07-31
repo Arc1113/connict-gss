@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -31,8 +32,35 @@ class AuthenticationTest extends TestCase
             'password' => 'correct-password',
         ]);
 
-        $response->assertRedirect('/dashboard');
+        $response->assertRedirect('/admin/students');
         $this->assertAuthenticatedAs($user);
+    }
+
+    #[DataProvider('roleHomeProvider')]
+    public function test_login_opens_the_workspace_assigned_to_the_operator_role(
+        UserRole $role,
+        string $path,
+    ): void {
+        User::factory()->role($role)->create([
+            'email' => 'role@example.test',
+            'password' => 'correct-password',
+        ]);
+
+        $this->post('/login', [
+            'email' => 'role@example.test',
+            'password' => 'correct-password',
+        ])->assertRedirect($path);
+    }
+
+    public static function roleHomeProvider(): array
+    {
+        return [
+            'administrator' => [UserRole::Administrator, '/admin'],
+            'data encoder' => [UserRole::DataEncoder, '/admin/students'],
+            'scanner operator' => [UserRole::ScannerOperator, '/scanner'],
+            'stage operator' => [UserRole::StageOperator, '/stage-control'],
+            'technical operator' => [UserRole::TechnicalOperator, '/admin/scan-logs'],
+        ];
     }
 
     public function test_login_fails_with_invalid_credentials(): void

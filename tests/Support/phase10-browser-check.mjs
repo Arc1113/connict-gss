@@ -215,7 +215,7 @@ async function login(client, email) {
         return { status: response.status, url: response.url };
     })()`);
 
-    if (result.status !== 200 || !result.url.endsWith('/dashboard')) {
+    if (result.status !== 200 || result.url.endsWith('/login')) {
         throw new Error(`Login failed for ${email}: ${JSON.stringify(result)}`);
     }
 }

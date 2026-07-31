@@ -16,6 +16,33 @@ export default function AdminIndex({
         ready: ['One active ceremony', 'active'],
         conflict: ['Activation conflict', 'conflict'],
     }[activeCeremonyState];
+    const blockers = [
+        activeCeremonyState === 'conflict' && {
+            label: 'Multiple ceremonies are active',
+            detail: 'Scanner and stage operations require exactly one active ceremony.',
+            href: '/admin/ceremonies',
+        },
+        activeCeremonyState === 'none' && {
+            label: 'No ceremony is active',
+            detail: 'Activate the ceremony before opening arrival scanning.',
+            href: '/admin/ceremonies',
+        },
+        readiness?.needs_review > 0 && {
+            label: `${readiness.needs_review} graduate records need eligibility review`,
+            detail: 'Resolve eligibility before graduates arrive.',
+            href: '/admin/students?eligibility=pending',
+        },
+        readiness?.audio_needs_review > 0 && {
+            label: `${readiness.audio_needs_review} announcements need review`,
+            detail: 'Approve or reject pronunciation audio before stage operation.',
+            href: '/admin/students?media=audio_needs_review',
+        },
+        readiness?.audio_missing > 0 && {
+            label: `${readiness.audio_missing} graduates have no announcement audio`,
+            detail: 'Prepare audio or confirm the fallback procedure.',
+            href: '/admin/students?media=missing_audio',
+        },
+    ].filter(Boolean);
 
     return (
         <AdminLayout>
@@ -25,6 +52,36 @@ export default function AdminIndex({
                 eyebrow="Ceremony Readiness"
                 title="Ceremony operations"
             />
+
+            <section className="admin-blockers" aria-labelledby="blockers-heading">
+                <div className="admin-section-heading">
+                    <div>
+                        <h2 id="blockers-heading">Action required</h2>
+                        <p>
+                            {blockers.length === 0
+                                ? 'No blocking readiness issues were detected.'
+                                : `${blockers.length} readiness issue${blockers.length === 1 ? '' : 's'} need attention.`}
+                        </p>
+                    </div>
+                    <StatusText
+                        label={blockers.length === 0 ? 'Ready' : 'Review required'}
+                        value={blockers.length === 0 ? 'active' : 'warning'}
+                    />
+                </div>
+                {blockers.length > 0 && (
+                    <ol>
+                        {blockers.map((blocker) => (
+                            <li key={blocker.label}>
+                                <span>
+                                    <strong>{blocker.label}</strong>
+                                    <small>{blocker.detail}</small>
+                                </span>
+                                <Link href={blocker.href}>Resolve</Link>
+                            </li>
+                        ))}
+                    </ol>
+                )}
+            </section>
 
             <section
                 aria-labelledby="current-ceremony-heading"

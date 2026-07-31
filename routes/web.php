@@ -19,13 +19,16 @@ use App\Http\Controllers\ScannerController;
 use App\Http\Controllers\ScannerLookupController;
 use App\Http\Controllers\StageControlController;
 use App\Http\Controllers\StageController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'appName' => config('app.name'),
-    ]);
+Route::get('/', function (Request $request) {
+    if ($request->user() !== null) {
+        return redirect($request->user()->role->homePath());
+    }
+
+    return redirect()->route('login');
 })->name('home');
 
 Route::middleware('guest')->group(function () {

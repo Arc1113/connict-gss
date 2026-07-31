@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getEcho, observeEchoConnection } from '../lib/echo';
 import { requestJson } from '../lib/http';
+import OperationCommandMenu from '../components/OperationCommandMenu';
 
 const EMPTY_CONTROL = {
     version: 0,
@@ -55,6 +56,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
     const [pendingAction, setPendingAction] = useState(null);
     const [connectionState, setConnectionState] = useState('connecting');
     const [feedback, setFeedback] = useState(null);
+    const [confirmation, setConfirmation] = useState(null);
     const versionRef = useRef(0);
     const connectedRef = useRef(false);
     const reconnectRef = useRef(false);
@@ -161,8 +163,8 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
         });
     }, [reconcile]);
 
-    async function runCommand(action, url, confirmation = null, body = null) {
-        if (commandLockRef.current || (confirmation && !window.confirm(confirmation))) {
+    async function runCommand(action, url, body = null) {
+        if (commandLockRef.current) {
             return;
         }
 
@@ -197,6 +199,10 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
         }
     }
 
+    function requestConfirmation(action, url, message, body = null) {
+        setConfirmation({ action, url, message, body });
+    }
+
     const current = control.current;
     const waiting = control.waiting;
     const selected = waiting.find((item) => item.id === selectedId);
@@ -209,10 +215,13 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
         <>
             <Head title="Stage control" />
 
-            <main className="stage-control-page">
+            <a className="skip-link" href="#stage-control-content">
+                Skip to stage controls
+            </a>
+
+            <main className="stage-control-page" id="stage-control-content">
                 <header className="stage-control-header">
                     <div>
-                        <p className="stage-control-kicker">Live ceremony operations</p>
                         <h1>Stage control</h1>
                         <p>
                             {ceremony?.name ?? 'No active ceremony'}
@@ -228,6 +237,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                         </p>
                     </div>
                     <nav aria-label="Stage control links">
+                        <OperationCommandMenu />
                         <Link className="secondary-action" href="/stage" target="_blank">
                             Open audience stage
                         </Link>
@@ -270,6 +280,45 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                     </p>
                 )}
 
+                {confirmation && (
+                    <section
+                        className="stage-control-confirmation"
+                        aria-labelledby="stage-confirmation-heading"
+                        role="alertdialog"
+                    >
+                        <div>
+                            <strong id="stage-confirmation-heading">
+                                Confirm exceptional action
+                            </strong>
+                            <p>{confirmation.message}</p>
+                        </div>
+                        <div>
+                            <button
+                                className="secondary-action"
+                                onClick={() => setConfirmation(null)}
+                                type="button"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="stage-control-danger-action"
+                                onClick={() => {
+                                    const command = confirmation;
+                                    setConfirmation(null);
+                                    void runCommand(
+                                        command.action,
+                                        command.url,
+                                        command.body,
+                                    );
+                                }}
+                                type="button"
+                            >
+                                Confirm correction
+                            </button>
+                        </div>
+                    </section>
+                )}
+
                 {!loaded ? (
                     <section className="stage-control-loading" role="status">
                         <h2>Recovering ceremony state</h2>
@@ -291,7 +340,6 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                         >
                             <div className="stage-control-section-heading">
                                 <div>
-                                    <p>Audience state</p>
                                     <h2 id="current-graduate-heading">
                                         Current graduate
                                     </h2>
@@ -326,6 +374,18 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                 </div>
                             )}
 
+                            <div className="stage-control-next">
+                                <span>Next in queue</span>
+                                {waiting[0] ? (
+                                    <strong>
+                                        {waiting[0].student.display_name}
+                                        <small>{waiting[0].student.program}</small>
+                                    </strong>
+                                ) : (
+                                    <strong>No graduate waiting</strong>
+                                )}
+                            </div>
+
                             <div className="stage-control-primary-actions">
                                 {current ? (
                                     <>
@@ -337,7 +397,6 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                                     runCommand(
                                                         'complete-next',
                                                         '/stage/complete-and-present-next',
-                                                        `Complete ${current.student.display_name} and present ${waiting[0].student.display_name} next? Both changes will be recorded together.`,
                                                         {
                                                             expected_version:
                                                                 control.version,
@@ -362,7 +421,6 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                                 runCommand(
                                                     'complete',
                                                     '/stage/complete-current',
-                                                    `Complete ${current.student.display_name} and clear the audience stage? The graduate will be recorded as completed.`,
                                                 )
                                             }
                                             type="button"
@@ -394,7 +452,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                             className="stage-control-danger-action"
                                             disabled={Boolean(pendingAction)}
                                             onClick={() =>
-                                                runCommand(
+                                                requestConfirmation(
                                                     'return-current',
                                                     '/stage/return-current',
                                                     `Correct the current presentation for ${current.student.display_name}? The graduate will return to queue position ${current.queue_position}, audio will stop, and the audience will see the holding screen.`,
@@ -441,9 +499,6 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                             isHolding
                                                 ? '/stage/holding/deactivate'
                                                 : '/stage/holding/activate',
-                                            isHolding
-                                                ? null
-                                                : 'Show the holding screen? The current graduate remains active and is not completed.',
                                         )
                                     }
                                     type="button"
@@ -459,11 +514,6 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                             {automatic && (
                                 <div className="stage-control-automatic">
                                     <strong>Assisted automatic behavior</strong>
-                                    <p>
-                                        {control.automatic_paused
-                                            ? 'Paused. New scans will remain waiting.'
-                                            : 'A new scan presents only while the stage is idle and no graduate is ahead. Completion and advancement require an operator command.'}
-                                    </p>
                                     <button
                                         className="secondary-action"
                                         disabled={Boolean(pendingAction)}
@@ -493,7 +543,6 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                         >
                             <div className="stage-control-section-heading">
                                 <div>
-                                    <p>Deterministic order</p>
                                     <h2 id="waiting-queue-heading">
                                         Waiting queue
                                     </h2>
@@ -576,7 +625,6 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                                                     runCommand(
                                                                         `skip-${item.id}`,
                                                                         `/stage/skip/${item.id}`,
-                                                                        `Skip ${item.student.display_name}? They can be returned to the end of the queue.`,
                                                                     )
                                                                 }
                                                                 type="button"
@@ -606,13 +654,16 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                                 Boolean(pendingAction)
                                             }
                                             onClick={() =>
-                                                runCommand(
-                                                    'present-selected',
-                                                    `/stage/present/${selected.id}`,
-                                                    selected.id !== waiting[0]?.id
-                                                        ? `Present ${selected.student.display_name} ahead of earlier waiting graduates? Queue order will otherwise remain unchanged.`
-                                                        : null,
-                                                )
+                                                selected.id !== waiting[0]?.id
+                                                    ? requestConfirmation(
+                                                          'present-selected',
+                                                          `/stage/present/${selected.id}`,
+                                                          `Present ${selected.student.display_name} ahead of earlier waiting graduates? Queue order will otherwise remain unchanged.`,
+                                                      )
+                                                    : runCommand(
+                                                          'present-selected',
+                                                          `/stage/present/${selected.id}`,
+                                                      )
                                             }
                                             type="button"
                                         >

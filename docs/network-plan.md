@@ -37,18 +37,19 @@ If the server is `192.168.50.10`:
 
 | Purpose | URL |
 | --- | --- |
-| Health | `http://192.168.50.10:8000/up` |
-| Login | `http://192.168.50.10:8000/login` |
-| Scanner | `http://192.168.50.10:8000/scanner` |
-| Stage | `http://192.168.50.10:8000/stage` |
-| Stage control | `http://192.168.50.10:8000/stage-control` |
-| Admin | `http://192.168.50.10:8000/admin` |
-| Reverb | `ws://192.168.50.10:8080` |
+| Health | `https://192.168.50.10/up` |
+| Login | `https://192.168.50.10/login` |
+| Scanner | `https://192.168.50.10/scanner` |
+| Stage | `https://192.168.50.10/stage` |
+| Stage control | `https://192.168.50.10/stage-control` |
+| Admin | `https://192.168.50.10/admin` |
+| Reverb | `wss://192.168.50.10` |
 
 ## Required ports
 
-- TCP `8000`: Laravel HTTP.
-- TCP `8080`: Reverb WebSocket.
+- TCP `443`: local HTTPS proxy for Laravel and Reverb clients.
+- TCP `8000`: Laravel HTTP on server loopback only.
+- TCP `8080`: Reverb WebSocket on server loopback only.
 - PostgreSQL host maintenance port stays on `127.0.0.1`, not the LAN.
 
 No Vite development port is required.
@@ -86,14 +87,13 @@ After changing the server address:
 
 ## Firewall model
 
-The server should allow only the ceremony subnet to reach app and Reverb ports.
+The server should allow only the ceremony subnet to reach the HTTPS proxy.
 PostgreSQL must not be reachable from scanner or stage devices.
 
 Review before applying:
 
 ```bash
-sudo ufw allow from 192.168.50.0/24 to any port 8000 proto tcp
-sudo ufw allow from 192.168.50.0/24 to any port 8080 proto tcp
+sudo ufw allow from 192.168.50.0/24 to any port 443 proto tcp
 sudo ufw deny 5432/tcp
 sudo ufw deny 54329/tcp
 ```

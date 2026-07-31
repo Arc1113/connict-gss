@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\EligibilityStatus;
 use App\Models\Student;
 use App\Models\StudentImport;
+use App\Support\StudentImportMediaPackage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -30,6 +31,8 @@ final class StudentImportPreparation
         'honors' => ['label' => 'Honors', 'required' => false],
         'sequence_number' => ['label' => 'Sequence number', 'required' => true],
         'eligibility_status' => ['label' => 'Eligibility', 'required' => true],
+        'photo_filename' => ['label' => 'Photo filename', 'required' => false],
+        'audio_filename' => ['label' => 'Audio filename', 'required' => false],
     ];
 
     /**
@@ -63,10 +66,15 @@ final class StudentImportPreparation
         'sequence_no' => 'sequence_number',
         'eligibility_status' => 'eligibility_status',
         'eligibility' => 'eligibility_status',
+        'photo_filename' => 'photo_filename',
+        'photo_file' => 'photo_filename',
+        'audio_filename' => 'audio_filename',
+        'audio_file' => 'audio_filename',
     ];
 
     public function __construct(
         private readonly StudentCsvParser $parser,
+        private readonly StudentImportMediaPackage $mediaPackage,
     ) {}
 
     /**
@@ -218,6 +226,7 @@ final class StudentImportPreparation
             $errors = [
                 ...$sourceRow['issues'],
                 ...$this->validateNormalizedRow($normalized),
+                ...$this->mediaPackage->validateRow($studentImport, $normalized),
             ];
 
             $rows[] = [
@@ -421,6 +430,8 @@ final class StudentImportPreparation
                 'required',
                 Rule::enum(EligibilityStatus::class),
             ],
+            'photo_filename' => ['nullable', 'string', 'max:255'],
+            'audio_filename' => ['nullable', 'string', 'max:255'],
         ], [
             'eligibility_status.enum' => 'Eligibility must be pending, eligible, or ineligible.',
             'sequence_number.integer' => 'Sequence number must be a positive whole number.',

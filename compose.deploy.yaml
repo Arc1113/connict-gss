@@ -25,6 +25,8 @@ services:
             timeout: 5s
             retries: 20
         restart: unless-stopped
+        ports: !override
+            - "127.0.0.1:${APP_FORWARD_PORT:-8000}:8000"
         user: root
         volumes: !override
             - gss-storage:/app/storage
@@ -44,6 +46,8 @@ services:
         env_file:
             - ${GSS_ENV_FILE:-.env}
         restart: unless-stopped
+        ports: !override
+            - "127.0.0.1:${REVERB_FORWARD_PORT:-8080}:8080"
         user: root
         volumes: !override
             - gss-storage:/app/storage
@@ -51,5 +55,24 @@ services:
     database:
         restart: unless-stopped
 
+    proxy:
+        image: caddy:2.10-alpine
+        depends_on:
+            app:
+                condition: service_healthy
+            reverb:
+                condition: service_healthy
+        environment:
+            GSS_HTTPS_HOST: "${GSS_HTTPS_HOST:?Set GSS_HTTPS_HOST in the deployment environment}"
+        ports:
+            - "${APP_BIND_HOST:-0.0.0.0}:${HTTPS_FORWARD_PORT:-443}:443"
+        restart: unless-stopped
+        volumes:
+            - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+            - caddy-data:/data
+            - caddy-config:/config
+
 volumes:
     gss-storage:
+    caddy-data:
+    caddy-config:

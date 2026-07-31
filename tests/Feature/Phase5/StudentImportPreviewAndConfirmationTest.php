@@ -11,11 +11,14 @@ use App\Models\Student;
 use App\Models\StudentImport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\InteractsWithStudentImports;
 use Tests\TestCase;
+use ZipArchive;
 
 class StudentImportPreviewAndConfirmationTest extends TestCase
 {
@@ -295,6 +298,79 @@ class StudentImportPreviewAndConfirmationTest extends TestCase
         $this->assertDatabaseMissing('student_imports', [
             'id' => $studentImport->id,
         ]);
+    }
+
+    public function test_confirmation_imports_referenced_photos_and_audio_from_a_local_media_zip(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $photo = UploadedFile::fake()->createWithContent(
+            'graduate.png',
+            (string) base64_decode(
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+                true,
+            ),
+        );
+        $archivePath = tempnam(sys_get_temp_dir(), 'gss-media-test-');
+        $this->assertNotFalse($archivePath);
+        $archive = new ZipArchive;
+        $this->assertTrue($archive->open(
+            $archivePath,
+            ZipArchive::CREATE | ZipArchive::OVERWRITE,
+        ));
+        $archive->addFromString('photos/graduate.png', $photo->getContent());
+        $archive->addFromString(
+            'audio/graduate.wav',
+            (string) file_get_contents(public_path('media/phase3/audio/student-01.wav')),
+        );
+        $archive->close();
+
+        $csv = implode("\n", [
+            'student_number,first_name,last_name,program,sequence_number,eligibility_status,photo_filename,audio_filename',
+            '2027-MEDIA,Ana,Cruz,BS Computer Science,88,eligible,graduate.png,graduate.wav',
+        ]);
+
+        try {
+            $this->actingAs($this->encoder)
+                ->post('/admin/students/import/inspect', [
+                    'ceremony_id' => $this->ceremony->id,
+                    'csv_file' => UploadedFile::fake()->createWithContent(
+                        'graduates.csv',
+                        $csv,
+                    ),
+                    'media_package' => new UploadedFile(
+                        $archivePath,
+                        'graduate-media.zip',
+                        'application/zip',
+                        null,
+                        true,
+                    ),
+                ])
+                ->assertRedirect();
+
+            $studentImport = StudentImport::query()->sole();
+            $this->assertNotNull($studentImport->media_package_path);
+            $this->saveSuggestedMapping($this->encoder, $studentImport)
+                ->assertSessionHasNoErrors();
+            $this->confirmImport($this->encoder, $studentImport)
+                ->assertSessionHasNoErrors();
+
+            $student = Student::query()->sole();
+            $this->assertSame('uploaded', $student->audio_readiness_status->value);
+            $this->assertStringStartsWith('storage/graduates/photos/', $student->photo_path);
+            $this->assertStringStartsWith('storage/graduates/audio/', $student->audio_path);
+            Storage::disk('public')->assertExists(
+                substr($student->photo_path, strlen('storage/')),
+            );
+            Storage::disk('public')->assertExists(
+                substr($student->audio_path, strlen('storage/')),
+            );
+            $this->assertSame(1, $studentImport->refresh()->summary['photo_count']);
+            $this->assertSame(1, $studentImport->summary['audio_count']);
+        } finally {
+            @unlink($archivePath);
+        }
     }
 
     public function test_confirmation_rechecks_current_conflicts_and_ceremony_status(): void

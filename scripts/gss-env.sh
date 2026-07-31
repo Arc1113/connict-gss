@@ -72,11 +72,12 @@ gss_validate_env_file() {
         return 1
     fi
 
-    local app_env app_debug app_key app_url db_password reverb_key reverb_secret
+    local app_env app_debug app_key app_url db_password https_host reverb_key reverb_secret
     app_env="$(gss_required_env_value "${env_file}" APP_ENV)"
     app_debug="$(gss_required_env_value "${env_file}" APP_DEBUG)"
     app_key="$(gss_required_env_value "${env_file}" APP_KEY)"
     app_url="$(gss_required_env_value "${env_file}" APP_URL)"
+    https_host="$(gss_required_env_value "${env_file}" GSS_HTTPS_HOST)"
     db_password="$(gss_required_env_value "${env_file}" DB_PASSWORD)"
     reverb_key="$(gss_required_env_value "${env_file}" REVERB_APP_KEY)"
     reverb_secret="$(gss_required_env_value "${env_file}" REVERB_APP_SECRET)"
@@ -91,8 +92,13 @@ gss_validate_env_file() {
         return 1
     fi
 
-    if [[ "${app_url}" == *"localhost"* || "${app_url}" == *"127.0.0.1"* ]]; then
+    if [[ "${app_url}" != https://* || "${app_url}" == *"localhost"* || "${app_url}" == *"127.0.0.1"* ]]; then
         printf 'APP_URL must use the server LAN address for multi-device deployment.\n' >&2
+        return 1
+    fi
+
+    if [[ -z "${https_host}" || "${app_url}" != "https://${https_host}"* ]]; then
+        printf 'GSS_HTTPS_HOST must match the LAN host used by APP_URL.\n' >&2
         return 1
     fi
 

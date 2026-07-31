@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#0c2925">
+        <title>System unavailable — Graduation Stage System</title>
+        <style>
+            :root { color: #162522; background: #f1eee6; font: 16px/1.5 system-ui, sans-serif; }
+            body { display: grid; min-height: 100dvh; margin: 0; place-items: center; padding: 1.5rem; }
+            main { width: min(34rem, 100%); padding: 2rem; background: #fbfaf6; border-top: .35rem solid #a94d45; }
+            h1 { margin: 0; font-size: clamp(1.8rem, 6vw, 2.6rem); line-height: 1.05; }
+            p { color: #65706c; }
+            button { min-height: 3rem; padding: .75rem 1rem; color: white; background: #0c2925; border: 0; font: inherit; font-weight: 700; cursor: pointer; }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>The local ceremony server is unavailable</h1>
+            <p>Do not scan a graduate or advance the stage. Ask the technical operator to restore the server connection, then retry.</p>
+            <button onclick="window.location.reload()" type="button">Check connection again</button>
+        </main>
+    </body>
+</html>

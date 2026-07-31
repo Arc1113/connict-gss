@@ -8,6 +8,7 @@ use App\Enums\PresentationMode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SaveCeremonyRequest;
 use App\Models\Ceremony;
+use App\Support\StageTheme;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -90,7 +91,9 @@ class CeremonyController extends Controller
         CeremonyAdministration $administration,
     ): RedirectResponse {
         $ceremony = $administration->create(
-            $request->validated(),
+            $request->safe()->except(['stage_logo', 'stage_background']),
+            $request->file('stage_logo'),
+            $request->file('stage_background'),
             $request->user(),
             $request->ip(),
         );
@@ -145,7 +148,9 @@ class CeremonyController extends Controller
     ): RedirectResponse {
         $ceremony = $administration->update(
             $ceremony,
-            $request->validated(),
+            $request->safe()->except(['stage_logo', 'stage_background']),
+            $request->file('stage_logo'),
+            $request->file('stage_background'),
             $request->user(),
             $request->ip(),
         );
@@ -188,6 +193,7 @@ class CeremonyController extends Controller
                 'value' => $ceremony->presentation_mode->value,
                 'label' => $ceremony->presentation_mode->label(),
             ],
+            'stage_theme' => StageTheme::forCeremony($ceremony),
         ];
     }
 

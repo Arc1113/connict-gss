@@ -8,6 +8,7 @@ export default function StudentImportIndex({ ceremonies, limits, templateUrl }) 
     const form = useForm({
         ceremony_id: ceremonies[0]?.id ?? '',
         csv_file: null,
+        media_package: null,
     });
     const hasCeremonies = ceremonies.length > 0;
 
@@ -30,7 +31,7 @@ export default function StudentImportIndex({ ceremonies, limits, templateUrl }) 
                         Return to graduate records
                     </Link>
                 }
-                description="Inspect a prepared CSV before any graduate records are created."
+                description="Inspect graduate data and optional local media before any records are created."
                 eyebrow="Graduate data preparation"
                 title="Import graduate records"
             />
@@ -76,6 +77,36 @@ export default function StudentImportIndex({ ceremonies, limits, templateUrl }) 
                                 <FieldError
                                     id="ceremony_id-error"
                                     message={form.errors.ceremony_id}
+                                />
+                            </div>
+
+                            <div className="admin-field admin-field-wide">
+                                <label htmlFor="media_package">
+                                    Photo and audio package <span>Optional</span>
+                                </label>
+                                <input
+                                    accept=".zip,application/zip"
+                                    aria-describedby="media_package-hint media_package-error"
+                                    aria-invalid={Boolean(form.errors.media_package)}
+                                    disabled={!hasCeremonies || form.processing}
+                                    id="media_package"
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'media_package',
+                                            event.target.files?.[0] ?? null,
+                                        )
+                                    }
+                                    type="file"
+                                />
+                                <p className="admin-field-hint" id="media_package-hint">
+                                    ZIP up to {limits.max_media_package_megabytes} MiB.
+                                    Put portraits in <code>photos/</code> and announcements
+                                    in <code>audio/</code>, then reference each filename in
+                                    the CSV.
+                                </p>
+                                <FieldError
+                                    id="media_package-error"
+                                    message={form.errors.media_package}
                                 />
                             </div>
 
@@ -127,7 +158,7 @@ export default function StudentImportIndex({ ceremonies, limits, templateUrl }) 
                             }
                             type="submit"
                         >
-                            {form.processing ? 'Inspecting CSV…' : 'Inspect CSV'}
+                            {form.processing ? 'Inspecting package…' : 'Inspect import'}
                         </button>
                     </div>
                 </form>
@@ -143,6 +174,12 @@ export default function StudentImportIndex({ ceremonies, limits, templateUrl }) 
                         <li>
                             Keep sequence and student numbers unique within the
                             destination ceremony.
+                        </li>
+                        <li>
+                            For bulk media, add <code>photo_filename</code> and
+                            <code>audio_filename</code> columns and upload one ZIP with
+                            matching files in its <code>photos/</code> and <code>audio/</code>
+                            folders.
                         </li>
                     </ol>
                     <a className="admin-text-link" href={templateUrl}>

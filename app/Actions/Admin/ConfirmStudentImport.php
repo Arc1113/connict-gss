@@ -2,6 +2,7 @@
 
 namespace App\Actions\Admin;
 
+use App\Enums\AudioReadinessStatus;
 use App\Enums\CeremonyStatus;
 use App\Models\Ceremony;
 use App\Models\Student;
@@ -11,8 +12,11 @@ use App\Services\StudentImportPreparation;
 use App\Services\StudentQrTokenGenerator;
 use App\Support\AdministrativeAuditLogger;
 use App\Support\StudentImportLimits;
+use App\Support\StudentImportMediaPackage;
+use App\Support\StudentMediaStorage;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -25,6 +29,7 @@ final class ConfirmStudentImport
         private readonly StudentImportPreparation $preparation,
         private readonly AdministrativeAuditLogger $auditLogger,
         private readonly StudentQrTokenGenerator $qrTokens,
+        private readonly StudentImportMediaPackage $mediaPackage,
     ) {}
 
     public function execute(
@@ -34,6 +39,7 @@ final class ConfirmStudentImport
     ): StudentImport {
         $startedAt = now()->utc()->toImmutable();
         $preview = null;
+        $storedMedia = [];
 
         try {
             return DB::transaction(function () use (
@@ -42,6 +48,7 @@ final class ConfirmStudentImport
                 $ipAddress,
                 $startedAt,
                 &$preview,
+                &$storedMedia,
             ): StudentImport {
                 DB::select(
                     'SELECT pg_advisory_xact_lock(?)',
@@ -105,10 +112,28 @@ final class ConfirmStudentImport
                 $created = 0;
 
                 foreach ($preview['rows'] as $row) {
+                    $media = $this->mediaPackage->importRow(
+                        $lockedImport,
+                        $row['normalized'],
+                    );
+                    $storedMedia[] = $media['photo_path'];
+                    $storedMedia[] = $media['audio_path'];
                     $student = Student::query()->create([
                         'ceremony_id' => $ceremony->id,
                         'qr_token' => $this->qrTokens->generate(),
-                        ...$row['normalized'],
+                        ...Arr::except($row['normalized'], [
+                            'photo_filename',
+                            'audio_filename',
+                        ]),
+                        'photo_path' => $media['photo_path'],
+                        'audio_path' => $media['audio_path'],
+                        'audio_readiness_status' => $media['audio_path'] === null
+                            ? AudioReadinessStatus::Missing
+                            : AudioReadinessStatus::Uploaded,
+                        'audio_uploaded_at' => $media['audio_path'] === null
+                            ? null
+                            : now(),
+                        ...$media['audio_metadata'],
                     ]);
                     $created++;
 
@@ -135,6 +160,12 @@ final class ConfirmStudentImport
                     'updated_count' => 0,
                     'warning_count' => $preview['warning_count'],
                     'skipped_count' => 0,
+                    'photo_count' => collect($preview['rows'])
+                        ->filter(fn (array $row): bool => filled($row['normalized']['photo_filename'] ?? null))
+                        ->count(),
+                    'audio_count' => collect($preview['rows'])
+                        ->filter(fn (array $row): bool => filled($row['normalized']['audio_filename'] ?? null))
+                        ->count(),
                     'started_at' => $startedAt->toIso8601String(),
                     'completed_at' => $completedAt->toIso8601String(),
                 ];
@@ -161,8 +192,10 @@ final class ConfirmStudentImport
                 return $lockedImport;
             }, 3);
         } catch (AuthorizationException $exception) {
+            $this->deleteStoredMedia($storedMedia);
             throw $exception;
         } catch (ValidationException $exception) {
+            $this->deleteStoredMedia($storedMedia);
             $this->recordFailure(
                 $studentImport,
                 $actor,
@@ -173,6 +206,7 @@ final class ConfirmStudentImport
 
             throw $exception;
         } catch (QueryException $exception) {
+            $this->deleteStoredMedia($storedMedia);
             $this->recordFailure(
                 $studentImport,
                 $actor,
@@ -191,6 +225,7 @@ final class ConfirmStudentImport
                     : 'The import could not be saved. No graduate records were imported.',
             ]);
         } catch (Throwable $exception) {
+            $this->deleteStoredMedia($storedMedia);
             $this->recordFailure(
                 $studentImport,
                 $actor,
@@ -204,6 +239,16 @@ final class ConfirmStudentImport
             throw ValidationException::withMessages([
                 'confirm' => 'The import could not be completed. No graduate records were imported.',
             ]);
+        }
+    }
+
+    /** @param  array<int, string|null>  $paths */
+    private function deleteStoredMedia(array $paths): void
+    {
+        $storage = app(StudentMediaStorage::class);
+
+        foreach (array_unique(array_filter($paths)) as $path) {
+            $storage->deleteManaged($path);
         }
     }
 

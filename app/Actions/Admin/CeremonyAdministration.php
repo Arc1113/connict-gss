@@ -8,6 +8,8 @@ use App\Models\Ceremony;
 use App\Models\StageState;
 use App\Models\User;
 use App\Support\AdministrativeAuditLogger;
+use App\Support\CeremonyThemeStorage;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,6 +19,7 @@ final class CeremonyAdministration
 
     public function __construct(
         private readonly AdministrativeAuditLogger $auditLogger,
+        private readonly CeremonyThemeStorage $themeStorage,
     ) {}
 
     /**
@@ -24,40 +27,63 @@ final class CeremonyAdministration
      */
     public function create(
         array $attributes,
+        ?UploadedFile $logo,
+        ?UploadedFile $background,
         User $actor,
         ?string $ipAddress,
     ): Ceremony {
-        return DB::transaction(function () use ($attributes, $actor, $ipAddress): Ceremony {
-            $this->lockLifecycle();
+        $logoPath = $logo === null ? null : $this->themeStorage->storeLogo($logo);
+        $backgroundPath = $background === null
+            ? null
+            : $this->themeStorage->storeBackground($background);
 
-            $status = CeremonyStatus::from($attributes['status']);
-
-            if (in_array($status, [CeremonyStatus::Completed, CeremonyStatus::Archived], true)) {
-                throw ValidationException::withMessages([
-                    'status' => 'A new ceremony must begin as draft, prepared, or active.',
-                ]);
-            }
-
-            $this->assertActivationAvailable($status);
-
-            if ($status === CeremonyStatus::Active) {
-                $attributes['activated_at'] = now();
-            }
-
-            $ceremony = Ceremony::query()->create($attributes);
-
-            $this->auditLogger->record(
+        try {
+            return DB::transaction(function () use (
+                $attributes,
+                $logoPath,
+                $backgroundPath,
                 $actor,
-                'ceremony.created',
-                'ceremony',
-                $ceremony->id,
-                null,
-                $this->snapshot($ceremony),
                 $ipAddress,
-            );
+            ): Ceremony {
+                $this->lockLifecycle();
 
-            return $ceremony;
-        }, 3);
+                $status = CeremonyStatus::from($attributes['status']);
+
+                if (in_array($status, [CeremonyStatus::Completed, CeremonyStatus::Archived], true)) {
+                    throw ValidationException::withMessages([
+                        'status' => 'A new ceremony must begin as draft, prepared, or active.',
+                    ]);
+                }
+
+                $this->assertActivationAvailable($status);
+
+                if ($status === CeremonyStatus::Active) {
+                    $attributes['activated_at'] = now();
+                }
+
+                $ceremony = Ceremony::query()->create([
+                    ...$attributes,
+                    'stage_logo_path' => $logoPath,
+                    'stage_background_path' => $backgroundPath,
+                ]);
+
+                $this->auditLogger->record(
+                    $actor,
+                    'ceremony.created',
+                    'ceremony',
+                    $ceremony->id,
+                    null,
+                    $this->snapshot($ceremony),
+                    $ipAddress,
+                );
+
+                return $ceremony;
+            }, 3);
+        } catch (\Throwable $exception) {
+            $this->themeStorage->delete($logoPath);
+            $this->themeStorage->delete($backgroundPath);
+            throw $exception;
+        }
     }
 
     /**
@@ -66,63 +92,102 @@ final class CeremonyAdministration
     public function update(
         Ceremony $ceremony,
         array $attributes,
+        ?UploadedFile $logo,
+        ?UploadedFile $background,
         User $actor,
         ?string $ipAddress,
     ): Ceremony {
-        return DB::transaction(function () use (
-            $ceremony,
-            $attributes,
-            $actor,
-            $ipAddress,
-        ): Ceremony {
-            $this->lockLifecycle();
+        $newLogoPath = $logo === null ? null : $this->themeStorage->storeLogo($logo);
+        $newBackgroundPath = $background === null
+            ? null
+            : $this->themeStorage->storeBackground($background);
+        $oldLogoPath = null;
+        $oldBackgroundPath = null;
 
-            $locked = Ceremony::query()->lockForUpdate()->findOrFail($ceremony->id);
-            $before = $this->snapshot($locked);
-            $oldStatus = $locked->status;
-            $newStatus = CeremonyStatus::from($attributes['status']);
+        try {
+            $updated = DB::transaction(function () use (
+                $ceremony,
+                $attributes,
+                $newLogoPath,
+                $newBackgroundPath,
+                $actor,
+                $ipAddress,
+                &$oldLogoPath,
+                &$oldBackgroundPath,
+            ): Ceremony {
+                $this->lockLifecycle();
 
-            $this->assertTransitionAllowed($oldStatus, $newStatus);
-            $this->assertActivationAvailable($newStatus, $locked->id);
+                $locked = Ceremony::query()->lockForUpdate()->findOrFail($ceremony->id);
+                $before = $this->snapshot($locked);
+                $oldStatus = $locked->status;
+                $newStatus = CeremonyStatus::from($attributes['status']);
+                $oldLogoPath = $locked->stage_logo_path;
+                $oldBackgroundPath = $locked->stage_background_path;
 
-            $locked->fill($attributes);
+                $this->assertTransitionAllowed($oldStatus, $newStatus);
+                $this->assertActivationAvailable($newStatus, $locked->id);
 
-            if ($locked->isDirty() && $this->isPresenting($locked)) {
-                throw ValidationException::withMessages([
-                    'status' => 'This ceremony cannot be changed while a graduate is being presented. Complete the current presentation first.',
-                ]);
-            }
+                $locked->fill($attributes);
 
-            if ($oldStatus !== CeremonyStatus::Active && $newStatus === CeremonyStatus::Active) {
-                $locked->activated_at = now();
-            }
+                if ($newLogoPath !== null) {
+                    $locked->stage_logo_path = $newLogoPath;
+                }
 
-            if ($oldStatus !== CeremonyStatus::Completed && $newStatus === CeremonyStatus::Completed) {
-                $locked->completed_at = now();
-            }
+                if ($newBackgroundPath !== null) {
+                    $locked->stage_background_path = $newBackgroundPath;
+                }
 
-            $locked->save();
-            $after = $this->snapshot($locked);
-            [$oldValues, $newValues] = $this->changedValues($before, $after);
+                if ($locked->isDirty() && $this->isPresenting($locked)) {
+                    throw ValidationException::withMessages([
+                        'status' => 'This ceremony cannot be changed while a graduate is being presented. Complete the current presentation first.',
+                    ]);
+                }
 
-            if ($oldValues !== []) {
-                $action = $oldStatus === $newStatus
-                    ? 'ceremony.updated'
-                    : 'ceremony.status_changed';
+                if ($oldStatus !== CeremonyStatus::Active && $newStatus === CeremonyStatus::Active) {
+                    $locked->activated_at = now();
+                }
 
-                $this->auditLogger->record(
-                    $actor,
-                    $action,
-                    'ceremony',
-                    $locked->id,
-                    $oldValues,
-                    $newValues,
-                    $ipAddress,
-                );
-            }
+                if ($oldStatus !== CeremonyStatus::Completed && $newStatus === CeremonyStatus::Completed) {
+                    $locked->completed_at = now();
+                }
 
-            return $locked;
-        }, 3);
+                $locked->save();
+                $after = $this->snapshot($locked);
+                [$oldValues, $newValues] = $this->changedValues($before, $after);
+
+                if ($oldValues !== []) {
+                    $action = $oldStatus === $newStatus
+                        ? 'ceremony.updated'
+                        : 'ceremony.status_changed';
+
+                    $this->auditLogger->record(
+                        $actor,
+                        $action,
+                        'ceremony',
+                        $locked->id,
+                        $oldValues,
+                        $newValues,
+                        $ipAddress,
+                    );
+                }
+
+                return $locked;
+            }, 3);
+        } catch (\Throwable $exception) {
+            $this->themeStorage->delete($newLogoPath);
+            $this->themeStorage->delete($newBackgroundPath);
+            throw $exception;
+        }
+
+        if ($newLogoPath !== null) {
+            $this->themeStorage->delete($oldLogoPath);
+        }
+
+        if ($newBackgroundPath !== null) {
+            $this->themeStorage->delete($oldBackgroundPath);
+        }
+
+        return $updated;
     }
 
     public function delete(
@@ -130,7 +195,7 @@ final class CeremonyAdministration
         User $actor,
         ?string $ipAddress,
     ): void {
-        DB::transaction(function () use ($ceremony, $actor, $ipAddress): void {
+        [$logoPath, $backgroundPath] = DB::transaction(function () use ($ceremony, $actor, $ipAddress): array {
             $this->lockLifecycle();
 
             $locked = Ceremony::query()->lockForUpdate()->findOrFail($ceremony->id);
@@ -174,7 +239,12 @@ final class CeremonyAdministration
             );
 
             $locked->delete();
+
+            return [$locked->stage_logo_path, $locked->stage_background_path];
         }, 3);
+
+        $this->themeStorage->delete($logoPath);
+        $this->themeStorage->delete($backgroundPath);
     }
 
     private function lockLifecycle(): void
@@ -270,6 +340,9 @@ final class CeremonyAdministration
             'event_date' => $ceremony->event_date?->format('Y-m-d'),
             'status' => $ceremony->status->value,
             'presentation_mode' => $ceremony->presentation_mode->value,
+            'stage_theme' => $ceremony->stage_theme,
+            'stage_logo_configured' => $ceremony->stage_logo_path !== null,
+            'stage_background_configured' => $ceremony->stage_background_path !== null,
             'activated_at' => $ceremony->activated_at?->toIso8601String(),
             'completed_at' => $ceremony->completed_at?->toIso8601String(),
         ];

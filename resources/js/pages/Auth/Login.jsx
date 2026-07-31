@@ -1,4 +1,5 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
+import BrandMark from '../../components/BrandMark';
 
 export default function Login() {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -17,21 +18,35 @@ export default function Login() {
 
     return (
         <>
-            <Head title="Operator sign in" />
+            <Head title="Operator sign in">
+                <meta
+                    name="description"
+                    content="Operator access to the local Graduation Stage System."
+                />
+            </Head>
 
-            <main className="auth-page">
-                <section className="auth-card" aria-labelledby="login-heading">
-                    <Link className="back-link" href="/">
-                        Graduation Stage System
-                    </Link>
+            <a className="skip-link" href="#main-content">
+                Skip to sign in
+            </a>
 
-                    <p className="foundation-eyebrow">Authorized operators</p>
-                    <h1 id="login-heading" className="auth-title">
-                        Sign in
-                    </h1>
-                    <p className="auth-copy">
-                        Use the account issued by your system administrator.
-                    </p>
+            <main className="operator-login" id="main-content">
+                <section className="operator-login-card" aria-labelledby="login-heading">
+                    <header>
+                        <BrandMark />
+                        <div>
+                            <strong>Graduation Stage System</strong>
+                            <span>Local ceremony operations</span>
+                        </div>
+                    </header>
+
+                    <div className="operator-login-intro">
+                        <p className="foundation-eyebrow">Operator access</p>
+                        <h1 id="login-heading">Sign in</h1>
+                        <p>
+                            Your assigned workspace opens immediately after
+                            authentication.
+                        </p>
+                    </div>
 
                     <form className="auth-form" onSubmit={submit}>
                         <div className="form-field">
@@ -44,9 +59,13 @@ export default function Login() {
                                 autoComplete="username"
                                 autoFocus
                                 required
-                                onChange={(event) => setData('email', event.target.value)}
+                                onChange={(event) =>
+                                    setData('email', event.target.value)
+                                }
                                 aria-invalid={errors.email ? 'true' : undefined}
-                                aria-describedby={errors.email ? 'email-error' : undefined}
+                                aria-describedby={
+                                    errors.email ? 'email-error' : undefined
+                                }
                             />
                             {errors.email && (
                                 <p id="email-error" className="form-error" role="alert">
@@ -73,7 +92,11 @@ export default function Login() {
                                 }
                             />
                             {errors.password && (
-                                <p id="password-error" className="form-error" role="alert">
+                                <p
+                                    id="password-error"
+                                    className="form-error"
+                                    role="alert"
+                                >
                                     {errors.password}
                                 </p>
                             )}
@@ -88,7 +111,7 @@ export default function Login() {
                                     setData('remember', event.target.checked)
                                 }
                             />
-                            <span>Keep me signed in on this operator device</span>
+                            <span>Keep me signed in on this assigned device</span>
                         </label>
 
                         <button
@@ -96,9 +119,14 @@ export default function Login() {
                             type="submit"
                             disabled={processing}
                         >
-                            {processing ? 'Signing in…' : 'Sign in'}
+                            {processing ? 'Signing in…' : 'Open assigned workspace'}
                         </button>
                     </form>
+
+                    <footer>
+                        <span className="status-marker status-marker-ready" aria-hidden="true" />
+                        Local network system
+                    </footer>
                 </section>
             </main>
         </>

@@ -8,6 +8,8 @@ final class StudentImportLimits
 
     public const MAX_FILE_KILOBYTES = 2 * 1024;
 
+    public const MAX_MEDIA_PACKAGE_KILOBYTES = 256 * 1024;
+
     public const MAX_ROWS = 2000;
 
     public const MAX_COLUMNS = 40;
@@ -25,6 +27,7 @@ final class StudentImportLimits
     {
         return [
             'max_file_megabytes' => 2,
+            'max_media_package_megabytes' => 256,
             'max_rows' => self::MAX_ROWS,
             'max_columns' => self::MAX_COLUMNS,
             'max_cell_characters' => self::MAX_CELL_CHARACTERS,

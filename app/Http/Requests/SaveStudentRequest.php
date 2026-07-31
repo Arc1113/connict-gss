@@ -66,7 +66,7 @@ class SaveStudentRequest extends FormRequest
             ],
             'audio' => [
                 'nullable',
-                File::types(['mp3', 'wav', 'ogg'])->max(15 * 1024),
+                File::types(['mp3', 'wav', 'ogg', 'webm'])->max(15 * 1024),
             ],
         ];
     }
@@ -77,7 +77,7 @@ class SaveStudentRequest extends FormRequest
             'student_number.unique' => 'That student number is already used in the selected ceremony.',
             'sequence_number.unique' => 'That sequence number is already used in the selected ceremony.',
             'photo.mimes' => 'The photo must be a JPEG, PNG, or WebP image.',
-            'audio.mimes' => 'The audio must be an MP3, WAV, or OGG file.',
+            'audio.mimes' => 'The audio must be an MP3, WAV, OGG, or WebM file.',
         ];
     }
 

@@ -20,17 +20,18 @@ laptops still require physical rehearsal.
 ```text
 Server laptop
 ├── Docker Compose
-├── Laravel HTTP app       TCP 8000, ceremony LAN only
-├── Laravel Reverb         TCP 8080, ceremony LAN only
+├── Local HTTPS proxy      TCP 443, ceremony LAN only
+├── Laravel HTTP app       TCP 8000, server loopback only
+├── Laravel Reverb         TCP 8080, server loopback only
 ├── PostgreSQL             Docker network + server loopback only
 ├── Local media            Docker volume / storage
 └── Local backups          storage/app/gss-backups
 
 Scanner laptop
-└── Chromium browser       http://SERVER_LAN_IP:8000/scanner
+└── Installed PWA         https://SERVER_LAN_IP/scanner
 
 Stage laptop
-└── Chromium browser       http://SERVER_LAN_IP:8000/stage
+└── Installed PWA         https://SERVER_LAN_IP/stage
 ```
 
 The browser never needs the Vite development server during the ceremony. Runtime
@@ -67,9 +68,11 @@ Required deployment values:
 ```dotenv
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=http://SERVER_LAN_IP:8000
+APP_URL=https://SERVER_LAN_IP
 APP_BIND_HOST=0.0.0.0
 APP_FORWARD_PORT=8000
+GSS_HTTPS_HOST=SERVER_LAN_IP
+HTTPS_FORWARD_PORT=443
 
 DB_CONNECTION=pgsql
 DB_HOST=database
@@ -85,8 +88,8 @@ REVERB_FORWARD_PORT=8080
 REVERB_ALLOWED_ORIGINS=SERVER_LAN_IP
 
 VITE_REVERB_HOST=
-VITE_REVERB_PORT=8080
-VITE_REVERB_SCHEME=http
+VITE_REVERB_PORT=443
+VITE_REVERB_SCHEME=https
 GSS_BACKUP_PATH=storage/app/gss-backups
 ```
 
@@ -98,8 +101,9 @@ connect to the same hostname they used to load the page. Do not compile
 
 | Port | Purpose | Exposure |
 | ---: | --- | --- |
-| TCP `8000` | Laravel HTTP | Ceremony LAN only |
-| TCP `8080` | Reverb WebSocket | Ceremony LAN only |
+| TCP `443` | Installed PWA, Laravel HTTP, and Reverb WebSocket | Ceremony LAN only |
+| TCP `8000` | Laravel HTTP | Server loopback only |
+| TCP `8080` | Reverb WebSocket | Server loopback only |
 | TCP `54329` → container `5432` | PostgreSQL maintenance from server | `127.0.0.1` only |
 
 The scanner and stage laptops must not reach PostgreSQL.
@@ -240,8 +244,7 @@ Review these Ubuntu `ufw` examples before applying them. Replace
 `192.168.50.0/24` with the actual ceremony subnet:
 
 ```bash
-sudo ufw allow from 192.168.50.0/24 to any port 8000 proto tcp
-sudo ufw allow from 192.168.50.0/24 to any port 8080 proto tcp
+sudo ufw allow from 192.168.50.0/24 to any port 443 proto tcp
 sudo ufw deny 5432/tcp
 sudo ufw deny 54329/tcp
 sudo ufw status verbose
@@ -263,8 +266,9 @@ Authoritative recovery reads come from HTTP/PostgreSQL.
 
 ## Security notes
 
-This deployment uses HTTP on a trusted local network unless a separate approved
-local TLS setup is implemented later. Treat the ceremony LAN as private:
+This deployment uses a Caddy-managed local certificate authority. Export and
+trust that certificate only on approved ceremony workstations. Treat the
+ceremony LAN as private:
 
 - use a dedicated router;
 - do not allow guest users;
@@ -272,6 +276,13 @@ local TLS setup is implemented later. Treat the ceremony LAN as private:
 - avoid projecting admin screens;
 - keep terminals off the audience display;
 - keep `.env`, backup archives, and database ports off client devices.
+
+## Installed app and automatic boot
+
+See `docs/pwa-and-autostart.md` for local certificate enrollment, PWA
+installation, automatic systemd startup, controlled updates, and reboot
+rehearsal. Normal ceremony startup does not require an operator to open a
+terminal after the one-time service installation.
 
 ## Phase 11 boundary
 

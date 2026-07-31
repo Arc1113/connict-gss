@@ -65,6 +65,7 @@ final class StageStatePayload
             'ceremony' => [
                 'id' => $ceremony->id,
                 'name' => $ceremony->name,
+                'theme' => StageTheme::forCeremony($ceremony),
             ],
             'state' => [
                 'version' => $state->version,
@@ -87,6 +88,7 @@ final class StageStatePayload
             'ceremony' => [
                 'id' => $ceremony->id,
                 'name' => $ceremony->name,
+                'theme' => StageTheme::forCeremony($ceremony),
             ],
             'state' => [
                 'version' => $version,

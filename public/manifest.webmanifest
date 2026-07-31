@@ -1,0 +1,66 @@
+{
+    "id": "/",
+    "name": "Graduation Stage System",
+    "short_name": "Graduation Ops",
+    "description": "Local graduation ceremony preparation, scanning, stage control, and audience presentation.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#f1eee6",
+    "theme_color": "#0c2925",
+    "orientation": "any",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "/icons/gss-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/gss-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/gss-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Arrival scanner",
+            "short_name": "Scanner",
+            "url": "/scanner",
+            "icons": [
+                {
+                    "src": "/icons/gss-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Stage control",
+            "short_name": "Stage control",
+            "url": "/stage-control",
+            "icons": [
+                {
+                    "src": "/icons/gss-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Ceremony readiness",
+            "short_name": "Readiness",
+            "url": "/admin",
+            "icons": [
+                {
+                    "src": "/icons/gss-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ]
+}

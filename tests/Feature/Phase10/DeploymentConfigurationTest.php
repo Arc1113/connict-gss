@@ -19,6 +19,9 @@ class DeploymentConfigurationTest extends TestCase
         $this->assertStringContainsString('APP_ENV=production', $env);
         $this->assertStringContainsString('APP_DEBUG=false', $env);
         $this->assertStringContainsString('APP_BIND_HOST=0.0.0.0', $env);
+        $this->assertStringContainsString('APP_URL=https://', $env);
+        $this->assertStringContainsString('GSS_HTTPS_HOST=', $env);
+        $this->assertStringContainsString('VITE_REVERB_SCHEME=https', $env);
         $this->assertStringContainsString('REVERB_HOST=reverb', $env);
         $this->assertStringContainsString('REVERB_FORWARD_PORT=8080', $env);
         $this->assertStringContainsString('VITE_REVERB_HOST=', $env);
@@ -36,10 +39,24 @@ class DeploymentConfigurationTest extends TestCase
         $this->assertStringContainsString('${APP_BIND_HOST:-127.0.0.1}:${APP_FORWARD_PORT:-8000}:8000', $compose);
         $this->assertStringContainsString('${APP_BIND_HOST:-127.0.0.1}:${REVERB_FORWARD_PORT:-8080}:8080', $compose);
         $this->assertStringContainsString('restart: unless-stopped', $deploy);
+        $this->assertStringContainsString('caddy:2.10-alpine', $deploy);
+        $this->assertStringContainsString('${HTTPS_FORWARD_PORT:-443}:443', $deploy);
         $this->assertStringNotContainsString('vite:', $deploy);
         $this->assertStringContainsString('TCP `8000`', $networkPlan);
         $this->assertStringContainsString('TCP `8080`', $networkPlan);
         $this->assertStringContainsString('PostgreSQL must not be reachable', $networkPlan);
+    }
+
+    public function test_php_upload_limits_support_the_validated_local_media_package(): void
+    {
+        $uploads = $this->readProjectFile('docker/php/uploads.ini');
+        $developmentImage = $this->readProjectFile('docker/php/Dockerfile');
+        $deploymentImage = $this->readProjectFile('docker/php/Dockerfile.deploy');
+
+        $this->assertStringContainsString('upload_max_filesize=256M', $uploads);
+        $this->assertStringContainsString('post_max_size=260M', $uploads);
+        $this->assertStringContainsString('COPY docker/php/uploads.ini', $developmentImage);
+        $this->assertStringContainsString('COPY docker/php/uploads.ini', $deploymentImage);
     }
 
     public function test_deployment_scripts_have_help_text_and_avoid_destructive_commands(): void
@@ -49,6 +66,8 @@ class DeploymentConfigurationTest extends TestCase
             'scripts/gss-stop.sh',
             'scripts/gss-health-check.sh',
             'scripts/gss-build-release.sh',
+            'scripts/gss-export-local-ca.sh',
+            'scripts/gss-install-service.sh',
         ];
 
         foreach ($scripts as $script) {
@@ -90,6 +109,7 @@ class DeploymentConfigurationTest extends TestCase
         $deployment = $this->readProjectFile('docs/deployment.md');
         $deviceSetup = $this->readProjectFile('docs/device-setup.md');
         $networkPlan = $this->readProjectFile('docs/network-plan.md');
+        $pwa = $this->readProjectFile('docs/pwa-and-autostart.md');
 
         $this->assertStringContainsString('Startup workflow', $deployment);
         $this->assertStringContainsString('Shutdown workflow', $deployment);
@@ -104,6 +124,8 @@ class DeploymentConfigurationTest extends TestCase
         $this->assertStringContainsString('Network fallback order', $networkPlan);
         $this->assertStringContainsString('Cold standby network switch', $networkPlan);
         $this->assertStringContainsString('No Vite development port is required', $networkPlan);
+        $this->assertStringContainsString('automatic server startup', $pwa);
+        $this->assertStringContainsString('does not cache authenticated Inertia pages', $pwa);
     }
 
     public function test_deployment_secrets_backups_and_visual_evidence_are_excluded_from_artifacts(): void

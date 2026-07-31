@@ -2,24 +2,14 @@
 
 namespace Tests\Feature;
 
-use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
-    public function test_the_home_page_is_rendered_through_inertia(): void
+    public function test_the_home_page_sends_operators_to_login(): void
     {
         $this->withoutVite();
 
-        $response = $this->get('/');
-
-        $response
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Welcome')
-                ->where('appName', 'Graduation Stage System')
-                ->where('auth.user', null)
-                ->missing('phase')
-                ->missing('stack'));
+        $this->get('/')->assertRedirect('/login');
     }
 }

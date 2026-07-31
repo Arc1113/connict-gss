@@ -7,6 +7,7 @@ import process from 'node:process';
 const repositoryPath = process.cwd();
 const applicationUrl = process.env.GSS_APP_URL ?? 'http://127.0.0.1:8001';
 const password = process.env.GSS_SEED_PASSWORD;
+const reverbPort = Number(process.env.GSS_REVERB_PORT ?? '8080');
 const chromePath = '/usr/bin/google-chrome';
 const evidencePath = join(repositoryPath, 'docs', 'evidence', 'phase-11');
 const profilesPath = mkdtempSync(join(tmpdir(), 'gss-phase11-browser-'));
@@ -258,7 +259,7 @@ try {
     await postJson(control.client, '/stage/automatic/resume', {}, 200);
 
     restartService('reverb');
-    await waitForPort(8080);
+    await waitForPort(reverbPort);
     await scan(scanner.client, 'GSS-RC1-THETA');
     await control.client.navigate(`${applicationUrl}/stage-control`);
     await stage.client.navigate(`${applicationUrl}/stage`);
@@ -378,7 +379,7 @@ async function login(client, email) {
         return { status: response.status, url: response.url };
     })()`);
 
-    if (result.status !== 200 || !result.url.endsWith('/dashboard')) {
+    if (result.status !== 200 || result.url.endsWith('/login')) {
         throw new Error(`Login failed for ${email}: ${JSON.stringify(result)}`);
     }
 }
@@ -450,6 +451,34 @@ async function inspectAdminReadiness(admin, encoder) {
         await admin.waitFor('document.body.innerText.length > 200');
         await assertNoHorizontalOverflow(admin, route);
     }
+
+    await admin.navigate(`${applicationUrl}/dashboard`);
+    await admin.waitFor('document.querySelector(".app-shell") !== null');
+    await captureAt(admin, 'overview-workspace-1440x900.png', 1440, 900);
+
+    await admin.evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', {
+        bubbles: true,
+        ctrlKey: true,
+        key: 'k',
+    }))`);
+    await admin.waitFor(`document.querySelector('.command-dialog input') === document.activeElement`);
+    await admin.evaluate(`new Promise((resolve) => setTimeout(resolve, 250))`);
+    await captureAt(admin, 'overview-command-palette-1440x900.png', 1440, 900);
+    await admin.evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', {
+        bubbles: true,
+        key: 'Escape',
+    }))`);
+    await admin.waitFor(`document.querySelector('.command-dialog') === null`);
+
+    await admin.navigate(`${applicationUrl}/admin/students`);
+    await captureAt(admin, 'graduates-table-1440x900.png', 1440, 900);
+    await admin.evaluate(`document.querySelector('.pwa-status-dismiss')?.click()`);
+    await admin.setViewport(390, 844);
+    await admin.evaluate(`document.querySelector('.app-toolbar-page > button')?.click()`);
+    await admin.waitFor(`document.querySelector('.app-shell')?.dataset.mobileOpen === 'true'`);
+    await captureAt(admin, 'graduates-mobile-navigation-390x844.png', 390, 844);
+    await admin.evaluate(`document.querySelector('.app-sidebar-scrim')?.click()`);
+    await admin.setViewport(1440, 900);
 
     await encoder.navigate(`${applicationUrl}/admin/backups`);
     await encoder.waitFor('document.body.innerText.includes("403") || document.body.innerText.includes("Forbidden")');

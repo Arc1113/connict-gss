@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { observeEchoConnection } from '../lib/echo';
 import { requestJson } from '../lib/http';
+import OperationCommandMenu from '../components/OperationCommandMenu';
 
 const INITIAL_FEEDBACK = {
     status: 'ready',
@@ -400,11 +401,14 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
         <>
             <Head title="Scanner" />
 
-            <main className="scanner-page">
+            <a className="skip-link" href="#scanner-content">
+                Skip to scanner
+            </a>
+
+            <main className="scanner-page" id="scanner-content">
                 <section className="scanner-shell" aria-labelledby="scanner-heading">
                     <header className="scanner-header">
                         <div>
-                            <p className="scanner-kicker">Scanner readiness</p>
                             <h1 id="scanner-heading">
                                 {submitting ? 'Processing scan' : canScan ? 'Ready for the next graduate' : 'Scanner stopped'}
                             </h1>
@@ -422,9 +426,12 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                                 </strong>
                             </p>
                         </div>
-                        <Link className="secondary-action" href="/dashboard">
-                            Return to operations
-                        </Link>
+                        <nav aria-label="Scanner navigation">
+                            <OperationCommandMenu />
+                            <Link className="secondary-action" href="/dashboard">
+                                Return to operations
+                            </Link>
+                        </nav>
                     </header>
 
                     <ul className="scanner-system-status" aria-label="Scanner service status">
@@ -481,7 +488,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                             {submitting ? 'Processing…' : 'Process scan'}
                         </button>
                         <p id="scanner-help">
-                            USB scanners normally submit with Enter. Keyboard entry remains available.
+                            USB scanner or keyboard entry.
                         </p>
                     </form>
 
@@ -506,9 +513,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                         <summary>QR will not scan? Use controlled lookup</summary>
                         <div className="scanner-fallback-body">
                             <p>
-                                Use this only after cleaning and retrying the printed
-                                card. Verify the graduate aloud before processing the
-                                selection.
+                                Verify the graduate aloud before processing.
                             </p>
                             <form onSubmit={searchStudents}>
                                 <label htmlFor="graduate-lookup">

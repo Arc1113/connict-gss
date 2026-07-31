@@ -67,6 +67,14 @@ export default function StudentImportSummary({
                         <dd>{summary.created_count.toLocaleString()}</dd>
                     </div>
                     <div>
+                        <dt>Photos imported</dt>
+                        <dd>{(summary.photo_count ?? 0).toLocaleString()}</dd>
+                    </div>
+                    <div>
+                        <dt>Audio imported</dt>
+                        <dd>{(summary.audio_count ?? 0).toLocaleString()}</dd>
+                    </div>
+                    <div>
                         <dt>Updated</dt>
                         <dd>{summary.updated_count.toLocaleString()}</dd>
                     </div>
@@ -105,8 +113,9 @@ export default function StudentImportSummary({
             </section>
 
             <p className="admin-import-next-step">
-                Media preparation and QR artifact printing remain separate future-phase
-                workflows.
+                Imported audio remains in “Uploaded” status. Review and approve it in
+                Audio Readiness before ceremony playback. QR printing remains a separate
+                preparation step.
             </p>
         </AdminLayout>
     );

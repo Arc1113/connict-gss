@@ -12,6 +12,8 @@ use App\Models\StageState;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -108,6 +110,65 @@ class CeremonyAdministrationTest extends TestCase
 
         $this->assertDatabaseCount('ceremonies', 0);
         $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_stage_theme_and_local_brand_assets_are_saved_and_exposed_to_the_audience_display(): void
+    {
+        Storage::fake('public');
+        $theme = [
+            'preset' => 'classic',
+            'layout' => 'split',
+            'background_color' => '#112233',
+            'surface_color' => '#f5f1e8',
+            'text_color' => '#ffffff',
+            'accent_color' => '#d7b56d',
+            'show_photo' => true,
+        ];
+        $png = (string) base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+            true,
+        );
+
+        $this->actingAs($this->administrator)
+            ->post('/admin/ceremonies', $this->payload([
+                'status' => CeremonyStatus::Active->value,
+                'stage_theme' => $theme,
+                'stage_logo' => UploadedFile::fake()->createWithContent('logo.png', $png),
+                'stage_background' => UploadedFile::fake()->createWithContent('background.png', $png),
+            ]))
+            ->assertRedirect();
+
+        $ceremony = Ceremony::query()->sole();
+        $this->assertEquals($theme, $ceremony->stage_theme);
+        $this->assertStringStartsWith('storage/ceremonies/theme/logos/', $ceremony->stage_logo_path);
+        $this->assertStringStartsWith('storage/ceremonies/theme/backgrounds/', $ceremony->stage_background_path);
+
+        Storage::disk('public')->assertExists(
+            substr($ceremony->stage_logo_path, strlen('storage/')),
+        );
+        Storage::disk('public')->assertExists(
+            substr($ceremony->stage_background_path, strlen('storage/')),
+        );
+
+        $this->get('/stage')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Stage')
+                ->where('ceremony.theme.preset', 'classic')
+                ->where('ceremony.theme.layout', 'split')
+                ->where('ceremony.theme.background_color', '#112233')
+                ->where(
+                    'ceremony.theme.logo_url',
+                    fn (string $url): bool => str_starts_with(
+                        $url,
+                        '/storage/ceremonies/theme/logos/',
+                    ),
+                ));
+
+        $this->getJson('/stage/state')
+            ->assertOk()
+            ->assertJsonPath('ceremony.theme.preset', 'classic')
+            ->assertJsonPath('ceremony.theme.layout', 'split');
     }
 
     public function test_a_second_active_ceremony_is_rejected_without_changing_either_record(): void
