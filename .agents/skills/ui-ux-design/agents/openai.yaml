@@ -1,4 +1,0 @@
-interface:
-  display_name: "GSS UI/UX Design"
-  short_description: "Plan deliberate Graduation Stage System screens"
-  default_prompt: "Use $ui-ux-design to plan a Graduation Stage System screen before implementation."

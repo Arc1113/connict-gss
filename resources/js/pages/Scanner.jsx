@@ -69,9 +69,13 @@ function ceremonyUnavailableFeedback(ceremonyStatus) {
 
 function rejectionFeedback(status, fallbackMessage) {
     const content = REJECTION_FEEDBACK[status];
+    const feedbackStatus =
+        status === 'already_queued' || status === 'already_presenting'
+            ? 'duplicate_active'
+            : status;
 
     return {
-        status,
+        status: feedbackStatus,
         tone: 'rejected',
         title: content?.title ?? 'Scan not accepted',
         message:
@@ -201,7 +205,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 setLastAccepted('Graduate information unavailable');
             } else {
                 setFeedback({
-                    status: 'queued',
+                    status: data.automatically_presented ? 'accepted' : 'stage_busy',
                     tone: 'accepted',
                     title: data.automatically_presented
                         ? 'Queued and presented automatically'

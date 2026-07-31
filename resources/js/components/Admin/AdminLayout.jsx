@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/react';
 function NavLink({ active, children, href }) {
     return (
         <Link
+            aria-current={active ? 'page' : undefined}
             className={`admin-nav-link${active ? ' admin-nav-link-active' : ''}`}
             href={href}
         >

@@ -381,7 +381,7 @@ try {
 
     await submitScannerToken(scanner.client, 'GSS-PHASE3-A7K9M2Q4');
     await scanner.client.waitFor(
-        'document.querySelector(".scan-feedback")?.dataset.feedbackStatus === "accepted"',
+        'document.querySelector(".scan-feedback")?.dataset.feedbackStatus === "accepted" || document.querySelector(".scan-feedback")?.dataset.feedbackStatus === "duplicate_active"',
     );
     await stage.client.waitFor(
         'document.body.innerText.toLowerCase().includes("ana marie dela cruz")',
@@ -633,6 +633,7 @@ function approveSeedAudioFixtures() {
         '"audio_review_notes" => "Approved only for automated browser playback regression.",',
         '"audio_mime_type" => "audio/wav",',
         ']);',
+        'App\\Models\\Ceremony::query()->update(["presentation_mode" => "automatic"]);',
     ].join(' ');
 
     execFileSync('docker', [

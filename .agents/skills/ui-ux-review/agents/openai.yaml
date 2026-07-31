@@ -1,4 +1,0 @@
-interface:
-  display_name: "GSS UI/UX Review"
-  short_description: "Review Graduation Stage System screen usability"
-  default_prompt: "Use $ui-ux-review to inspect and prioritize corrections for an implemented screen."
