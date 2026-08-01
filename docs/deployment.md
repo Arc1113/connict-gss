@@ -72,6 +72,7 @@ APP_URL=https://SERVER_LAN_IP
 APP_BIND_HOST=0.0.0.0
 APP_FORWARD_PORT=8000
 GSS_HTTPS_HOST=SERVER_LAN_IP
+HTTP_FORWARD_PORT=80
 HTTPS_FORWARD_PORT=443
 
 DB_CONNECTION=pgsql
@@ -102,6 +103,7 @@ connect to the same hostname they used to load the page. Do not compile
 | Port | Purpose | Exposure |
 | ---: | --- | --- |
 | TCP `443` | Installed PWA, Laravel HTTP, and Reverb WebSocket | Ceremony LAN only |
+| TCP `80` | Restricted phone onboarding and public CA download | Ceremony LAN only |
 | TCP `8000` | Laravel HTTP | Server loopback only |
 | TCP `8080` | Reverb WebSocket | Server loopback only |
 | TCP `54329` → container `5432` | PostgreSQL maintenance from server | `127.0.0.1` only |
@@ -266,9 +268,11 @@ Authoritative recovery reads come from HTTP/PostgreSQL.
 
 ## Security notes
 
-This deployment uses a Caddy-managed local certificate authority. Export and
-trust that certificate only on approved ceremony workstations. Treat the
-ceremony LAN as private:
+This deployment uses a Caddy-managed local certificate authority. Startup
+publishes only its public certificate for the restricted phone-enrollment
+route; the private CA key remains inside Caddy. Install and trust the public
+certificate only on approved ceremony devices. Treat the ceremony LAN as
+private:
 
 - use a dedicated router;
 - do not allow guest users;

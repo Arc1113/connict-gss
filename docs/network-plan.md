@@ -43,10 +43,13 @@ If the server is `192.168.50.10`:
 | Stage | `https://192.168.50.10/stage` |
 | Stage control | `https://192.168.50.10/stage-control` |
 | Admin | `https://192.168.50.10/admin` |
+| Phone enrollment | `http://192.168.50.10/connect-phone` |
 | Reverb | `wss://192.168.50.10` |
 
 ## Required ports
 
+- TCP `80`: phone onboarding and public local-CA download only; every other
+  request redirects to HTTPS.
 - TCP `443`: local HTTPS proxy for Laravel and Reverb clients.
 - TCP `8000`: Laravel HTTP on server loopback only.
 - TCP `8080`: Reverb WebSocket on server loopback only.
@@ -94,6 +97,7 @@ Review before applying:
 
 ```bash
 sudo ufw allow from 192.168.50.0/24 to any port 443 proto tcp
+sudo ufw allow from 192.168.50.0/24 to any port 80 proto tcp
 sudo ufw deny 5432/tcp
 sudo ufw deny 54329/tcp
 ```
@@ -124,6 +128,8 @@ Never leave primary and standby advertising the same server URL simultaneously.
 ## Manual verification checklist
 
 - Scanner reaches `/up` and `/scanner` by server LAN IP.
+- An unenrolled phone reaches only `/connect-phone` and its certificate download
+  over HTTP; other HTTP paths redirect to HTTPS.
 - Stage reaches `/up` and `/stage` by server LAN IP.
 - Stage-control reaches `/stage-control` by server LAN IP.
 - Reverb connects from scanner/stage network.

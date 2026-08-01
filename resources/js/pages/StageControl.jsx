@@ -45,7 +45,7 @@ function connectionCopy(state) {
         return 'Connecting to live updates';
     }
 
-    return 'Live updates disconnected — use refresh before the next command';
+    return 'Live updates disconnected — reconnecting automatically';
 }
 
 export default function StageControl({ ceremony, ceremonyStatus }) {
@@ -61,7 +61,21 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
     const connectedRef = useRef(false);
     const reconnectRef = useRef(false);
     const commandLockRef = useRef(false);
+    const confirmationDialogRef = useRef(null);
     const confirmationCancelRef = useRef(null);
+    const confirmationTriggerRef = useRef(null);
+
+    const closeConfirmation = useCallback(() => {
+        setConfirmation(null);
+
+        window.requestAnimationFrame(() => {
+            const trigger = confirmationTriggerRef.current;
+
+            if (trigger?.isConnected && !trigger.disabled) {
+                trigger.focus();
+            }
+        });
+    }, []);
 
     const reconcile = useCallback(async (markLoaded = false) => {
         try {
@@ -171,17 +185,47 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
 
         confirmationCancelRef.current?.focus();
 
-        const closeConfirmation = (event) => {
+        const handleConfirmationKeyDown = (event) => {
             if (event.key === 'Escape') {
                 event.preventDefault();
-                setConfirmation(null);
+                closeConfirmation();
+
+                return;
+            }
+
+            if (event.key !== 'Tab') {
+                return;
+            }
+
+            const focusable = Array.from(
+                confirmationDialogRef.current?.querySelectorAll(
+                    'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+                ) ?? [],
+            );
+
+            if (focusable.length === 0) {
+                event.preventDefault();
+
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
             }
         };
 
-        window.addEventListener('keydown', closeConfirmation);
+        window.addEventListener('keydown', handleConfirmationKeyDown);
 
-        return () => window.removeEventListener('keydown', closeConfirmation);
-    }, [confirmation]);
+        return () =>
+            window.removeEventListener('keydown', handleConfirmationKeyDown);
+    }, [closeConfirmation, confirmation]);
 
     async function runCommand(action, url, body = null) {
         if (commandLockRef.current) {
@@ -219,8 +263,22 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
         }
     }
 
-    function requestConfirmation(action, url, message, body = null) {
-        setConfirmation({ action, url, message, body });
+    function requestConfirmation(
+        action,
+        url,
+        message,
+        body = null,
+        options = {},
+    ) {
+        confirmationTriggerRef.current = document.activeElement;
+        setConfirmation({
+            action,
+            url,
+            message,
+            body,
+            title: options.title ?? 'Confirm exceptional action',
+            confirmLabel: options.confirmLabel ?? 'Confirm action',
+        });
     }
 
     const current = control.current;
@@ -268,7 +326,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                 </header>
 
                 <section
-                    className="stage-control-status"
+                    className={`stage-control-status${automatic ? ' stage-control-status-automatic' : ''}`}
                     aria-label="Operational status"
                 >
                     <p>
@@ -289,6 +347,35 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                         <strong>Announcement</strong>
                         <span>{current?.student.audio_status?.stage_label ?? 'No current graduate'}</span>
                     </p>
+                    {automatic && (
+                        <p className="stage-control-automatic-command">
+                            <strong>Assisted automatic</strong>
+                            <span>
+                                {control.automatic_paused
+                                    ? 'Paused — scans wait in queue'
+                                    : 'Running — idle scans present'}
+                            </span>
+                            <button
+                                className="secondary-action"
+                                disabled={Boolean(pendingAction)}
+                                onClick={() =>
+                                    runCommand(
+                                        'automatic',
+                                        control.automatic_paused
+                                            ? '/stage/automatic/resume'
+                                            : '/stage/automatic/pause',
+                                    )
+                                }
+                                type="button"
+                            >
+                                {pendingAction === 'automatic'
+                                    ? 'Updating…'
+                                    : control.automatic_paused
+                                      ? 'Resume assisted automatic'
+                                      : 'Pause assisted automatic'}
+                            </button>
+                        </p>
+                    )}
                 </section>
 
                 {feedback && (
@@ -302,14 +389,16 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
 
                 {confirmation && (
                     <section
+                        ref={confirmationDialogRef}
                         aria-keyshortcuts="Escape"
+                        aria-modal="true"
                         className="stage-control-confirmation"
                         aria-labelledby="stage-confirmation-heading"
                         role="alertdialog"
                     >
                         <div>
                             <strong id="stage-confirmation-heading">
-                                Confirm exceptional action
+                                {confirmation.title}
                             </strong>
                             <p>{confirmation.message}</p>
                         </div>
@@ -317,7 +406,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                             <button
                                 ref={confirmationCancelRef}
                                 className="secondary-action"
-                                onClick={() => setConfirmation(null)}
+                                onClick={closeConfirmation}
                                 type="button"
                             >
                                 Cancel
@@ -326,7 +415,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                 className="stage-control-danger-action"
                                 onClick={() => {
                                     const command = confirmation;
-                                    setConfirmation(null);
+                                    closeConfirmation();
                                     void runCommand(
                                         command.action,
                                         command.url,
@@ -335,7 +424,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                 }}
                                 type="button"
                             >
-                                Confirm correction
+                                {confirmation.confirmLabel}
                             </button>
                         </div>
                     </section>
@@ -485,6 +574,10 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                                         expected_version:
                                                             control.version,
                                                     },
+                                                    {
+                                                        title: 'Confirm wrong-graduate correction',
+                                                        confirmLabel: 'Return graduate to queue',
+                                                    },
                                                 )
                                             }
                                             type="button"
@@ -535,36 +628,6 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                           : 'Show holding screen'}
                                 </button>
                             </div>
-
-                            {automatic && (
-                                <div className="stage-control-automatic">
-                                    <span>
-                                        <strong>Assisted automatic</strong>
-                                        <small>
-                                            An accepted scan presents only while the stage is idle. Completion always requires the stage operator.
-                                        </small>
-                                    </span>
-                                    <button
-                                        className="secondary-action"
-                                        disabled={Boolean(pendingAction)}
-                                        onClick={() =>
-                                            runCommand(
-                                                'automatic',
-                                                control.automatic_paused
-                                                    ? '/stage/automatic/resume'
-                                                    : '/stage/automatic/pause',
-                                            )
-                                        }
-                                        type="button"
-                                    >
-                                        {pendingAction === 'automatic'
-                                            ? 'Updating…'
-                                            : control.automatic_paused
-                                              ? 'Resume assisted automatic'
-                                              : 'Pause assisted automatic'}
-                                    </button>
-                                </div>
-                            )}
                         </section>
 
                         <section
@@ -690,6 +753,11 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                                                           'present-selected',
                                                           `/stage/present/${selected.id}`,
                                                           `Present ${selected.student.display_name} ahead of earlier waiting graduates? Queue order will otherwise remain unchanged.`,
+                                                          null,
+                                                          {
+                                                              title: 'Confirm out-of-order presentation',
+                                                              confirmLabel: 'Present selected graduate',
+                                                          },
                                                       )
                                                     : runCommand(
                                                           'present-selected',

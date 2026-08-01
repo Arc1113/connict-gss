@@ -80,6 +80,10 @@ class AppServiceProvider extends ServiceProvider
             fn (User $user): bool => $user->hasRole(UserRole::TechnicalOperator),
         );
         Gate::define(
+            'manage-device-connections',
+            fn (User $user): bool => $user->hasRole(UserRole::TechnicalOperator),
+        );
+        Gate::define(
             'view-operational-logs',
             fn (User $user): bool => in_array($user->role, [
                 UserRole::Administrator,

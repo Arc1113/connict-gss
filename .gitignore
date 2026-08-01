@@ -30,5 +30,31 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# Browser visual-QA screenshots are generated locally.
+# Browser visual-QA binary evidence is generated locally; keep the Markdown index.
+/docs/evidence/full-system-qa/*
+!/docs/evidence/full-system-qa/*.md
 /docs/evidence/**/*.png
+/docs/evidence/**/*.zip
+/docs/evidence/**/*.webm
+/playwright-report/
+/test-results/
+
+# Ignore common picture and video assets.
+*.jpg
+*.jpeg*
+*.png
+*.gif
+*.webp
+*.bmp
+*.tiff
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+/.jpeg
+/.png
+
+# Keep intentional, stable Playwright visual baselines.
+!/tests/Browser/__screenshots__/*.png

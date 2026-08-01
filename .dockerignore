@@ -14,9 +14,11 @@ storage/framework/sessions/*
 storage/framework/testing
 storage/framework/views/*
 storage/logs/*
-docs/evidence/**/*.png
-docs/evidence/**/*.webm
-docs/evidence/**/*.mp4
+docs/evidence
+docs/evidence/
+docs/evidence/**
+playwright-report
+test-results
 public/hot
 public/storage
 .phpunit.cache

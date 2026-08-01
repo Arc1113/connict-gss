@@ -1091,6 +1091,13 @@ Accept QR input continuously and communicate the result immediately.
 
 ## Required Behavior
 
+- Provide an explicit Camera / USB and keyboard capture-method switcher.
+- Preserve the selected capture method on the current device without storing QR values.
+- Camera mode requires an explicit operator action before requesting permission.
+- Camera mode shows a live preview, a centered target, camera state, and the next safe action.
+- Prefer the rear camera and expose camera or flashlight controls only when supported.
+- Switching away from Camera mode immediately releases the camera stream.
+- Camera frames remain on the device; only the decoded QR value enters the authenticated scan workflow.
 - Scanner input receives focus on entry.
 - Focus is restored after safe dialogs, navigation cancellation, and scan completion.
 - Enter submits the complete token.
@@ -1589,7 +1596,35 @@ Required verification:
 
 Mobile administration is secondary and may be limited.
 
-The Scanner, Stage Control, and Stage Display are desktop-first.
+Stage Control and Stage Display are desktop-first. Administration remains
+desktop-first. Scanner is desktop-first for USB operation and has one approved
+mobile operational mode for an authenticated phone camera scanner.
+
+Phone-camera Scanner verification:
+
+```text
+390×844     Compact phone portrait
+430×932     Large phone portrait
+844×390     Compact phone landscape
+932×430     Large phone landscape
+```
+
+The phone layout must keep capture mode, camera preview, current result, and the
+next safe action ahead of recent history. It must not turn administration pages
+into mobile-first card layouts.
+
+The desktop **Connect devices** workspace is the approved entry point for phone
+enrollment. It must show one scannable local setup address, certificate
+readiness, a human-verifiable certificate check code, and recovery guidance.
+The setup QR must never contain credentials, an authenticated session, graduate
+tokens, or ceremony commands.
+
+The phone onboarding page is a narrow operational exception served on the local
+HTTP port so a new device can obtain the public local CA certificate. It must be
+self-contained, must not load remote assets, must not accept credentials, and
+must send the operator to the HTTPS Scanner before authentication or camera use.
+Operating-system certificate trust and camera permission always require an
+explicit operator action.
 
 ## 20.2 Responsive Behavior
 
@@ -1618,6 +1653,11 @@ The PWA should feel installed:
 - avoid external font, icon, image, and script dependencies;
 - use install prompts sparingly;
 - do not interrupt ceremony operations with update prompts.
+
+After one-time technical installation, normal operation must not require a
+terminal. The server starts through the approved operating-system service, and
+the desktop launcher may start that service and open the application. Startup
+must never run unreviewed migrations or hide a failed health check.
 
 Application updates must not unexpectedly reload an active ceremony screen.
 

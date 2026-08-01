@@ -25,13 +25,10 @@ instruction to stop scanning and stage advancement.
    bash scripts/gss-start.sh --env-file .env.production --build --migrate
    ```
 
-4. Export Caddy's local certificate authority:
-
-   ```bash
-   bash scripts/gss-export-local-ca.sh --env-file .env.production
-   ```
-
-5. Install the exported certificate as a trusted root certificate on each
+4. The startup command automatically publishes Caddy's public local certificate
+   for the in-app phone enrollment workflow. It never publishes the CA private
+   key.
+5. Install the public certificate as a trusted root certificate on each
    approved scanner, stage-control, audience, and administration device.
 6. Open the HTTPS application address and confirm the browser reports a trusted
    secure connection.
@@ -42,7 +39,14 @@ instruction to stop scanning and stage advancement.
    ```
 
 The service starts the deployment after Docker and the network are ready. It
-does not run migrations at boot.
+does not run migrations at boot. The installer also adds a **Graduation Stage
+System** desktop launcher. The launcher checks the service, requests operating-
+system authorization if it must start the service, waits for `/up`, and opens
+the configured HTTPS application address.
+
+After this one-time technical setup, ordinary ceremony startup does not require
+a terminal. If the launcher cannot start the service, it stops and shows a
+desktop notification instead of running migrations or recovery commands.
 
 ## Workstation installation
 
@@ -58,6 +62,21 @@ Use a Chromium-based browser for the assigned ceremony workstations:
 
 The installed app may expose shortcuts for Scanner, Stage control, and Ceremony
 readiness. Server authorization still protects every route.
+
+## Phone enrollment
+
+1. Sign in on the server as an administrator or technical operator.
+2. Open **System → Connect devices**.
+3. Confirm **Ready for enrollment** is shown.
+4. Scan the setup QR with the phone. The QR contains only the local onboarding
+   address.
+5. On the phone, install and trust the public GSS certificate.
+6. Choose **Continue to secure scanner**, confirm HTTPS has no warning, and sign
+   in with the phone's named scanner-operator account.
+7. Install the PWA, open Camera mode, and grant camera permission.
+
+The temporary HTTP onboarding page never accepts credentials and exposes no
+ceremony data. Do not sign in until the phone reaches the HTTPS scanner.
 
 ## Updates
 

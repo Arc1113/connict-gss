@@ -1,14 +1,37 @@
+{
+	default_sni {$GSS_HTTPS_HOST}
+}
+
+http://{$GSS_HTTPS_HOST} {
+	@phone_onboarding path /connect-phone /connect-phone/local-ca.crt
+	handle @phone_onboarding {
+		reverse_proxy app:8000
+	}
+
+	handle {
+		redir {$GSS_APP_URL}{uri} permanent
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Permissions-Policy "camera=(), microphone=()"
+		Referrer-Policy no-referrer
+	}
+}
+
 https://{$GSS_HTTPS_HOST} {
-    tls internal
-    encode zstd gzip
+	tls internal
+	encode zstd gzip
 
-    @reverb path /app/* /apps/*
-    reverse_proxy @reverb reverb:8080
-    reverse_proxy app:8000
+	@reverb path /app/* /apps/*
+	reverse_proxy @reverb reverb:8080
+	reverse_proxy app:8000
 
-    header {
-        X-Content-Type-Options nosniff
-        X-Frame-Options SAMEORIGIN
-        Referrer-Policy same-origin
-    }
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Permissions-Policy "camera=(self), microphone=(self)"
+		Referrer-Policy same-origin
+	}
 }

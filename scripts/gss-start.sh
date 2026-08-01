@@ -129,6 +129,11 @@ if ! php -r "exit(@fsockopen('127.0.0.1', (int) '${https_port}') ? 0 : 1);" >/de
     exit 1
 fi
 
+printf 'Publishing the local HTTPS certificate for phone enrollment...\n'
+bash scripts/gss-export-local-ca.sh \
+    --env-file "${env_file}" \
+    --output storage/app/gss-certificates/gss-local-ca.crt
+
 printf 'Graduation Stage System is ready.\n'
 printf 'Application: %s\n' "${app_url}"
 printf 'Scanner:     %s/scanner\n' "${app_url}"

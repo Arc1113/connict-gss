@@ -2,6 +2,105 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 let echoInstance;
+let recoveryTimer;
+let recoveryAttempt = 0;
+let recoveryActive = false;
+let recoveryListenersBound = false;
+
+const RECOVERABLE_STATES = new Set(['disconnected', 'failed', 'unavailable']);
+const MAX_RECOVERY_DELAY = 8000;
+
+function stopRecovery() {
+    if (recoveryTimer) {
+        window.clearTimeout(recoveryTimer);
+        recoveryTimer = undefined;
+    }
+
+    recoveryAttempt = 0;
+    recoveryActive = false;
+}
+
+function scheduleRecovery(immediate = false) {
+    if (
+        !recoveryActive
+        || recoveryTimer
+        || !echoInstance
+        || navigator.onLine === false
+    ) {
+        return;
+    }
+
+    const pusher = echoInstance.connector.pusher;
+
+    if (pusher.connection.state === 'connected') {
+        stopRecovery();
+
+        return;
+    }
+
+    const delay = immediate
+        ? 0
+        : Math.min(1000 * (2 ** recoveryAttempt), MAX_RECOVERY_DELAY);
+
+    recoveryTimer = window.setTimeout(() => {
+        recoveryTimer = undefined;
+
+        if (pusher.connection.state === 'connected') {
+            stopRecovery();
+
+            return;
+        }
+
+        recoveryAttempt += 1;
+        pusher.disconnect();
+        pusher.connect();
+        scheduleRecovery();
+    }, delay);
+}
+
+function handleRecoveryStateChange({ current }) {
+    if (current === 'connected') {
+        stopRecovery();
+
+        return;
+    }
+
+    if (RECOVERABLE_STATES.has(current)) {
+        recoveryActive = true;
+    }
+
+    if (recoveryActive) {
+        scheduleRecovery();
+    }
+}
+
+function startRecoveryPolicy() {
+    if (recoveryListenersBound || !echoInstance) {
+        return;
+    }
+
+    recoveryListenersBound = true;
+    echoInstance.connector.pusher.connection.bind(
+        'state_change',
+        handleRecoveryStateChange,
+    );
+
+    window.addEventListener('online', () => {
+        if (echoInstance.connector.pusher.connection.state !== 'connected') {
+            recoveryActive = true;
+            scheduleRecovery(true);
+        }
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (
+            document.visibilityState === 'visible'
+            && echoInstance.connector.pusher.connection.state !== 'connected'
+        ) {
+            recoveryActive = true;
+            scheduleRecovery(true);
+        }
+    });
+}
 
 export function getEcho() {
     if (echoInstance) {
@@ -40,7 +139,9 @@ export function getEcho() {
         enabledTransports: ['ws', 'wss'],
         authEndpoint: '/broadcasting/auth',
         disableStats: true,
+        unavailableTimeout: 5000,
     });
+    startRecoveryPolicy();
 
     return echoInstance;
 }

@@ -57,7 +57,7 @@ Preparation:
 5. Confirm Docker is installed and images/dependencies are ready offline.
 6. Confirm production assets exist.
 7. Confirm backups are stored outside public web directories.
-8. Run:
+8. During the one-time technical installation, run:
 
    ```bash
    bash scripts/gss-start.sh --env-file .env.production --skip-migrate
@@ -65,6 +65,15 @@ Preparation:
    ```
 
 9. Keep terminal windows away from any audience-facing display.
+10. Install automatic startup and the desktop launcher once:
+
+    ```bash
+    sudo bash scripts/gss-install-service.sh --env-file .env.production
+    ```
+
+For later rehearsals and ceremony operation, turn on the server and open
+**Graduation Stage System** from the desktop application menu. Normal startup
+does not require a terminal.
 
 ## Scanner laptop
 
@@ -96,6 +105,61 @@ Log back in if the session expired
 Confirm input focus
 Resume scanning
 ```
+
+## Phone camera scanner
+
+The phone is a complete scanner workstation. It decodes camera frames locally
+and sends only the decoded QR value through the same authenticated `/scans`
+workflow used by the USB scanner. It is not paired to the scanner laptop, and
+it does not upload photos or video.
+
+One-time setup:
+
+1. Connect the phone to the dedicated ceremony LAN.
+2. On the server, sign in as an administrator or technical operator and open
+   **System → Connect devices**.
+3. Scan the displayed setup QR with the phone.
+4. Choose **Download GSS certificate**, install it, and enable full trust. Check
+   that the short certificate code agrees with the trusted server screen.
+5. Choose **Continue to secure scanner**. Resolve every certificate warning
+   before continuing. Camera access is unavailable on an insecure LAN page.
+6. Sign in with the named scanner-operator account assigned to this phone.
+7. Install the GSS PWA from the browser and open it from the home screen.
+8. Open `/scanner`, choose **Camera**, then choose **Start camera**.
+9. Allow camera access when the operating system asks.
+10. Confirm that the live view uses the rear camera. Use the Camera selector if
+   the browser exposes more than one lens.
+11. Scan a valid, invalid, duplicate, and ineligible rehearsal card.
+12. Switch to **USB / keyboard** and confirm the camera privacy indicator turns
+    off immediately.
+
+Ceremony operation:
+
+- Keep the live QR view visible and place one code inside the target at a time.
+- Wait for the accepted or rejected result before presenting another card.
+- A stationary card is suppressed after its first confirmed result. Move to the
+  next card; the operator does not need to restart the camera.
+- If a request is not confirmed, automatic camera scanning pauses. Check the
+  server connection and choose **Retry same QR** once; do not assume the first
+  request was saved.
+- The last capture mode is remembered only on that device. QR values are never
+  stored in browser storage.
+
+Camera recovery:
+
+| State | Operator action |
+| --- | --- |
+| Trusted HTTPS required | Install and trust the exported local CA, then reopen the HTTPS PWA. |
+| Permission blocked | Allow Camera in the browser site settings, then choose **Try camera again**. |
+| Camera already in use | Close other camera apps and tabs, then retry. |
+| No camera found | Confirm the device camera works or switch to **USB / keyboard**. |
+| Camera paused after backgrounding | Return to the PWA and wait for **Camera ready**. |
+| Server request failed | Restore the local server connection, then choose **Retry same QR**. |
+
+Before event day, physically rehearse current Android Chrome and iPhone
+Safari/installed-PWA operation with internet disconnected, real printed cards,
+venue lighting, glare, phone rotation, rapid graduates, and simultaneous phone
+and USB scanners.
 
 ## Stage laptop
 

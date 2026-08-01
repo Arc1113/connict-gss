@@ -28,10 +28,15 @@ final class RestoreVerifier
 
         $manifest = json_decode(file_get_contents($manifestPath), true, flags: JSON_THROW_ON_ERROR);
         $this->validateChecksums($backupPath, $manifest['checksums'] ?? []);
+        $connection = PostgresConnection::configured();
 
         try {
-            $this->runDatabaseCommand("createdb -U \"\$POSTGRES_USER\" {$database}");
-            $this->restoreDatabase($database, $backupPath.'/'.($manifest['database_dump'] ?? 'database.sql'));
+            $this->runDatabaseCommand('createdb', $database, $connection);
+            $this->restoreDatabase(
+                $database,
+                $backupPath.'/'.($manifest['database_dump'] ?? 'database.sql'),
+                $connection,
+            );
 
             File::deleteDirectory($mediaTarget);
             File::copyDirectory($backupPath.'/'.($manifest['media_directory'] ?? 'media'), $mediaTarget);
@@ -39,13 +44,13 @@ final class RestoreVerifier
             return [
                 'status' => 'passed',
                 'database' => $database,
-                'student_count' => $this->count($database, 'students'),
-                'ceremony_count' => $this->count($database, 'ceremonies'),
+                'student_count' => $this->count($database, 'students', $connection),
+                'ceremony_count' => $this->count($database, 'ceremonies', $connection),
                 'media_files' => is_dir($mediaTarget) ? count(File::allFiles($mediaTarget)) : 0,
             ];
         } finally {
             try {
-                $this->runDatabaseCommand("dropdb -U \"\$POSTGRES_USER\" --if-exists {$database}", throw: false);
+                $this->runDatabaseCommand('dropdb', $database, $connection, throw: false);
             } finally {
                 File::deleteDirectory($mediaTarget);
             }
@@ -78,23 +83,26 @@ final class RestoreVerifier
         }
     }
 
-    private function restoreDatabase(string $database, string $dumpPath): void
-    {
+    private function restoreDatabase(
+        string $database,
+        string $dumpPath,
+        PostgresConnection $connection,
+    ): void {
         if (! is_file($dumpPath) || filesize($dumpPath) === 0) {
             throw new RuntimeException('Database dump is missing or empty.');
         }
 
-        $process = new Process([
-            'docker',
-            'compose',
-            'exec',
-            '-T',
-            'database',
-            'sh',
-            '-lc',
-            "psql -v ON_ERROR_STOP=1 -U \"\$POSTGRES_USER\" -d {$database}",
-        ], base_path());
-        $process->setInput(file_get_contents($dumpPath));
+        $dumpPath = realpath($dumpPath);
+
+        if ($dumpPath === false) {
+            throw new RuntimeException('Database dump path could not be resolved.');
+        }
+
+        $process = new Process(array_merge(
+            ['psql'],
+            $connection->arguments($database),
+            ['--set=ON_ERROR_STOP=1', '--file='.$dumpPath],
+        ), base_path(), $connection->environment());
         $process->setTimeout(120);
         $process->run();
 
@@ -103,18 +111,20 @@ final class RestoreVerifier
         }
     }
 
-    private function count(string $database, string $table): int
-    {
-        $process = new Process([
-            'docker',
-            'compose',
-            'exec',
-            '-T',
-            'database',
-            'sh',
-            '-lc',
-            "psql -tAc \"select count(*) from {$table}\" -U \"\$POSTGRES_USER\" -d {$database}",
-        ], base_path());
+    private function count(
+        string $database,
+        string $table,
+        PostgresConnection $connection,
+    ): int {
+        if (! in_array($table, ['students', 'ceremonies'], true)) {
+            throw new RuntimeException('Unsupported disposable restore table.');
+        }
+
+        $process = new Process(array_merge(
+            ['psql'],
+            $connection->arguments($database),
+            ['--tuples-only', '--no-align', '--command=select count(*) from '.$table],
+        ), base_path(), $connection->environment());
         $process->setTimeout(30);
         $process->run();
 
@@ -125,18 +135,24 @@ final class RestoreVerifier
         return (int) trim($process->getOutput());
     }
 
-    private function runDatabaseCommand(string $command, bool $throw = true): void
-    {
-        $process = new Process([
-            'docker',
-            'compose',
-            'exec',
-            '-T',
-            'database',
-            'sh',
-            '-lc',
-            $command,
-        ], base_path());
+    private function runDatabaseCommand(
+        string $command,
+        string $database,
+        PostgresConnection $connection,
+        bool $throw = true,
+    ): void {
+        $arguments = array_merge(
+            [$command],
+            $connection->arguments(),
+            ['--maintenance-db='.$connection->database],
+        );
+
+        if ($command === 'dropdb') {
+            $arguments[] = '--if-exists';
+        }
+
+        $arguments[] = $database;
+        $process = new Process($arguments, base_path(), $connection->environment());
         $process->setTimeout(60);
         $process->run();
 

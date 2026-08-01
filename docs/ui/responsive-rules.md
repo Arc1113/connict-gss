@@ -3,20 +3,22 @@
 Status: Phase 3A foundation  
 Updated: 2026-07-28
 
-Mobile support is not approved for scanner or stage. The layouts must work at
-the documented desktop/laptop minimums.
+Mobile support is approved only for the authenticated phone-camera Scanner and
+the restricted phone onboarding page. Stage and administration remain
+desktop-first.
 
 ## Required targets
 
 | Screen | Required viewports |
 | --- | --- |
-| Scanner | 1440×900, 1366×768, 1024×768 |
+| Scanner | 1440×900, 1366×768, 1024×768, 430×932, 390×844 |
 | Stage | 1920×1080, 1366×768 |
 | Future operator/admin screens | 1440×900, 1366×768, 1024×768 |
 
 ## Scanner
 
-- Minimum supported width: 1024px.
+- USB operation targets 1024px and wider. Camera operation also supports current
+  phone portrait and landscape viewports.
 - Readiness, active ceremony, token input, current result, and recovery action
   must remain visible without horizontal scrolling.
 - At 1440px and 1366px, input and process action may share a row.
@@ -28,6 +30,10 @@ the documented desktop/laptop minimums.
   before secondary history.
 - Long names and messages use natural wrapping and `overflow-wrap` as a final
   safeguard.
+- On a phone, capture mode, camera preview, current result, and recovery action
+  appear before recent scan history.
+- Camera controls use at least 44px touch targets and remain usable after phone
+  rotation.
 
 ## Stage
 

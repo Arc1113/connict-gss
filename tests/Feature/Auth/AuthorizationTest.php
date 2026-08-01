@@ -94,6 +94,7 @@ class AuthorizationTest extends TestCase
             'operate-scanner',
             'operate-stage',
             'manage-technical-operations',
+            'manage-device-connections',
         ] as $ability) {
             $this->assertTrue(Gate::forUser($administrator)->allows($ability));
         }

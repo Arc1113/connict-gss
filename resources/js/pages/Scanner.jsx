@@ -3,6 +3,25 @@ import { useEffect, useRef, useState } from 'react';
 import { observeEchoConnection } from '../lib/echo';
 import { requestJson } from '../lib/http';
 import OperationCommandMenu from '../components/OperationCommandMenu';
+import ScannerCamera from '../components/ScannerCamera';
+
+const CAPTURE_MODE_KEY = 'gss.scanner.captureMode';
+
+const USB_CAPTURE_STATUS = {
+    label: 'USB scanner ready',
+    detail: 'Keyboard input is focused and ready.',
+    tone: 'ready',
+};
+
+function storedCaptureMode() {
+    try {
+        return window.localStorage.getItem(CAPTURE_MODE_KEY) === 'camera'
+            ? 'camera'
+            : 'usb';
+    } catch {
+        return 'usb';
+    }
+}
 
 const INITIAL_FEEDBACK = {
     status: 'ready',
@@ -144,10 +163,18 @@ function serverStatus(state) {
 
 export default function Scanner({ ceremony, ceremonyStatus }) {
     const inputRef = useRef(null);
+    const fallbackRef = useRef(null);
+    const lookupInputRef = useRef(null);
     const submissionLockRef = useRef(false);
+    const captureModeRef = useRef('usb');
+    const lastCameraTokenRef = useRef(null);
+    const retryCameraTokenRef = useRef(null);
     const sessionEventRef = useRef(0);
     const hasConnectedRef = useRef(false);
     const reconnectPendingRef = useRef(false);
+    const [captureMode, setCaptureMode] = useState(storedCaptureMode);
+    const [captureStatus, setCaptureStatus] = useState(USB_CAPTURE_STATUS);
+    const [cameraRetryAvailable, setCameraRetryAvailable] = useState(false);
     const [token, setToken] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [ceremonyAccepting, setCeremonyAccepting] = useState(Boolean(ceremony));
@@ -185,9 +212,15 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
     }
 
     useEffect(() => {
-        inputRef.current?.focus();
+        if (captureModeRef.current === 'usb') {
+            inputRef.current?.focus();
+        }
 
-        const refocus = () => inputRef.current?.focus();
+        const refocus = () => {
+            if (captureModeRef.current === 'usb') {
+                inputRef.current?.focus();
+            }
+        };
         const focusScannerShortcut = (event) => {
             const target = event.target;
             const isTyping =
@@ -195,7 +228,11 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 (target.isContentEditable ||
                     ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName));
 
-            if (event.key === '/' && !isTyping) {
+            if (
+                event.key === '/' &&
+                !isTyping &&
+                captureModeRef.current === 'usb'
+            ) {
                 event.preventDefault();
                 inputRef.current?.focus();
             }
@@ -226,8 +263,41 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
         };
     }, []);
 
-    function applyScanResult(data, manual = false) {
+    useEffect(() => {
+        captureModeRef.current = captureMode;
+
+        if (captureMode === 'usb') {
+            window.requestAnimationFrame(() => inputRef.current?.focus());
+        }
+    }, [captureMode]);
+
+    function changeCaptureMode(mode) {
+        if (submitting || mode === captureMode) {
+            return;
+        }
+
+        captureModeRef.current = mode;
+        setCaptureMode(mode);
+        setCameraRetryAvailable(false);
+        lastCameraTokenRef.current = null;
+        retryCameraTokenRef.current = null;
+
+        try {
+            window.localStorage.setItem(CAPTURE_MODE_KEY, mode);
+        } catch {
+            // The current mode still works when browser storage is unavailable.
+        }
+    }
+
+    function applyScanResult(data, source = 'usb') {
         setServerState(data.status === 'request_failed' ? 'unavailable' : 'available');
+
+        const manual = source === 'manual';
+        const sourceLabel = source === 'camera'
+            ? 'Camera'
+            : manual
+              ? 'Manual lookup'
+              : 'USB scanner';
 
         if (data.status === 'queued') {
             const displayName = data.student?.display_name?.trim();
@@ -242,7 +312,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 setLastAccepted('Graduate information unavailable');
                 recordSessionScan({
                     detail: 'Graduate information unavailable',
-                    label: 'Queued — verify record',
+                    label: `${sourceLabel} · queued — verify record`,
                     tone: 'warning',
                 });
             } else {
@@ -264,10 +334,10 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 recordSessionScan({
                     detail: displayName,
                     label: data.automatically_presented
-                        ? 'Presented automatically'
+                        ? `${sourceLabel} · presented automatically`
                         : manual
-                          ? 'Manual lookup queued'
-                          : `Queued · position ${data.queue_position}`,
+                          ? 'Manual lookup · queued'
+                          : `${sourceLabel} · queued · position ${data.queue_position}`,
                     tone: 'accepted',
                 });
             }
@@ -305,14 +375,12 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
         });
     }
 
-    async function submitScan(event) {
-        event.preventDefault();
-
+    async function processToken(submittedValue, source = 'usb', allowCameraRetry = false) {
         if (submissionLockRef.current || !canScan) {
             return;
         }
 
-        const submittedToken = token.trim();
+        const submittedToken = submittedValue.trim();
 
         if (!submittedToken) {
             setFeedback({
@@ -321,9 +389,23 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 title: 'Nothing scanned',
                 message: 'Place the cursor in the scan field, scan the QR code, then try again.',
             });
-            inputRef.current?.focus();
+            if (source === 'usb') {
+                inputRef.current?.focus();
+            }
 
             return;
+        }
+
+        if (
+            source === 'camera' &&
+            !allowCameraRetry &&
+            lastCameraTokenRef.current === submittedToken
+        ) {
+            return;
+        }
+
+        if (source === 'camera') {
+            lastCameraTokenRef.current = submittedToken;
         }
 
         submissionLockRef.current = true;
@@ -342,7 +424,14 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 body: JSON.stringify({ token: submittedToken }),
             });
 
-            applyScanResult(data);
+            if (source === 'camera' && data.status === 'request_failed') {
+                retryCameraTokenRef.current = submittedToken;
+                setCameraRetryAvailable(true);
+            } else {
+                retryCameraTokenRef.current = null;
+                setCameraRetryAvailable(false);
+            }
+            applyScanResult(data, source);
         } catch {
             setServerState('unavailable');
             setFeedback({
@@ -353,15 +442,50 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
             });
             recordSessionScan({
                 detail: 'Server confirmation unavailable',
-                label: 'Not confirmed',
+                label: `${source === 'camera' ? 'Camera' : 'USB scanner'} · not confirmed`,
                 tone: 'rejected',
             });
+
+            if (source === 'camera') {
+                retryCameraTokenRef.current = submittedToken;
+                setCameraRetryAvailable(true);
+            }
         } finally {
-            setToken('');
+            if (source === 'usb') {
+                setToken('');
+            }
             setSubmitting(false);
             submissionLockRef.current = false;
-            window.requestAnimationFrame(() => inputRef.current?.focus());
+
+            if (captureModeRef.current === 'usb') {
+                window.requestAnimationFrame(() => inputRef.current?.focus());
+            }
         }
+    }
+
+    function submitScan(event) {
+        event.preventDefault();
+        void processToken(token, 'usb');
+    }
+
+    function processCameraToken(decodedToken) {
+        if (captureModeRef.current !== 'camera' || cameraRetryAvailable) {
+            return;
+        }
+
+        void processToken(decodedToken, 'camera');
+    }
+
+    function retryCameraScan() {
+        const retryToken = retryCameraTokenRef.current;
+
+        if (!retryToken || submitting || !canScan) {
+            return;
+        }
+
+        setCameraRetryAvailable(false);
+        lastCameraTokenRef.current = null;
+        void processToken(retryToken, 'camera', true);
     }
 
     async function searchStudents(event) {
@@ -437,7 +561,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 body: JSON.stringify({ student_id: selectedStudentId }),
             });
 
-            applyScanResult(data, true);
+            applyScanResult(data, 'manual');
 
             if (data.status === 'queued') {
                 setLookupQuery('');
@@ -463,9 +587,33 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
         } finally {
             setSubmitting(false);
             submissionLockRef.current = false;
-            window.requestAnimationFrame(() => inputRef.current?.focus());
+            if (captureModeRef.current === 'usb') {
+                window.requestAnimationFrame(() => inputRef.current?.focus());
+            }
         }
     }
+
+    const currentCaptureStatus = !canScan
+        ? {
+              label: 'Scanner unavailable',
+              detail: 'Reload after the ceremony is resumed.',
+              tone: 'danger',
+          }
+        : submitting
+          ? {
+                label: 'Scanner processing',
+                detail: 'Input is locked until server confirmation.',
+                tone: 'checking',
+            }
+          : cameraRetryAvailable
+            ? {
+                  label: 'Camera scan not confirmed',
+                  detail: 'Automatic scanning is paused until the operator retries.',
+                  tone: 'warning',
+              }
+            : captureMode === 'usb'
+              ? USB_CAPTURE_STATUS
+              : captureStatus;
 
     return (
         <>
@@ -475,7 +623,10 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 Skip to scanner
             </a>
 
-            <main className="scanner-page" id="scanner-content">
+            <main
+                className={`scanner-page scanner-page-${captureMode}`}
+                id="scanner-content"
+            >
                 <section className="scanner-shell" aria-labelledby="scanner-heading">
                     <header className="scanner-header">
                         <div>
@@ -498,6 +649,9 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                         </div>
                         <nav aria-label="Scanner navigation">
                             <OperationCommandMenu />
+                            <a className="secondary-action" href="/connect-phone">
+                                Phone setup
+                            </a>
                             <Link className="secondary-action" href="/dashboard">
                                 Return to operations
                             </Link>
@@ -506,15 +660,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
 
                     <ul className="scanner-system-status" aria-label="Scanner service status">
                         {[
-                            {
-                                detail: submitting
-                                    ? 'Input is locked until confirmation.'
-                                    : canScan
-                                      ? 'USB and keyboard input are ready.'
-                                      : 'Reload after the ceremony is resumed.',
-                                label: submitting ? 'Scanner processing' : canScan ? 'Scanner ready' : 'Scanner unavailable',
-                                tone: submitting ? 'checking' : canScan ? 'ready' : 'danger',
-                            },
+                            currentCaptureStatus,
                             serverStatus(serverState),
                             realtimeStatus(connectionState),
                         ].map((status) => (
@@ -533,41 +679,84 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
 
                     <div className="scanner-workspace">
                         <div className="scanner-primary">
-                    <form
-                        aria-busy={submitting}
-                        className="scanner-form"
-                        onSubmit={submitScan}
-                    >
-                        <label htmlFor="scan-token">
-                            QR scan or manual token
-                        </label>
-                        <input
-                            ref={inputRef}
-                            id="scan-token"
-                            name="token"
-                            value={token}
-                            onChange={(event) => setToken(event.target.value)}
-                            autoComplete="off"
-                            autoCapitalize="characters"
-                            autoFocus
-                            aria-keyshortcuts="/"
-                            inputMode="text"
-                            maxLength={128}
-                            readOnly={submitting || !canScan}
-                            spellCheck="false"
-                            aria-describedby="scanner-help"
-                        />
-                        <button
-                            className="primary-action scanner-submit"
-                            type="submit"
-                            disabled={submitting || !canScan}
-                        >
-                            {submitting ? 'Processing…' : 'Process scan'}
-                        </button>
-                        <p id="scanner-help">
-                            Scanner input stays focused. Press Enter to process.
-                        </p>
-                    </form>
+                            <div className="scanner-capture-toolbar">
+                                <div>
+                                    <p>Capture method</p>
+                                    <strong>
+                                        {captureMode === 'camera'
+                                            ? 'Phone camera'
+                                            : 'USB scanner or keyboard'}
+                                    </strong>
+                                </div>
+                                <div
+                                    aria-label="QR capture method"
+                                    className="scanner-capture-switcher"
+                                    role="group"
+                                >
+                                    <button
+                                        aria-pressed={captureMode === 'camera'}
+                                        disabled={submitting}
+                                        onClick={() => changeCaptureMode('camera')}
+                                        type="button"
+                                    >
+                                        Camera
+                                    </button>
+                                    <button
+                                        aria-pressed={captureMode === 'usb'}
+                                        disabled={submitting}
+                                        onClick={() => changeCaptureMode('usb')}
+                                        type="button"
+                                    >
+                                        USB / keyboard
+                                    </button>
+                                </div>
+                            </div>
+
+                            {captureMode === 'camera' ? (
+                                <ScannerCamera
+                                    canScan={canScan}
+                                    decodingBlocked={submitting || cameraRetryAvailable}
+                                    key={canScan ? 'camera-enabled' : 'camera-disabled'}
+                                    onDecoded={processCameraToken}
+                                    onStatusChange={setCaptureStatus}
+                                />
+                            ) : (
+                                <form
+                                    aria-busy={submitting}
+                                    className="scanner-form"
+                                    onSubmit={submitScan}
+                                >
+                                    <label htmlFor="scan-token">
+                                        QR scan or manual token
+                                    </label>
+                                    <input
+                                        ref={inputRef}
+                                        id="scan-token"
+                                        name="token"
+                                        value={token}
+                                        onChange={(event) => setToken(event.target.value)}
+                                        autoComplete="off"
+                                        autoCapitalize="characters"
+                                        autoFocus
+                                        aria-keyshortcuts="/"
+                                        inputMode="text"
+                                        maxLength={128}
+                                        readOnly={submitting || !canScan}
+                                        spellCheck="false"
+                                        aria-describedby="scanner-help"
+                                    />
+                                    <button
+                                        className="primary-action scanner-submit"
+                                        type="submit"
+                                        disabled={submitting || !canScan}
+                                    >
+                                        {submitting ? 'Processing…' : 'Process scan'}
+                                    </button>
+                                    <p id="scanner-help">
+                                        Scanner input stays focused. Press Enter to process.
+                                    </p>
+                                </form>
+                            )}
 
                     <section
                         className={`scan-feedback scan-feedback-${feedback.tone}`}
@@ -579,16 +768,31 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                         <p className="scan-feedback-label">Current scan result</p>
                         <strong>{feedback.title}</strong>
                         <p>{feedback.message}</p>
-                        {(feedback.tone === 'rejected' || feedback.tone === 'warning') && canScan && (
+                        {cameraRetryAvailable && canScan ? (
                             <div className="scan-feedback-actions">
                                 <button
-                                    className="secondary-action"
-                                    onClick={() => inputRef.current?.focus()}
+                                    className="primary-action"
+                                    disabled={submitting}
+                                    onClick={retryCameraScan}
                                     type="button"
                                 >
-                                    Focus scanner and try again
+                                    Retry same QR
                                 </button>
                             </div>
+                        ) : (
+                            (feedback.tone === 'rejected' || feedback.tone === 'warning') &&
+                            canScan &&
+                            captureMode === 'usb' && (
+                                <div className="scan-feedback-actions">
+                                    <button
+                                        className="secondary-action"
+                                        onClick={() => inputRef.current?.focus()}
+                                        type="button"
+                                    >
+                                        Focus scanner and try again
+                                    </button>
+                                </div>
+                            )
                         )}
                     </section>
 
@@ -597,7 +801,21 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                         <dd>{lastAccepted ?? 'No successful scan in this browser session'}</dd>
                     </dl>
 
-                    <details className="scanner-fallback">
+                    <details
+                        ref={fallbackRef}
+                        className="scanner-fallback"
+                        onToggle={(event) => {
+                            const isOpen = event.currentTarget.open;
+
+                            window.requestAnimationFrame(() => {
+                                if (isOpen) {
+                                    lookupInputRef.current?.focus();
+                                } else if (captureModeRef.current === 'usb') {
+                                    inputRef.current?.focus();
+                                }
+                            });
+                        }}
+                    >
                         <summary>QR will not scan? Use controlled lookup</summary>
                         <div className="scanner-fallback-body">
                             <p>
@@ -609,6 +827,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                                 </label>
                                 <div>
                                     <input
+                                        ref={lookupInputRef}
                                         autoComplete="off"
                                         disabled={!canScan || submitting}
                                         id="graduate-lookup"

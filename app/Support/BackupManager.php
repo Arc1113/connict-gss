@@ -115,24 +115,33 @@ final class BackupManager
 
     private function databaseDump(string $path): void
     {
-        $process = new Process([
-            'docker',
-            'compose',
-            'exec',
-            '-T',
-            'database',
-            'sh',
-            '-lc',
-            'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=plain --no-owner --no-privileges',
-        ], base_path());
+        $directory = realpath(dirname($path));
+
+        if ($directory === false) {
+            throw new RuntimeException('PostgreSQL dump destination could not be resolved.');
+        }
+
+        $path = $directory.'/'.basename($path);
+        $connection = PostgresConnection::configured();
+        $process = new Process(array_merge([
+            'pg_dump',
+        ], $connection->arguments($connection->database), [
+            '--file='.$path,
+            '--format=plain',
+            '--no-owner',
+            '--no-privileges',
+        ]), base_path(), $connection->environment());
         $process->setTimeout(120);
         $process->run();
 
         if (! $process->isSuccessful()) {
-            throw new RuntimeException('PostgreSQL dump failed. Confirm Docker Compose and the database service are running.');
-        }
+            logger()->error('PostgreSQL backup process failed.', [
+                'exit_code' => $process->getExitCode(),
+                'error' => str($process->getErrorOutput())->squish()->limit(500)->toString(),
+            ]);
 
-        file_put_contents($path, $process->getOutput());
+            throw new RuntimeException('PostgreSQL dump failed. Confirm the database is reachable and its backup credentials are valid.');
+        }
 
         if (! is_file($path) || filesize($path) === 0) {
             throw new RuntimeException('PostgreSQL dump was empty.');
@@ -141,15 +150,7 @@ final class BackupManager
 
     private function postgresVersion(): ?string
     {
-        $process = new Process([
-            'docker',
-            'compose',
-            'exec',
-            '-T',
-            'database',
-            'psql',
-            '--version',
-        ], base_path());
+        $process = new Process(['psql', '--version'], base_path());
         $process->setTimeout(20);
         $process->run();
 

@@ -14,6 +14,7 @@ export default function Stage({ ceremony }) {
     const [stageState, setStageState] = useState(IDLE_STATE);
     const [hasLoaded, setHasLoaded] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(false);
+    const [connectionState, setConnectionState] = useState('syncing');
     const [theme, setTheme] = useState(() => ({
         ...DEFAULT_STAGE_THEME,
         ...(ceremony?.theme ?? {}),
@@ -220,6 +221,8 @@ export default function Stage({ ceremony }) {
     useEffect(() => {
         const stopObserving = observeEchoConnection((current) => {
             if (current === 'connected') {
+                setConnectionState('live');
+
                 if (reconnectPendingRef.current) {
                     void reconcile();
                 }
@@ -229,6 +232,8 @@ export default function Stage({ ceremony }) {
 
                 return;
             }
+
+            setConnectionState('syncing');
 
             if (hasConnectedRef.current) {
                 reconnectPendingRef.current = true;
@@ -301,7 +306,7 @@ export default function Stage({ ceremony }) {
                 style={stageStyle}
             >
                 {!audioEnabled && (
-                    <aside className="stage-audio-setup" role="status">
+                    <div className="stage-audio-setup" role="status">
                         <span>
                             <strong>Audio setup required</strong>
                             <small>One time on this display</small>
@@ -313,8 +318,16 @@ export default function Stage({ ceremony }) {
                         >
                             Enable audio
                         </button>
-                    </aside>
+                    </div>
                 )}
+                <div
+                    aria-live="polite"
+                    className={`stage-connection-status stage-connection-status-${connectionState}`}
+                    role="status"
+                >
+                    <span aria-hidden="true" />
+                    {connectionState === 'live' ? 'Live' : 'Syncing'}
+                </div>
                 {theme.logo_url && (
                     <img className="stage-theme-logo" src={theme.logo_url} alt="" />
                 )}

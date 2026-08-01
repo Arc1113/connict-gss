@@ -83,6 +83,8 @@ app_url="$(gss_env_value "${env_file}" APP_URL || true)"
 app_port="$(gss_env_value "${env_file}" APP_FORWARD_PORT || true)"
 reverb_port="$(gss_env_value "${env_file}" REVERB_FORWARD_PORT || true)"
 https_port="$(gss_env_value "${env_file}" HTTPS_FORWARD_PORT || true)"
+http_port="$(gss_env_value "${env_file}" HTTP_FORWARD_PORT || true)"
+[[ -n "${http_port}" ]] || http_port="80"
 backup_path="$(gss_env_value "${env_file}" GSS_BACKUP_PATH || true)"
 [[ -n "${backup_path}" ]] || backup_path="storage/app/gss-backups"
 
@@ -131,10 +133,22 @@ else
     fail 'Local HTTPS proxy is not reachable'
 fi
 
+if php -r "exit(@fsockopen('127.0.0.1', (int) '${http_port}') ? 0 : 1);" >/dev/null 2>&1; then
+    pass 'Restricted phone enrollment HTTP port is reachable'
+else
+    fail 'Restricted phone enrollment HTTP port is not reachable'
+fi
+
 if gss_compose "${env_file}" exec -T proxy test -f /data/caddy/pki/authorities/local/root.crt >/dev/null 2>&1; then
     pass 'Local HTTPS certificate authority is available for workstation enrollment'
 else
     fail 'Local HTTPS certificate authority is unavailable'
+fi
+
+if [[ -r storage/app/gss-certificates/gss-local-ca.crt ]]; then
+    pass 'Public local certificate is available to the phone enrollment page'
+else
+    fail 'Public local certificate is missing from the phone enrollment page'
 fi
 
 if gss_compose "${env_file}" exec -T app php artisan migrate:status >/dev/null 2>&1; then

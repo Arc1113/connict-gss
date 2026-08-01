@@ -25,11 +25,9 @@ class BackupAndRestoreSafetyTest extends TestCase
 
     public function test_backup_failure_is_recorded_without_success_status(): void
     {
-        $record = app(BackupManager::class)->create(destination: storage_path('app/testing-backups'));
+        config(['database.connections.pgsql.password' => 'deliberately-invalid-backup-password']);
 
-        if ($record->status === 'completed') {
-            $this->markTestSkipped('Docker backup tooling is available in this PHP process; success is verified by the Phase 9 CLI check.');
-        }
+        $record = app(BackupManager::class)->create(destination: storage_path('app/testing-backups'));
 
         $this->assertSame('failed', $record->status);
         $this->assertSame('failed', $record->verification_status);

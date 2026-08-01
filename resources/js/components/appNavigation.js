@@ -121,6 +121,12 @@ export function buildNavigation(abilities, currentUrl) {
                     label: 'Operator accounts',
                     active: currentUrl.startsWith('/admin/users'),
                 },
+                abilities.manage_device_connections && {
+                    href: '/admin/device-connections',
+                    icon: 'devices',
+                    label: 'Connect devices',
+                    active: currentUrl.startsWith('/admin/device-connections'),
+                },
             ].filter(Boolean),
         },
     ].filter((group) => group.items.length > 0);

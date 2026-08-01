@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\CeremonyController;
 use App\Http\Controllers\Admin\CeremonyOperationalResetController;
 use App\Http\Controllers\Admin\CeremonySummaryController;
+use App\Http\Controllers\Admin\DeviceConnectionController;
 use App\Http\Controllers\Admin\ScanLogController;
 use App\Http\Controllers\Admin\StageEventController;
 use App\Http\Controllers\Admin\StudentController;
@@ -14,6 +15,8 @@ use App\Http\Controllers\Admin\StudentQrCodeController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CompleteCurrentPresentationController;
+use App\Http\Controllers\LocalCertificateController;
+use App\Http\Controllers\PhoneOnboardingController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\ScannerController;
 use App\Http\Controllers\ScannerLookupController;
@@ -22,6 +25,11 @@ use App\Http\Controllers\StageController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+Route::get('/connect-phone', PhoneOnboardingController::class)
+    ->name('phone-onboarding');
+Route::get('/connect-phone/local-ca.crt', LocalCertificateController::class)
+    ->name('phone-onboarding.certificate');
 
 Route::get('/', function (Request $request) {
     if ($request->user() !== null) {
@@ -97,6 +105,9 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', AdminDashboardController::class)->name('index');
+        Route::get('/device-connections', DeviceConnectionController::class)
+            ->middleware('can:manage-device-connections')
+            ->name('device-connections');
         Route::resource('users', UserController::class)
             ->only(['index', 'create', 'store', 'edit', 'update'])
             ->middleware('can:manage-users');

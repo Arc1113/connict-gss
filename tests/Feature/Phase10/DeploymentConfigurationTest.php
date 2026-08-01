@@ -21,6 +21,7 @@ class DeploymentConfigurationTest extends TestCase
         $this->assertStringContainsString('APP_BIND_HOST=0.0.0.0', $env);
         $this->assertStringContainsString('APP_URL=https://', $env);
         $this->assertStringContainsString('GSS_HTTPS_HOST=', $env);
+        $this->assertStringContainsString('HTTP_FORWARD_PORT=80', $env);
         $this->assertStringContainsString('VITE_REVERB_SCHEME=https', $env);
         $this->assertStringContainsString('REVERB_HOST=reverb', $env);
         $this->assertStringContainsString('REVERB_FORWARD_PORT=8080', $env);
@@ -41,6 +42,10 @@ class DeploymentConfigurationTest extends TestCase
         $this->assertStringContainsString('restart: unless-stopped', $deploy);
         $this->assertStringContainsString('caddy:2.10-alpine', $deploy);
         $this->assertStringContainsString('${HTTPS_FORWARD_PORT:-443}:443', $deploy);
+        $this->assertStringContainsString('${HTTP_FORWARD_PORT:-80}:80', $deploy);
+        $this->assertStringContainsString('/connect-phone/local-ca.crt', $this->readProjectFile('docker/caddy/Caddyfile'));
+        $this->assertStringContainsString('redir {$GSS_APP_URL}{uri} permanent', $this->readProjectFile('docker/caddy/Caddyfile'));
+        $this->assertStringContainsString('default_sni {$GSS_HTTPS_HOST}', $this->readProjectFile('docker/caddy/Caddyfile'));
         $this->assertStringNotContainsString('vite:', $deploy);
         $this->assertStringContainsString('TCP `8000`', $networkPlan);
         $this->assertStringContainsString('TCP `8080`', $networkPlan);
@@ -59,6 +64,31 @@ class DeploymentConfigurationTest extends TestCase
         $this->assertStringContainsString('COPY docker/php/uploads.ini', $deploymentImage);
     }
 
+    public function test_php_images_include_native_postgresql_backup_clients(): void
+    {
+        $developmentImage = $this->readProjectFile('docker/php/Dockerfile');
+        $deploymentImage = $this->readProjectFile('docker/php/Dockerfile.deploy');
+        $backupManager = $this->readProjectFile('app/Support/BackupManager.php');
+
+        foreach ([$developmentImage, $deploymentImage] as $image) {
+            $this->assertStringContainsString('FROM postgres:16-bookworm AS postgres-client', $image);
+            $this->assertStringContainsString('/usr/local/bin/pg_dump', $image);
+            $this->assertStringContainsString('/usr/local/bin/psql', $image);
+            $this->assertStringContainsString('/usr/local/bin/createdb', $image);
+            $this->assertStringContainsString('/usr/local/bin/dropdb', $image);
+        }
+
+        $this->assertStringContainsString("'pg_dump'", $backupManager);
+        $this->assertStringNotContainsString("'docker',", $backupManager);
+        $this->assertStringNotContainsString("'compose',", $backupManager);
+
+        $restoreVerifier = $this->readProjectFile('app/Support/RestoreVerifier.php');
+        $this->assertStringContainsString("'createdb'", $restoreVerifier);
+        $this->assertStringContainsString("'dropdb'", $restoreVerifier);
+        $this->assertStringNotContainsString("'docker',", $restoreVerifier);
+        $this->assertStringNotContainsString("'compose',", $restoreVerifier);
+    }
+
     public function test_deployment_scripts_have_help_text_and_avoid_destructive_commands(): void
     {
         $scripts = [
@@ -68,6 +98,7 @@ class DeploymentConfigurationTest extends TestCase
             'scripts/gss-build-release.sh',
             'scripts/gss-export-local-ca.sh',
             'scripts/gss-install-service.sh',
+            'scripts/gss-launch.sh',
         ];
 
         foreach ($scripts as $script) {
@@ -104,6 +135,18 @@ class DeploymentConfigurationTest extends TestCase
         $this->assertStringContainsString('Deployment secrets must be set', implode("\n", $output));
     }
 
+    public function test_desktop_service_installer_supports_project_paths_with_spaces(): void
+    {
+        $installer = $this->readProjectFile('scripts/gss-install-service.sh');
+
+        $this->assertStringNotContainsString('WorkingDirectory="%s"', $installer);
+        $this->assertStringContainsString(
+            'ExecStart=/usr/bin/env bash "%s/scripts/gss-start.sh"',
+            $installer,
+        );
+        $this->assertStringContainsString('graduation-stage-system.desktop', $installer);
+    }
+
     public function test_required_deployment_device_and_network_procedures_are_documented(): void
     {
         $deployment = $this->readProjectFile('docs/deployment.md');
@@ -136,7 +179,8 @@ class DeploymentConfigurationTest extends TestCase
 
         $this->assertStringContainsString('.env', $dockerignore);
         $this->assertStringContainsString('storage/app/gss-backups', $dockerignore);
-        $this->assertStringContainsString('docs/evidence/**/*.png', $dockerignore);
+        $this->assertStringContainsString('docs/evidence/', $dockerignore);
+        $this->assertStringContainsString('playwright-report', $dockerignore);
         $this->assertStringContainsString('public/hot', $dockerignore);
         $this->assertStringContainsString('.env.production', $gitignore);
         $this->assertStringContainsString('/docs/evidence/**/*.png', $gitignore);

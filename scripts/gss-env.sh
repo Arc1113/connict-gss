@@ -128,6 +128,7 @@ gss_require_docker() {
 gss_ensure_deployment_dirs() {
     mkdir -p \
         "${gss_project_dir}/storage/app/public" \
+        "${gss_project_dir}/storage/app/gss-certificates" \
         "${gss_project_dir}/storage/app/gss-backups" \
         "${gss_project_dir}/storage/framework/cache/data" \
         "${gss_project_dir}/storage/framework/sessions" \

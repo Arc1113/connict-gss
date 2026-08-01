@@ -94,6 +94,12 @@ const ICON_PATHS = {
             <path d="M3 21v-2a6 6 0 0 1 12 0v2M16 5a4 4 0 0 1 0 7M17 15a5 5 0 0 1 4 5v1" />
         </>
     ),
+    devices: (
+        <>
+            <rect x="3" y="4" width="12" height="16" rx="2" />
+            <path d="M7 17h4M18 8h3v9h-3M16 12h5" />
+        </>
+    ),
     menu: <path d="M4 7h16M4 12h16M4 17h16" />,
     command: (
         <>

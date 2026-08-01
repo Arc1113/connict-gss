@@ -147,28 +147,28 @@ export default function Dashboard() {
                     <h2 id="available-tools">Available workspaces</h2>
                     <span>{operations.length} authorized</span>
                 </header>
-                <div role="list">
+                <ul>
                     {operations.map((operation) => (
-                        <Link
-                            href={operation.href}
-                            key={`${operation.href}-${operation.title}`}
-                            rel={operation.external ? 'noreferrer' : undefined}
-                            role="listitem"
-                            target={operation.external ? '_blank' : undefined}
-                        >
-                            <AppIcon name={operation.icon} />
-                            <span>
-                                <strong>{operation.title}</strong>
-                                <small>{operation.copy}</small>
-                            </span>
-                            {operation.external ? (
-                                <AppIcon name="external" size={15} />
-                            ) : (
-                                <AppIcon name="chevron" size={15} />
-                            )}
-                        </Link>
+                        <li key={`${operation.href}-${operation.title}`}>
+                            <Link
+                                href={operation.href}
+                                rel={operation.external ? 'noreferrer' : undefined}
+                                target={operation.external ? '_blank' : undefined}
+                            >
+                                <AppIcon name={operation.icon} />
+                                <span>
+                                    <strong>{operation.title}</strong>
+                                    <small>{operation.copy}</small>
+                                </span>
+                                {operation.external ? (
+                                    <AppIcon name="external" size={15} />
+                                ) : (
+                                    <AppIcon name="chevron" size={15} />
+                                )}
+                            </Link>
+                        </li>
                     ))}
-                </div>
+                </ul>
             </section>
         </AppShell>
     );

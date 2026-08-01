@@ -1,17 +1,35 @@
 import { Head, useForm } from '@inertiajs/react';
+import { useCallback, useEffect, useRef } from 'react';
 import BrandMark from '../../components/BrandMark';
 
 export default function Login() {
+    const emailRef = useRef(null);
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
         remember: false,
     });
 
+    const focusEmail = useCallback(() => {
+        window.requestAnimationFrame(() => {
+            emailRef.current?.focus();
+            emailRef.current?.select();
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!errors.email && !errors.password) {
+            return;
+        }
+
+        focusEmail();
+    }, [errors.email, errors.password, focusEmail]);
+
     const submit = (event) => {
         event.preventDefault();
 
         post('/login', {
+            onError: focusEmail,
             onFinish: () => reset('password'),
         });
     };
@@ -52,6 +70,7 @@ export default function Login() {
                         <div className="form-field">
                             <label htmlFor="email">Email address</label>
                             <input
+                                ref={emailRef}
                                 id="email"
                                 type="email"
                                 name="email"

@@ -31,11 +31,20 @@ class DevToolsClient {
 
             if (!message.id || !this.pending.has(message.id)) return;
 
-            const { resolve, reject } = this.pending.get(message.id);
+            const { reject, resolve, timeout } = this.pending.get(message.id);
             this.pending.delete(message.id);
+            clearTimeout(timeout);
             message.error
                 ? reject(new Error(message.error.message))
                 : resolve(message.result);
+        });
+
+        socket.addEventListener('close', () => {
+            for (const { reject, timeout } of this.pending.values()) {
+                clearTimeout(timeout);
+                reject(new Error('Chrome DevTools connection closed.'));
+            }
+            this.pending.clear();
         });
     }
 
@@ -75,7 +84,11 @@ class DevToolsClient {
         const id = this.nextId++;
 
         return new Promise((resolve, reject) => {
-            this.pending.set(id, { resolve, reject });
+            const timeout = setTimeout(() => {
+                this.pending.delete(id);
+                reject(new Error(`Chrome DevTools did not respond to ${method}.`));
+            }, 60_000);
+            this.pending.set(id, { resolve, reject, timeout });
             this.socket.send(JSON.stringify({ id, method, params }));
         });
     }
@@ -152,10 +165,15 @@ class DevToolsClient {
 
 try {
     prepareFixtures();
+    const fakeCameraVideo = createFakeCameraVideo();
 
     const admin = await launchBrowser('admin', 9281, 1440, 900);
     const encoder = await launchBrowser('encoder', 9282, 1440, 900);
-    const scanner = await launchBrowser('scanner', 9283, 1440, 900);
+    const scanner = await launchBrowser('scanner', 9283, 1440, 900, [
+        '--use-fake-device-for-media-stream',
+        '--use-fake-ui-for-media-stream',
+        `--use-file-for-fake-video-capture=${fakeCameraVideo}`,
+    ]);
     const control = await launchBrowser('control', 9284, 1440, 900);
     const stage = await launchBrowser('stage', 9285, 1920, 1080);
 
@@ -258,12 +276,31 @@ try {
     }
     await postJson(control.client, '/stage/automatic/resume', {}, 200);
 
+    const openDocumentIds = await Promise.all(
+        [scanner.client, control.client, stage.client].map((client) =>
+            client.evaluate('window.__gssReverbRecoveryDocument = crypto.randomUUID()'),
+        ),
+    );
     restartService('reverb');
     await waitForPort(reverbPort);
+    await Promise.all(
+        [scanner.client, control.client, stage.client].map((client) =>
+            client.waitFor(
+                'window.Pusher?.instances?.[0]?.connection?.state === "connected"',
+                25_000,
+            ),
+        ),
+    );
     await scan(scanner.client, 'GSS-RC1-THETA');
-    await control.client.navigate(`${applicationUrl}/stage-control`);
-    await stage.client.navigate(`${applicationUrl}/stage`);
-    await control.client.waitFor('document.body.innerText.includes("Paused Automatic Graduate")');
+    await control.client.waitFor('document.body.innerText.includes("Reverb Recovery Graduate")');
+    const recoveredDocumentIds = await Promise.all(
+        [scanner.client, control.client, stage.client].map((client) =>
+            client.evaluate('window.__gssReverbRecoveryDocument'),
+        ),
+    );
+    if (JSON.stringify(recoveredDocumentIds) !== JSON.stringify(openDocumentIds)) {
+        throw new Error('Reverb recovery navigated or refreshed an operator document.');
+    }
     await assertNoHorizontalOverflow(control.client, 'stage-control after Reverb restart');
 
     restartService('app');
@@ -277,8 +314,12 @@ try {
     await control.client.waitFor('document.body.innerText.includes("Waiting queue")');
     await assertAudienceSafe(stage.client);
 
+    console.log('Browser rehearsal: core ceremony workflow passed.');
     await inspectAdminReadiness(admin.client, encoder.client);
     await inspectViewports(scanner.client, control.client, stage.client);
+    console.log('Browser rehearsal: administration and responsive views passed.');
+    await inspectPhoneCamera(scanner.client);
+    console.log('Browser rehearsal: phone camera workflow passed.');
 
     const summary = await finalDatabaseSummary();
     if (summary.queue_items < 8 || summary.scan_logs < 10 || summary.stage_events < 8) {
@@ -290,6 +331,7 @@ try {
         appRestartRecovered: true,
         audienceSafe: true,
         browserProfiles: ['admin', 'encoder', 'scanner', 'stage-control', 'stage'],
+        cameraScannerVerified: true,
         finalCounts: summary,
         localAssetEvidence: await localAssetCheck(stage.client),
         reverbRestartRecovered: true,
@@ -384,7 +426,7 @@ async function login(client, email) {
     }
 }
 
-async function launchBrowser(name, port, width, height) {
+async function launchBrowser(name, port, width, height, extraArguments = []) {
     const userDataDir = join(profilesPath, name);
     const browserProcess = spawn(chromePath, [
         '--headless=new',
@@ -394,6 +436,7 @@ async function launchBrowser(name, port, width, height) {
         '--no-default-browser-check',
         `--remote-debugging-port=${port}`,
         `--user-data-dir=${userDataDir}`,
+        ...extraArguments,
         `${applicationUrl}/login`,
     ], {
         stdio: 'ignore',
@@ -404,6 +447,89 @@ async function launchBrowser(name, port, width, height) {
     await client.setViewport(width, height);
 
     return { client, process: browserProcess };
+}
+
+async function inspectPhoneCamera(client) {
+    await client.navigate(`${applicationUrl}/scanner`);
+    await client.setViewport(390, 844);
+    await client.evaluate(`Array.from(document.querySelectorAll('.scanner-capture-switcher button'))
+        .find((button) => button.textContent.trim() === 'Camera')?.click()`);
+    await client.waitFor(`document.querySelector('.scanner-camera') !== null`);
+    await captureAt(client, 'scanner-camera-off-390x844.png', 390, 844);
+
+    await client.evaluate(`Array.from(document.querySelectorAll('.scanner-camera-controls button'))
+        .find((button) => button.textContent.trim() === 'Start camera')?.click()`);
+    await client.waitFor(`document.querySelector('.scanner-camera-state')?.textContent.includes('Camera ready')`);
+    await client.waitFor(`document.body.innerText.includes('Mobile Camera Graduate One')`, 15_000);
+    await captureAt(client, 'scanner-camera-accepted-390x844.png', 390, 844);
+
+    const initialCount = cameraScanCount('GSS-RC1-CAMERA-ONE');
+    await pause(1_500);
+    const stationaryCount = cameraScanCount('GSS-RC1-CAMERA-ONE');
+    if (initialCount !== 1 || stationaryCount !== 1) {
+        throw new Error(`Stationary camera QR submitted repeatedly: initial=${initialCount}, after=${stationaryCount}`);
+    }
+
+    await client.waitFor(`document.body.innerText.includes('Mobile Camera Graduate Two')`, 15_000);
+    await captureAt(client, 'scanner-camera-accepted-430x932.png', 430, 932);
+    await captureAt(client, 'scanner-camera-tablet-768x1024.png', 768, 1024);
+    await captureAt(client, 'scanner-camera-tablet-landscape-1024x768.png', 1024, 768);
+    await captureAt(client, 'scanner-camera-desktop-1440x900.png', 1440, 900);
+
+    const trackShutdown = await client.evaluate(`(async () => {
+        window.__gssCameraTracks = Array.from(document.querySelector('.scanner-camera video')?.srcObject?.getTracks?.() ?? []);
+        Array.from(document.querySelectorAll('.scanner-capture-switcher button'))
+            .find((button) => button.textContent.includes('USB'))?.click();
+        const deadline = Date.now() + 2_000;
+        while (Date.now() < deadline && window.__gssCameraTracks.some((track) => track.readyState !== 'ended')) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        return {
+            count: window.__gssCameraTracks.length,
+            states: window.__gssCameraTracks.map((track) => track.readyState),
+        };
+    })()`);
+    if (trackShutdown.count === 0 || trackShutdown.states.some((state) => state !== 'ended')) {
+        throw new Error(`Switching to USB did not stop every camera media track: ${JSON.stringify(trackShutdown)}`);
+    }
+    await client.waitFor(`document.querySelector('#scan-token') === document.activeElement`);
+
+    await client.evaluate(`(() => {
+        const originalFetch = window.fetch.bind(window);
+        let failed = false;
+        window.fetch = (...args) => {
+            const target = String(args[0]);
+            if (!failed && target.endsWith('/scans')) {
+                failed = true;
+                return Promise.reject(new TypeError('Simulated scanner network failure'));
+            }
+            return originalFetch(...args);
+        };
+        Array.from(document.querySelectorAll('.scanner-capture-switcher button'))
+            .find((button) => button.textContent.trim() === 'Camera')?.click();
+    })()`);
+    await client.waitFor(`document.querySelector('.scanner-camera') !== null`);
+    await client.evaluate(`Array.from(document.querySelectorAll('.scanner-camera-controls button'))
+        .find((button) => button.textContent.trim() === 'Start camera')?.click()`);
+    await client.waitFor(`document.body.innerText.includes('Retry same QR')`, 15_000);
+    await client.evaluate(`Array.from(document.querySelectorAll('.scan-feedback-actions button'))
+        .find((button) => button.textContent.trim() === 'Retry same QR')?.click()`);
+    await client.waitFor(`!document.body.innerText.includes('Retry same QR')`, 15_000);
+
+    await client.evaluate(`Array.from(document.querySelectorAll('.scanner-camera-controls button'))
+        .find((button) => button.textContent.trim() === 'Stop camera')?.click()`);
+
+    await client.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+            configurable: true,
+            value: () => Promise.reject(new DOMException('Blocked for rehearsal', 'NotAllowedError')),
+        });`,
+    });
+    await client.navigate(`${applicationUrl}/scanner`);
+    await client.waitFor(`document.querySelector('.scanner-camera') !== null`);
+    await client.evaluate(`Array.from(document.querySelectorAll('.scanner-camera-controls button'))
+        .find((button) => button.textContent.includes('Start camera'))?.click()`);
+    await client.waitFor(`document.body.innerText.includes('Camera permission is blocked')`);
 }
 
 async function captureAt(client, filename, width, height) {
@@ -444,6 +570,7 @@ async function inspectAdminReadiness(admin, encoder) {
         '/admin/audit-logs',
         '/admin/reports/ceremony-summary',
         '/admin/backups',
+        '/admin/device-connections',
     ];
 
     for (const route of routes) {
@@ -479,6 +606,10 @@ async function inspectAdminReadiness(admin, encoder) {
     await captureAt(admin, 'graduates-mobile-navigation-390x844.png', 390, 844);
     await admin.evaluate(`document.querySelector('.app-sidebar-scrim')?.click()`);
     await admin.setViewport(1440, 900);
+
+    await admin.navigate(`${applicationUrl}/admin/device-connections`);
+    await admin.waitFor('document.body.innerText.includes("Connect scanner phone")');
+    await captureAt(admin, 'connect-devices-1440x900.png', 1440, 900);
 
     await encoder.navigate(`${applicationUrl}/admin/backups`);
     await encoder.waitFor('document.body.innerText.includes("403") || document.body.innerText.includes("Forbidden")');
@@ -585,6 +716,88 @@ function restartService(service) {
     });
 }
 
+function createFakeCameraVideo() {
+    const firstSvgPath = join(profilesPath, 'camera-one.svg');
+    const secondSvgPath = join(profilesPath, 'camera-two.svg');
+    const videoPath = join(profilesPath, 'camera-qr-sequence.y4m');
+
+    for (const [path, token] of [
+        [firstSvgPath, 'GSS-RC1-CAMERA-ONE'],
+        [secondSvgPath, 'GSS-RC1-CAMERA-TWO'],
+    ]) {
+        const svg = execFileSync('docker', [
+            'compose',
+            'exec',
+            '-T',
+            'app',
+            'php',
+            '-r',
+            `require 'vendor/autoload.php'; echo (new App\\Services\\QrCodeRenderer())->svg('${token}');`,
+        ], {
+            cwd: repositoryPath,
+            encoding: 'utf8',
+        });
+        writeFileSync(path, svg);
+    }
+
+    execFileSync('ffmpeg', [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-y',
+        '-loop',
+        '1',
+        '-t',
+        '4',
+        '-i',
+        firstSvgPath,
+        '-loop',
+        '1',
+        '-t',
+        '4',
+        '-i',
+        secondSvgPath,
+        '-filter_complex',
+        '[0:v]scale=430:430,pad=1280:720:(ow-iw)/2:(oh-ih)/2:white,format=yuv420p[first];[1:v]scale=430:430,pad=1280:720:(ow-iw)/2:(oh-ih)/2:white,format=yuv420p[second];[first][second]concat=n=2:v=1:a=0[out]',
+        '-map',
+        '[out]',
+        '-r',
+        '10',
+        '-pix_fmt',
+        'yuv420p',
+        '-f',
+        'yuv4mpegpipe',
+        videoPath,
+    ], {
+        cwd: repositoryPath,
+        stdio: 'ignore',
+    });
+
+    return videoPath;
+}
+
+function cameraScanCount(token) {
+    const hash = execFileSync('php', ['-r', `echo hash('sha256', '${token}');`], {
+        encoding: 'utf8',
+    }).trim();
+    const output = execFileSync('docker', [
+        'compose',
+        'exec',
+        '-T',
+        'app',
+        'php',
+        'artisan',
+        'tinker',
+        '--execute',
+        `echo App\\Models\\ScanLog::query()->where('raw_token_hash', '${hash}')->count();`,
+    ], {
+        cwd: repositoryPath,
+        encoding: 'utf8',
+    });
+
+    return Number(output.trim());
+}
+
 async function waitForHttp(url) {
     const deadline = Date.now() + 30_000;
 
@@ -669,6 +882,8 @@ function prepareFixtures() {
         ['RC1-007', 'GSS-RC1-ETA', 'Paused Automatic Graduate', 'Paused Automatic Graduate', 'Bachelor of Science in Business Administration', null, 'approved', 'media/phase3/audio/student-01.wav'],
         ['RC1-008', 'GSS-RC1-THETA', 'Reverb Recovery Graduate', 'Reverb Recovery Graduate', 'Bachelor of Science in Computer Science', null, 'approved', 'media/phase3/audio/student-02.wav'],
         ['RC1-009', 'GSS-RC1-INELIGIBLE', 'Ineligible Rehearsal Graduate', 'Ineligible Rehearsal Graduate', 'Bachelor of Science in Computer Science', null, 'approved', 'media/phase3/audio/student-03.wav', 'ineligible'],
+        ['RC1-010', 'GSS-RC1-CAMERA-ONE', 'Mobile Camera Graduate One', 'Mobile Camera Graduate One', 'Bachelor of Science in Information Technology', null, 'approved', 'media/phase3/audio/student-01.wav'],
+        ['RC1-011', 'GSS-RC1-CAMERA-TWO', 'Mobile Camera Graduate Two', 'Mobile Camera Graduate Two', 'Bachelor of Science in Information Technology', null, 'approved', 'media/phase3/audio/student-02.wav'],
     ];
 
     const encoded = Buffer.from(JSON.stringify(students)).toString('base64');
