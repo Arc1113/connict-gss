@@ -23,6 +23,7 @@ function exportHref(filters) {
 
 export default function CeremonySummary({ canExport, ceremonies, filters, summary }) {
     const resetForm = useForm({ confirmation: '' });
+    const resetConfirmed = resetForm.data.confirmation === 'RESET CURRENT OPERATIONS';
 
     function submitReset(event) {
         event.preventDefault();
@@ -142,16 +143,22 @@ export default function CeremonySummary({ canExport, ceremonies, filters, summar
                                 Type RESET CURRENT OPERATIONS to confirm
                             </label>
                             <input
+                                aria-describedby="operational-reset-hint"
+                                autoComplete="off"
                                 id="confirmation"
                                 name="confirmation"
                                 onChange={(event) =>
                                     resetForm.setData('confirmation', event.target.value)
                                 }
+                                spellCheck="false"
                                 value={resetForm.data.confirmation}
                             />
+                            <small id="operational-reset-hint">
+                                The reset button unlocks only after the phrase matches exactly.
+                            </small>
                             <button
                                 className="admin-button admin-button-danger"
-                                disabled={resetForm.processing}
+                                disabled={!resetConfirmed || resetForm.processing}
                                 type="submit"
                             >
                                 Reset current operations

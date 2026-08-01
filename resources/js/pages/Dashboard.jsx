@@ -104,7 +104,8 @@ export default function Dashboard() {
             <header className="workspace-page-header">
                 <div>
                     <p>Overview</p>
-                    <h1>{user.role.label} workspace</h1>
+                    <h1>Operations overview</h1>
+                    <span>{user.role.label} workspace · choose the next authorized task.</span>
                 </div>
             </header>
 
@@ -126,12 +127,14 @@ export default function Dashboard() {
                 <section className="overview-next-action" aria-labelledby="next-action">
                     <AppIcon name={primary.icon} size={22} />
                     <div>
-                        <span>Next Action</span>
+                        <span>Primary workspace</span>
                         <h2 id="next-action">{primary.title}</h2>
+                        <p>{primary.copy}</p>
                     </div>
                     <Link
                         className="primary-action"
                         href={primary.href}
+                        rel={primary.external ? 'noreferrer' : undefined}
                         target={primary.external ? '_blank' : undefined}
                     >
                         Open {primary.title.toLowerCase()}
@@ -149,6 +152,7 @@ export default function Dashboard() {
                         <Link
                             href={operation.href}
                             key={`${operation.href}-${operation.title}`}
+                            rel={operation.external ? 'noreferrer' : undefined}
                             role="listitem"
                             target={operation.external ? '_blank' : undefined}
                         >

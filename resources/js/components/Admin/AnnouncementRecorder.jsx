@@ -179,6 +179,10 @@ export default function AnnouncementRecorder({
                 <small>{status === 'recording' ? `Recording ${timeLabel(seconds)}` : 'Maximum 3 minutes'}</small>
             </div>
 
+            <p className="announcement-recorder-guidance">
+                Record, preview, then save the graduate. New audio still requires review and approval before stage playback.
+            </p>
+
             {status === 'recorded' && previewUrl && (
                 <>
                     <audio aria-label="Recorded announcement preview" controls preload="metadata" src={previewUrl} />

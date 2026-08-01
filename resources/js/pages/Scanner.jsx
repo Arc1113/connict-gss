@@ -145,6 +145,7 @@ function serverStatus(state) {
 export default function Scanner({ ceremony, ceremonyStatus }) {
     const inputRef = useRef(null);
     const submissionLockRef = useRef(false);
+    const sessionEventRef = useRef(0);
     const hasConnectedRef = useRef(false);
     const reconnectPendingRef = useRef(false);
     const [token, setToken] = useState('');
@@ -154,6 +155,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
     const [serverState, setServerState] = useState('available');
     const [feedback, setFeedback] = useState(ceremony ? INITIAL_FEEDBACK : ceremonyUnavailableFeedback(ceremonyStatus));
     const [lastAccepted, setLastAccepted] = useState(null);
+    const [recentScans, setRecentScans] = useState([]);
     const [lookupQuery, setLookupQuery] = useState('');
     const [lookupStudents, setLookupStudents] = useState([]);
     const [lookupMessage, setLookupMessage] = useState(
@@ -163,11 +165,44 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
     const [selectedStudentId, setSelectedStudentId] = useState(null);
     const canScan = Boolean(ceremony) && ceremonyAccepting;
 
+    function recordSessionScan({ detail, label, tone }) {
+        sessionEventRef.current += 1;
+
+        setRecentScans((current) => [
+            {
+                id: sessionEventRef.current,
+                detail,
+                label,
+                time: new Date().toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                }),
+                tone,
+            },
+            ...current,
+        ].slice(0, 6));
+    }
+
     useEffect(() => {
         inputRef.current?.focus();
 
         const refocus = () => inputRef.current?.focus();
+        const focusScannerShortcut = (event) => {
+            const target = event.target;
+            const isTyping =
+                target instanceof HTMLElement &&
+                (target.isContentEditable ||
+                    ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName));
+
+            if (event.key === '/' && !isTyping) {
+                event.preventDefault();
+                inputRef.current?.focus();
+            }
+        };
+
         window.addEventListener('focus', refocus);
+        window.addEventListener('keydown', focusScannerShortcut);
         const stopObserving = observeEchoConnection((current) => {
             if (current === 'connected') {
                 setConnectionState(reconnectPendingRef.current ? 'reconnected' : 'connected');
@@ -186,6 +221,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
 
         return () => {
             window.removeEventListener('focus', refocus);
+            window.removeEventListener('keydown', focusScannerShortcut);
             stopObserving();
         };
     }, []);
@@ -204,6 +240,11 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                     message: 'Ask the stage operator to verify the graduate before presenting.',
                 });
                 setLastAccepted('Graduate information unavailable');
+                recordSessionScan({
+                    detail: 'Graduate information unavailable',
+                    label: 'Queued — verify record',
+                    tone: 'warning',
+                });
             } else {
                 setFeedback({
                     status: data.automatically_presented ? 'accepted' : 'stage_busy',
@@ -220,6 +261,15 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                           : `${displayName} is saved at queue position ${data.queue_position}. Stage control will recover from server state.`,
                 });
                 setLastAccepted(displayName);
+                recordSessionScan({
+                    detail: displayName,
+                    label: data.automatically_presented
+                        ? 'Presented automatically'
+                        : manual
+                          ? 'Manual lookup queued'
+                          : `Queued · position ${data.queue_position}`,
+                    tone: 'accepted',
+                });
             }
 
             return;
@@ -236,12 +286,22 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 title: 'Graduate selection is no longer available',
                 message: 'Search the active ceremony again, verify the graduate, then retry.',
             });
+            recordSessionScan({
+                detail: 'Manual lookup result expired',
+                label: 'Not accepted',
+                tone: 'rejected',
+            });
 
             return;
         }
 
-        setFeedback({
-            ...rejectionFeedback(data.status, data.message),
+        const rejected = rejectionFeedback(data.status, data.message);
+
+        setFeedback({ ...rejected });
+        recordSessionScan({
+            detail: rejected.title,
+            label: 'Not accepted',
+            tone: 'rejected',
         });
     }
 
@@ -290,6 +350,11 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 tone: 'rejected',
                 title: 'Scan not confirmed',
                 message: 'Check the local server connection. When it is restored, scan the same QR code again.',
+            });
+            recordSessionScan({
+                detail: 'Server confirmation unavailable',
+                label: 'Not confirmed',
+                tone: 'rejected',
             });
         } finally {
             setToken('');
@@ -390,6 +455,11 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                 title: 'Selection not confirmed',
                 message: 'Check the local server connection. Search and verify the graduate again after it is restored.',
             });
+            recordSessionScan({
+                detail: 'Manual selection confirmation unavailable',
+                label: 'Not confirmed',
+                tone: 'rejected',
+            });
         } finally {
             setSubmitting(false);
             submissionLockRef.current = false;
@@ -461,7 +531,13 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                         ))}
                     </ul>
 
-                    <form className="scanner-form" onSubmit={submitScan}>
+                    <div className="scanner-workspace">
+                        <div className="scanner-primary">
+                    <form
+                        aria-busy={submitting}
+                        className="scanner-form"
+                        onSubmit={submitScan}
+                    >
                         <label htmlFor="scan-token">
                             QR scan or manual token
                         </label>
@@ -474,6 +550,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                             autoComplete="off"
                             autoCapitalize="characters"
                             autoFocus
+                            aria-keyshortcuts="/"
                             inputMode="text"
                             maxLength={128}
                             readOnly={submitting || !canScan}
@@ -488,7 +565,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                             {submitting ? 'Processing…' : 'Process scan'}
                         </button>
                         <p id="scanner-help">
-                            USB scanner or keyboard entry.
+                            Scanner input stays focused. Press Enter to process.
                         </p>
                     </form>
 
@@ -502,6 +579,17 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                         <p className="scan-feedback-label">Current scan result</p>
                         <strong>{feedback.title}</strong>
                         <p>{feedback.message}</p>
+                        {(feedback.tone === 'rejected' || feedback.tone === 'warning') && canScan && (
+                            <div className="scan-feedback-actions">
+                                <button
+                                    className="secondary-action"
+                                    onClick={() => inputRef.current?.focus()}
+                                    type="button"
+                                >
+                                    Focus scanner and try again
+                                </button>
+                            </div>
+                        )}
                     </section>
 
                     <dl className="scanner-last-success">
@@ -597,6 +685,43 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                             </button>
                         </div>
                     </details>
+                        </div>
+
+                        <aside className="scanner-recent" aria-labelledby="scanner-recent-heading">
+                            <header>
+                                <div>
+                                    <p>Browser session</p>
+                                    <h2 id="scanner-recent-heading">Recent scans</h2>
+                                </div>
+                                <span>{recentScans.length}</span>
+                            </header>
+                            {recentScans.length === 0 ? (
+                                <div className="scanner-recent-empty">
+                                    <strong>No scans yet</strong>
+                                    <p>Confirmed and rejected attempts will appear here.</p>
+                                </div>
+                            ) : (
+                                <ol className="scanner-recent-list">
+                                    {recentScans.map((scan) => (
+                                        <li key={scan.id}>
+                                            <span
+                                                aria-hidden="true"
+                                                className={`status-marker status-marker-${scan.tone}`}
+                                            />
+                                            <div>
+                                                <strong>{scan.detail}</strong>
+                                                <small>{scan.label}</small>
+                                            </div>
+                                            <time>{scan.time}</time>
+                                        </li>
+                                    ))}
+                                </ol>
+                            )}
+                            <p className="scanner-recent-note">
+                                Session history is temporary. Use Scan logs for the authoritative record.
+                            </p>
+                        </aside>
+                    </div>
                 </section>
             </main>
         </>

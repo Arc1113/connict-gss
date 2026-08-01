@@ -95,6 +95,7 @@ export default function ScanLogs({ canExport, filterOptions, filters, logs }) {
                     <label htmlFor="graduate">Graduate</label>
                     <input
                         defaultValue={filters.graduate}
+                        data-page-search
                         id="graduate"
                         name="graduate"
                         placeholder="Ana Marie dela Cruz"
@@ -129,6 +130,10 @@ export default function ScanLogs({ canExport, filterOptions, filters, logs }) {
                 </EmptyState>
             ) : (
                 <>
+                    <div className="admin-table-toolbar" role="status">
+                        <strong>{logs.total} scan attempts</strong>
+                        <span>{hasFilters ? 'Filtered evidence' : 'All allowed evidence'}</span>
+                    </div>
                     <div className="admin-table-wrap">
                         <table className="admin-table">
                             <caption className="sr-only">Filtered scan log results</caption>

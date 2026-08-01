@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="description" content="Local graduation ceremony operations for preparation, scanning, stage control, and audience presentation.">
-        <meta name="theme-color" content="#0c2925">
+        <meta name="theme-color" content="#20262e">
         <meta name="application-name" content="Graduation Stage System">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

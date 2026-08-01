@@ -1,6 +1,14 @@
 import { Link, useForm } from '@inertiajs/react';
 import { FieldError, RequiredNote, ValidationSummary } from './FormSupport';
 
+const ROLE_GUIDANCE = {
+    administrator: 'Full ceremony, graduate, account, audit, backup, and operational access.',
+    data_encoder: 'Graduate preparation, imports, media, and QR preparation without live stage control.',
+    scanner_operator: 'Arrival Scanner access for QR scans and controlled graduate lookup.',
+    stage_operator: 'Stage Control and Audience Stage access for live ceremony operation.',
+    technical_operator: 'Operational logs, reports, and technical evidence without graduate editing.',
+};
+
 function describedBy(field, error, hint = false) {
     return [hint ? `${field}-hint` : null, error ? `${field}-error` : null]
         .filter(Boolean)
@@ -25,6 +33,18 @@ export default function UserForm({
 
     function submit(event) {
         event.preventDefault();
+
+        const roleChanged = editing && data.role !== managedUser.role.value;
+        const statusChanged = editing && data.is_active !== managedUser.is_active;
+
+        if (
+            (roleChanged || statusChanged) &&
+            !window.confirm(
+                `Save access changes for ${data.name || 'this operator'}? The new role or account status applies at the next authorization check.`,
+            )
+        ) {
+            return;
+        }
 
         if (editing) {
             put(action, { preserveScroll: true });
@@ -98,7 +118,8 @@ export default function UserForm({
                             ))}
                         </select>
                         <p className="admin-field-hint" id="role-hint">
-                            Assign only the duties this operator performs.
+                            {ROLE_GUIDANCE[data.role] ??
+                                'Assign only the duties this operator performs.'}
                         </p>
                         <FieldError id="role-error" message={errors.role} />
                     </div>

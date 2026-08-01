@@ -14,6 +14,12 @@ export default function StudentIndex({
     const hasFilters = Object.entries(filters).some(
         ([key, value]) => key !== 'sort' && Boolean(value),
     );
+    const advancedFilterCount = [
+        filters.college,
+        filters.program,
+        filters.stage_status,
+        filters.sort && filters.sort !== 'sequence' ? filters.sort : '',
+    ].filter(Boolean).length;
 
     return (
         <AdminLayout>
@@ -52,6 +58,7 @@ export default function StudentIndex({
                     <label htmlFor="search">Search name or student number</label>
                     <input
                         defaultValue={filters.search}
+                        data-page-search
                         id="search"
                         name="search"
                         placeholder="Ana Marie dela Cruz or student number"
@@ -89,36 +96,6 @@ export default function StudentIndex({
                     </select>
                 </div>
                 <div>
-                    <label htmlFor="college">College</label>
-                    <select
-                        defaultValue={filters.college}
-                        id="college"
-                        name="college"
-                    >
-                        <option value="">All colleges</option>
-                        {filterOptions.colleges.map((college) => (
-                            <option key={college} value={college}>
-                                {college}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label htmlFor="program">Program</label>
-                    <select
-                        defaultValue={filters.program}
-                        id="program"
-                        name="program"
-                    >
-                        <option value="">All programs</option>
-                        {filterOptions.programs.map((program) => (
-                            <option key={program} value={program}>
-                                {program}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div>
                     <label htmlFor="media">Media readiness</label>
                     <select defaultValue={filters.media} id="media" name="media">
                         <option value="">All media states</option>
@@ -132,27 +109,70 @@ export default function StudentIndex({
                         <option value="audio_rejected">Audio rejected</option>
                     </select>
                 </div>
-                <div>
-                    <label htmlFor="stage_status">Stage status</label>
-                    <select
-                        defaultValue={filters.stage_status}
-                        id="stage_status"
-                        name="stage_status"
-                    >
-                        <option value="">All stage states</option>
-                        <option value="not_presented">Not presented</option>
-                        <option value="presenting">Presenting</option>
-                        <option value="completed">Completed</option>
-                    </select>
-                </div>
-                <div>
-                    <label htmlFor="sort">Sort</label>
-                    <select defaultValue={filters.sort} id="sort" name="sort">
-                        <option value="sequence">Ceremony and sequence</option>
-                        <option value="name">Display name</option>
-                        <option value="student_number">Student number</option>
-                    </select>
-                </div>
+                <details
+                    className="admin-filter-advanced"
+                    open={advancedFilterCount > 0}
+                >
+                    <summary>
+                        More filters
+                        {advancedFilterCount > 0 && (
+                            <span>{advancedFilterCount} active</span>
+                        )}
+                    </summary>
+                    <div className="admin-filter-advanced-grid">
+                        <div>
+                            <label htmlFor="college">College</label>
+                            <select
+                                defaultValue={filters.college}
+                                id="college"
+                                name="college"
+                            >
+                                <option value="">All colleges</option>
+                                {filterOptions.colleges.map((college) => (
+                                    <option key={college} value={college}>
+                                        {college}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="program">Program</label>
+                            <select
+                                defaultValue={filters.program}
+                                id="program"
+                                name="program"
+                            >
+                                <option value="">All programs</option>
+                                {filterOptions.programs.map((program) => (
+                                    <option key={program} value={program}>
+                                        {program}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="stage_status">Stage status</label>
+                            <select
+                                defaultValue={filters.stage_status}
+                                id="stage_status"
+                                name="stage_status"
+                            >
+                                <option value="">All stage states</option>
+                                <option value="not_presented">Not presented</option>
+                                <option value="presenting">Presenting</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="sort">Sort</label>
+                            <select defaultValue={filters.sort} id="sort" name="sort">
+                                <option value="sequence">Ceremony and sequence</option>
+                                <option value="name">Display name</option>
+                                <option value="student_number">Student number</option>
+                            </select>
+                        </div>
+                    </div>
+                </details>
                 <div className="admin-filter-actions">
                     <button className="admin-button admin-button-primary" type="submit">
                         Apply filters
@@ -189,6 +209,14 @@ export default function StudentIndex({
                 </EmptyState>
             ) : (
                 <>
+                    <div className="admin-table-toolbar" role="status">
+                        <strong>{students.total} graduates</strong>
+                        <span>
+                            {hasFilters
+                                ? 'Matching the current filters'
+                                : 'All available graduate records'}
+                        </span>
+                    </div>
                     <div className="admin-table-wrap">
                         <table className="admin-table admin-student-table">
                             <caption className="sr-only">

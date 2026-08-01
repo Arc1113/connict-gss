@@ -1,31 +1,36 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { observeEchoConnection } from '../lib/echo';
 import AppIcon from './AppIcon';
 import { buildNavigation } from './appNavigation';
 import BrandMark from './BrandMark';
 import CommandPalette from './CommandPalette';
+import SystemStatusBar from './SystemStatusBar';
 
 function ceremonyCopy(ceremonyContext) {
     return {
         ready: {
             detail: ceremonyContext.active?.academic_year || 'Active ceremony',
             label: ceremonyContext.active?.name || 'Active ceremony',
+            shortLabel: 'active',
             tone: 'ready',
         },
         none: {
             detail: 'Live operations blocked',
             label: 'No active ceremony',
+            shortLabel: 'not active',
             tone: 'warning',
         },
         conflict: {
             detail: 'Correct ceremony statuses',
             label: 'Activation conflict',
+            shortLabel: 'conflict',
             tone: 'danger',
         },
         unavailable: {
             detail: 'Check the local database',
             label: 'Ceremony unavailable',
+            shortLabel: 'unavailable',
             tone: 'danger',
         },
     }[ceremonyContext.state];
@@ -93,6 +98,13 @@ export default function AppShell({ children }) {
                 return;
             }
 
+            if ((event.ctrlKey || event.metaKey) && event.key === '/') {
+                event.preventDefault();
+                setPaletteMode('shortcuts');
+                setPaletteOpen(true);
+                return;
+            }
+
             if (event.key === 'Escape') {
                 setPaletteOpen(false);
                 setMobileOpen(false);
@@ -117,14 +129,30 @@ export default function AppShell({ children }) {
                     search.select?.();
                 }
             }
+
+            if (!isTyping && event.altKey && !event.ctrlKey && !event.metaKey) {
+                const destinations = {
+                    1: '/dashboard',
+                    2: auth.abilities.operate_scanner ? '/scanner' : null,
+                    3: auth.abilities.operate_stage ? '/stage-control' : null,
+                    4: auth.abilities.operate_stage ? '/stage-control#queue' : null,
+                    5: auth.abilities.view_students ? '/admin/students' : null,
+                };
+                const destination = destinations[event.key];
+
+                if (destination) {
+                    event.preventDefault();
+                    router.visit(destination);
+                }
+            }
         };
 
         window.addEventListener('keydown', handleKeyboard);
         return () => window.removeEventListener('keydown', handleKeyboard);
-    }, []);
+    }, [auth.abilities]);
 
     const toggleSidebar = () => {
-        if (window.matchMedia('(max-width: 64rem)').matches) {
+        if (window.matchMedia('(max-width: 56rem)').matches) {
             setMobileOpen((current) => !current);
             return;
         }
@@ -141,12 +169,12 @@ export default function AppShell({ children }) {
     };
 
     const connection = !online
-        ? { label: 'Offline', tone: 'danger' }
+        ? { label: 'Network offline', shortLabel: 'disconnected', tone: 'danger' }
         : ['connected', 'reconnected'].includes(echoState)
-          ? { label: 'Live connected', tone: 'ready' }
+          ? { label: 'Live connected', shortLabel: 'connected', tone: 'ready' }
           : echoState === 'connecting'
-            ? { label: 'Connecting', tone: 'warning' }
-            : { label: 'Live disconnected', tone: 'danger' };
+            ? { label: 'Connecting', shortLabel: 'connecting', tone: 'warning' }
+            : { label: 'Live disconnected', shortLabel: 'disconnected', tone: 'danger' };
 
     return (
         <div
@@ -164,7 +192,11 @@ export default function AppShell({ children }) {
                             <small>Stage System</small>
                         </span>
                     </Link>
-                    <button aria-label="Collapse navigation" onClick={toggleSidebar} type="button">
+                    <button
+                        aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+                        onClick={toggleSidebar}
+                        type="button"
+                    >
                         <AppIcon name="chevron" />
                     </button>
                 </header>
@@ -181,6 +213,7 @@ export default function AppShell({ children }) {
                                             className={item.active ? 'is-active' : ''}
                                             href={item.href}
                                             onClick={() => setMobileOpen(false)}
+                                            rel={item.external ? 'noreferrer' : undefined}
                                             target={item.external ? '_blank' : undefined}
                                             title={collapsed ? item.label : undefined}
                                         >
@@ -252,7 +285,7 @@ export default function AppShell({ children }) {
                         >
                             <AppIcon name="search" />
                             <span>Command</span>
-                            <kbd>⌘K</kbd>
+                            <kbd>Ctrl K</kbd>
                         </button>
                         <details className="app-user-menu">
                             <summary aria-label="User and session menu">
@@ -274,6 +307,11 @@ export default function AppShell({ children }) {
                 <main className="app-workspace" id="app-content">
                     {children}
                 </main>
+                <SystemStatusBar
+                    ceremony={ceremony}
+                    connection={connection}
+                    online={online}
+                />
             </div>
 
             {paletteOpen && (

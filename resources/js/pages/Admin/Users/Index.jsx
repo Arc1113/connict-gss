@@ -30,6 +30,7 @@ export default function UserIndex({ filters, roleOptions, users }) {
                     <label htmlFor="search">Search name or email</label>
                     <input
                         defaultValue={filters.search}
+                        data-page-search
                         id="search"
                         name="search"
                         placeholder="Enter an operator name or email"
@@ -83,6 +84,10 @@ export default function UserIndex({ filters, roleOptions, users }) {
                 </EmptyState>
             ) : (
                 <>
+                    <div className="admin-table-toolbar" role="status">
+                        <strong>{users.total} operator accounts</strong>
+                        <span>{hasFilters ? 'Matching current filters' : 'All local accounts'}</span>
+                    </div>
                     <div className="admin-table-wrap">
                         <table className="admin-table admin-user-table">
                             <caption className="sr-only">
@@ -99,7 +104,7 @@ export default function UserIndex({ filters, roleOptions, users }) {
                             </thead>
                             <tbody>
                                 {users.data.map((user) => (
-                                    <tr key={user.id}>
+                                    <tr className={user.is_current ? 'is-current-user' : undefined} key={user.id}>
                                         <th scope="row">
                                             {user.name}
                                             {user.is_current && (

@@ -1,4 +1,4 @@
-const STATIC_CACHE = 'gss-static-v1';
+const STATIC_CACHE = 'gss-static-v2';
 const PRECACHE = [
     '/offline.html',
     '/manifest.webmanifest',

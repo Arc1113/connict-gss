@@ -3,6 +3,287 @@
 UI changes are recorded by project phase. Functional backend changes belong in
 the main project documentation.
 
+## Design.md desktop redesign — PWA and final consistency
+
+Status: completed
+Date: 2026-08-01
+
+Completed:
+
+- Updated the install manifest, browser theme, Inertia progress bar, and PWA
+  notices to the shared institutional palette and bumped the static cache to
+  `gss-static-v2`.
+- Preserved the safety boundary: authenticated pages and mutations are never
+  cached or queued; offline navigation receives the local stop-work page.
+- Added graceful service-worker registration failure handling and retained the
+  maintenance-window update prompt with post-activation reload.
+- Kept the persistent collapsible desktop sidebar through 1024px and moved the
+  drawer breakpoint below 896px; standalone mode retains internal navigation,
+  status, safe-area spacing, and application identity.
+- Standardized primary, secondary, danger, disabled, pressed, empty, focus, and
+  reduced-motion states across all migrated pages.
+- Corrected the sidebar toggle’s accessible Expand/Collapse name and added safe
+  external-link relationship metadata.
+
+Verification:
+
+- ESLint passed and the production Vite bundle completed successfully.
+- PWA configuration tests passed: 3 tests, 16 assertions.
+- Pint passed, the service worker passed JavaScript syntax validation, the
+  manifest parsed successfully, required 192/512/maskable icons were verified,
+  and whitespace validation passed.
+- Production source inspection found no remote HTTP assets; all interface assets
+  remain local. The only URL-like CSS asset is an inline SVG data URI.
+
+Environment-limited checks:
+
+- The current managed sandbox cannot access the Docker socket, and host PHP does
+  not have `pdo_pgsql`; therefore the full PostgreSQL suite and compiled-app
+  Chromium rehearsal could not be rerun in this final pass.
+- The unchanged scanner/stage backend suite and physical USB scanner,
+  microphone, projector, venue audio, LAN reconnect, and reboot rehearsal still
+  require the normal Compose/hardware verification environment.
+
+## Design.md desktop redesign — Monitoring and system administration
+
+Status: completed
+Date: 2026-08-01
+
+Completed:
+
+- Standardized Scan Logs, Stage Events, and Audit Logs around compact filters,
+  `/` search, result totals, sticky tabular evidence, safe event codes, and
+  expandable before/after change summaries.
+- Preserved filter-aware CSV exports and kept raw QR values and unsafe exception
+  details out of operational evidence.
+- Reworked Ceremony Reports into dense timing, count, and definition sections;
+  operational reset now remains disabled until its phrase matches exactly.
+- Added separate backup destination, latest creation, and latest verification
+  states; creation and verification commands lock while running to prevent
+  duplicate requests.
+- Kept browser restore unavailable and distinguished “backup completed” from
+  “restore verification passed” throughout the interface.
+- Added operator-account totals, `/` search, current-account marking,
+  role-specific permission guidance, and explicit confirmation for role or
+  account-status changes.
+
+Verification:
+
+- ESLint, production Vite build, and whitespace validation passed.
+
+Next: PWA, accessibility, responsive behavior, and final regression checks.
+
+## Design.md desktop redesign — Ceremonies, import, and QR
+
+Status: completed
+Date: 2026-08-01
+
+Completed:
+
+- Added ceremony result context and `/` search, and made entry into or out of
+  the live ceremony status require explicit confirmation with Scanner, Stage
+  Control, and Audience Stage consequences stated in place.
+- Rebuilt the audience-design editor around a wide 16:9 projector preview and a
+  compact adjacent control panel while preserving ceremony-scoped local assets,
+  presets, layouts, colors, and portrait policy.
+- Standardized CSV import as a visible four-step upload, mapping, preview, and
+  summary workflow with dense source context, semantic row findings, atomic
+  acknowledgement, and clear recovery routes.
+- Kept bulk media explicit: CSV filename columns reference files in local
+  `photos/` and `audio/` folders inside one optional ZIP package; imported audio
+  remains unapproved until review.
+- Rebuilt QR preparation around a compact print checklist, sticky current-page
+  batch selection, selected-row state, physical card preview, print blockers,
+  testing guidance, and guarded token replacement.
+- Corrected misleading selection copy: batch selection applies to the current
+  result page and resets when filters or pagination change.
+
+Verification:
+
+- ESLint, production Vite build, and whitespace validation passed after each
+  page group.
+
+Next: Monitoring, reports, backups, and operator accounts.
+
+## Design.md desktop redesign — Graduates and audio
+
+Status: completed
+Date: 2026-08-01
+
+Completed:
+
+- Kept name/student-number search, ceremony, eligibility, and media readiness
+  visible while moving college, program, stage status, and sort into a native
+  keyboard-accessible advanced-filter section.
+- Added a result-count toolbar, denser sticky-header table treatment, compact
+  media lines, visible row hover/focus behavior, and preserved `/` search focus.
+- Standardized create/edit fieldsets, validation, media inputs, sticky save
+  actions, and photo/audio panes with the shared spacing and surface tokens.
+- Clarified the microphone workflow as record, preview, save, review, and
+  approve; recording still creates a local file and uses the existing secure
+  upload and approval path.
+- Reworked graduate details into a compact identity/data workspace with a stable
+  presentation-media rail, labeled metadata, review status, and protected
+  destructive actions.
+- Preserved server QR generation, upload validation, audio approval rules,
+  local-only media storage, and stage-playback policy.
+
+Verification:
+
+- ESLint, production Vite build, and whitespace validation passed.
+- Microphone permission, physical input quality, and venue playback remain
+  hardware checks in the final rehearsal.
+
+Next: Ceremonies, CSV import, and QR preparation.
+
+## Design.md desktop redesign — Overview and readiness
+
+Status: completed
+Date: 2026-08-01
+
+Completed:
+
+- Replaced the role dashboard’s dark promotional-style action block with a
+  restrained primary-workspace row that includes the practical purpose of the
+  destination.
+- Kept ceremony readiness first, followed by the authorized next action and a
+  compact system list with explicit external-window indicators.
+- Reframed the administrator overview around readiness exceptions, active
+  ceremony identity, a dense twelve-value status matrix, and direct task rows.
+- Highlighted non-zero eligibility, audio-review, missing-audio, rejected-audio,
+  and missing-photo states while retaining explicit text labels and values.
+- Converted operational destinations into a two-column row system on wide
+  screens and a single keyboard-ordered list on narrow screens, without adding
+  dashboard cards or decorative metrics.
+
+Verification:
+
+- ESLint, production Vite build, and whitespace validation passed.
+
+Next: Graduates and announcement audio.
+
+## Design.md desktop redesign — Audience Stage
+
+Status: completed
+Date: 2026-08-01
+
+Completed:
+
+- Preserved ceremony-scoped background, logo, color, preset, photo, and layout
+  choices while removing a hard-coded opaque background layer that could mask a
+  configured theme color.
+- Replaced the unexplained floating audio button with a clear, one-time display
+  setup notice that disappears after the required browser gesture or key press.
+- Added projector safe-area spacing and tightened name, program, major, honors,
+  portrait, logo, holding, idle, and loading typography across wide and 4:3
+  displays.
+- Added an explicit photo-presence state so split layouts recover to a centered
+  composition when a graduate has no portrait instead of producing a broken
+  two-column grid.
+- Kept all connection recovery and audio playback behavior behind the audience
+  canvas, with no QR values, server errors, queue data, or operator controls
+  exposed during normal presentation.
+- Applied reduced-motion protection to all audience-stage descendants.
+
+Verification:
+
+- ESLint, production Vite build, and whitespace validation passed.
+- Theme persistence, projection viewports, live presentation, and audio replay
+  remain included in the final Compose/Chromium regression pass.
+
+Next: Overview.
+
+## Design.md desktop redesign — Stage Control
+
+Status: completed
+Date: 2026-08-01
+
+Completed:
+
+- Reframed Stage Control around a sticky current-graduate decision panel and a
+  larger scan-order queue instead of giving every supporting region equal
+  visual weight.
+- Added a visible “Safe next action” lane while keeping replay, holding-screen,
+  correction, skip, return, and out-of-order presentation controls distinct.
+- Clarified assisted automatic behavior in the interface: an accepted scan can
+  present only when the stage is idle, while completion remains operator-led.
+- Added a working `#queue` navigation target, selected-row treatment, compact
+  sticky table headers, tabular queue numbers, and clearer empty queue space.
+- Moved exceptional-action focus to Cancel, added Escape cancellation, and kept
+  explicit confirmation before a wrong-graduate correction.
+- Standardized the operational header, three-part live status strip, feedback,
+  support history, responsive stacking, borders, spacing, and semantic state
+  colors with the shared design tokens.
+
+Verification:
+
+- ESLint, production Vite build, and whitespace validation passed after the
+  Stage Control interaction and layout changes.
+- Compose browser and PostgreSQL test verification remains queued for the final
+  pass because the current host sandbox cannot access Docker or `pdo_pgsql`.
+
+Next: Audience Stage.
+
+## Design.md desktop redesign — Scanner
+
+Status: completed
+Date: 2026-08-01
+
+Completed:
+
+- Rebuilt the scanner as a two-zone workstation with a dominant scan-and-result
+  loop and a stable recent-session rail instead of one oversized form surface.
+- Kept PostgreSQL-backed Scan Logs authoritative while showing up to six
+  confirmed or rejected attempts temporarily in the current browser session.
+- Preserved automatic refocus after every server response and added `/` as an
+  explicit focus shortcut when the operator is not typing in another control.
+- Added a direct recovery action for rejected or incomplete scans, clearer
+  Enter-to-process guidance, locked processing state, and explicit automatic
+  presentation versus queued-only status text.
+- Reduced header height, standardized status strips and borders, restrained the
+  specialized dark header, and applied compact desktop and stacked narrow-screen
+  layouts from `design.md`.
+
+Verification:
+
+- ESLint, production Vite build, and whitespace validation passed.
+- Scanner workflow tests were attempted outside Compose but could not run
+  because the host PHP runtime lacks the PostgreSQL driver; no backend scanner
+  code changed. Compose/Chromium regression remains part of final verification.
+
+Next: Stage Control, queue operations, and Audience Stage.
+
+## Design.md desktop redesign — Shared shell
+
+Status: completed
+Date: 2026-07-31
+
+Completed:
+
+- Reorganized authorized navigation into Ceremony, Data, Operations, and System
+  groups while keeping Scanner and Stage Control one action away.
+- Replaced accumulated monochrome/legacy color intent with semantic background,
+  surface, text, border, accent, status, focus, spacing, radius, motion, layout,
+  and z-index tokens from `design.md`.
+- Added a persistent compact status bar for network, live-update, active
+  ceremony, and local-time context without claiming unsupported device health.
+- Added Alt workspace shortcuts, Ctrl/Cmd shortcut help, command-palette focus
+  containment, Escape handling, and focus restoration.
+- Removed application-toolbar blur, reduced page-heading scale, standardized
+  shell measurements, and retained the accessible small-screen navigation
+  drawer.
+
+Verification:
+
+- ESLint, production Vite build, and whitespace validation passed.
+- The five-profile Chromium ceremony rehearsal passed, including shell routes,
+  command center, mobile drawer, application restart, and Reverb recovery.
+- Visually inspected the expanded shell and command center at 1440×900 and the
+  drawer at 390×844; the required operational 1024×768 shell behavior remains
+  covered by the browser layout assertions.
+
+Next: Scanner.
+
 ## Phase 12 — Real-World Operations and UX Remediation
 
 Status: completed

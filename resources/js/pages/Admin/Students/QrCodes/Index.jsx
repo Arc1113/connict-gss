@@ -243,8 +243,8 @@ export default function StudentQrCodeIndex({
                                 selected
                             </strong>
                             <span>
-                                Selection can carry across result pages. Changing the
-                                filters starts a new selection; the batch limit is{' '}
+                                Selection applies to this result page. Changing filters
+                                or pages starts a new selection; the batch limit is{' '}
                                 {maximumBatchSize}.
                             </span>
                         </div>

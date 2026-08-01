@@ -6,6 +6,8 @@ export default function CommandPalette({ commands, mode, onClose, onModeChange }
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef(null);
+    const dialogRef = useRef(null);
+    const restoreFocusRef = useRef(null);
     const filtered = useMemo(() => {
         const normalized = query.trim().toLowerCase();
 
@@ -19,9 +21,52 @@ export default function CommandPalette({ commands, mode, onClose, onModeChange }
     }, [commands, query]);
 
     useEffect(() => {
-        const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
+        restoreFocusRef.current = document.activeElement;
+        return () => {
+            restoreFocusRef.current?.focus?.();
+        };
+    }, []);
+
+    useEffect(() => {
+        const frame = window.requestAnimationFrame(() => {
+            const target = inputRef.current
+                ?? dialogRef.current?.querySelector('button:not([disabled])');
+            target?.focus();
+        });
+
         return () => window.cancelAnimationFrame(frame);
     }, [mode]);
+
+    function containFocus(event) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            onClose();
+            return;
+        }
+
+        if (event.key !== 'Tab') {
+            return;
+        }
+
+        const focusable = dialogRef.current?.querySelectorAll(
+            'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        );
+
+        if (!focusable?.length) {
+            return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
 
     const run = (command) => {
         onClose();
@@ -40,7 +85,9 @@ export default function CommandPalette({ commands, mode, onClose, onModeChange }
                 aria-label={mode === 'shortcuts' ? 'Keyboard shortcuts' : 'Command palette'}
                 aria-modal="true"
                 className="command-dialog"
+                onKeyDown={containFocus}
                 onMouseDown={(event) => event.stopPropagation()}
+                ref={dialogRef}
                 role="dialog"
             >
                 <header className="command-header">
@@ -118,8 +165,9 @@ export default function CommandPalette({ commands, mode, onClose, onModeChange }
                 ) : (
                     <dl className="shortcut-list">
                         <div><dt><kbd>Ctrl</kbd><span>+</span><kbd>K</kbd></dt><dd>Open command palette</dd></div>
+                        <div><dt><kbd>Alt</kbd><span>+</span><kbd>1–5</kbd></dt><dd>Open primary workspaces</dd></div>
                         <div><dt><kbd>/</kbd></dt><dd>Focus search on the current page</dd></div>
-                        <div><dt><kbd>?</kbd></dt><dd>Open this shortcut reference</dd></div>
+                        <div><dt><kbd>Ctrl</kbd><span>+</span><kbd>/</kbd></dt><dd>Open this shortcut reference</dd></div>
                         <div><dt><kbd>Esc</kbd></dt><dd>Close a dialog, drawer, or palette</dd></div>
                         <div><dt><kbd>↑</kbd><kbd>↓</kbd></dt><dd>Move through command results</dd></div>
                         <div><dt><kbd>Enter</kbd></dt><dd>Open the selected safe command</dd></div>

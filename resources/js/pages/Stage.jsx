@@ -270,6 +270,7 @@ export default function Stage({ ceremony }) {
     const program = presentation?.program?.trim();
     const major = presentation?.major?.trim();
     const honors = presentation?.honors?.trim();
+    const hasStagePhoto = Boolean(presentation?.photo_url && theme.show_photo);
     const stageStatus = hasLoaded
         ? stageState.mode === 'holding'
             ? 'holding'
@@ -293,19 +294,26 @@ export default function Stage({ ceremony }) {
 
             <main
                 className="stage-page"
+                data-has-photo={hasStagePhoto}
                 data-stage-layout={theme.layout}
                 data-stage-preset={theme.preset}
                 data-stage-status={stageStatus}
                 style={stageStyle}
             >
                 {!audioEnabled && (
-                    <button
-                        className="stage-audio-enable"
-                        onClick={enableAudio}
-                        type="button"
-                    >
-                        Enable ceremony audio
-                    </button>
+                    <aside className="stage-audio-setup" role="status">
+                        <span>
+                            <strong>Audio setup required</strong>
+                            <small>One time on this display</small>
+                        </span>
+                        <button
+                            className="stage-audio-enable"
+                            onClick={enableAudio}
+                            type="button"
+                        >
+                            Enable audio
+                        </button>
+                    </aside>
                 )}
                 {theme.logo_url && (
                     <img className="stage-theme-logo" src={theme.logo_url} alt="" />
@@ -334,7 +342,7 @@ export default function Stage({ ceremony }) {
                         className="stage-presentation"
                         aria-labelledby="graduate-name"
                     >
-                        {presentation.photo_url && theme.show_photo && (
+                        {hasStagePhoto && (
                             <img
                                 className="stage-photo"
                                 src={presentation.photo_url}

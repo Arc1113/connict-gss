@@ -38,6 +38,7 @@ export default function CeremonyIndex({
                     <label htmlFor="search">Search by ceremony name</label>
                     <input
                         defaultValue={filters.search}
+                        data-page-search
                         id="search"
                         name="search"
                         placeholder="Enter a ceremony name"
@@ -106,6 +107,14 @@ export default function CeremonyIndex({
                 </EmptyState>
             ) : (
                 <>
+                    <div className="admin-table-toolbar" role="status">
+                        <strong>{ceremonies.total} ceremonies</strong>
+                        <span>
+                            {hasFilters
+                                ? 'Matching the current filters'
+                                : 'All ceremony records'}
+                        </span>
+                    </div>
                     <div className="admin-table-wrap">
                         <table className="admin-table">
                             <caption className="sr-only">

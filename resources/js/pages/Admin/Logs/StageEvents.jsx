@@ -83,6 +83,7 @@ export default function StageEvents({ canExport, events, filterOptions, filters 
                     <label htmlFor="graduate">Graduate</label>
                     <input
                         defaultValue={filters.graduate}
+                        data-page-search
                         id="graduate"
                         name="graduate"
                         placeholder="Christopher Emmanuel Villanueva-Santos"
@@ -117,6 +118,10 @@ export default function StageEvents({ canExport, events, filterOptions, filters 
                 </EmptyState>
             ) : (
                 <>
+                    <div className="admin-table-toolbar" role="status">
+                        <strong>{events.total} stage events</strong>
+                        <span>{hasFilters ? 'Filtered evidence' : 'All allowed evidence'}</span>
+                    </div>
                     <div className="admin-table-wrap">
                         <table className="admin-table">
                             <caption className="sr-only">Filtered stage events</caption>

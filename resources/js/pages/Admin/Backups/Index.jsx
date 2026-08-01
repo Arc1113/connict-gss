@@ -1,4 +1,5 @@
 import { Head, router } from '@inertiajs/react';
+import { useState } from 'react';
 import AdminLayout from '../../../components/Admin/AdminLayout';
 import EmptyState from '../../../components/Admin/EmptyState';
 import PageHeader from '../../../components/Admin/PageHeader';
@@ -25,12 +26,24 @@ function formatSize(value) {
 }
 
 export default function BackupIndex({ canCreate, destinationLabel, records }) {
+    const [creating, setCreating] = useState(false);
+    const [verifyingId, setVerifyingId] = useState(null);
+    const latest = records.data[0] ?? null;
+
     function createBackup() {
-        router.post('/admin/backups', {}, { preserveScroll: true });
+        router.post('/admin/backups', {}, {
+            onFinish: () => setCreating(false),
+            onStart: () => setCreating(true),
+            preserveScroll: true,
+        });
     }
 
     function verifyBackup(record) {
-        router.post(`/admin/backups/${record.id}/verify`, {}, { preserveScroll: true });
+        router.post(`/admin/backups/${record.id}/verify`, {}, {
+            onFinish: () => setVerifyingId(null),
+            onStart: () => setVerifyingId(record.id),
+            preserveScroll: true,
+        });
     }
 
     return (
@@ -39,8 +52,13 @@ export default function BackupIndex({ canCreate, destinationLabel, records }) {
             <PageHeader
                 actions={
                     canCreate && (
-                        <button className="admin-button admin-button-primary" onClick={createBackup} type="button">
-                            Create local backup
+                        <button
+                            className="admin-button admin-button-primary"
+                            disabled={creating || verifyingId !== null}
+                            onClick={createBackup}
+                            type="button"
+                        >
+                            {creating ? 'Creating backup…' : 'Create local backup'}
                         </button>
                     )
                 }
@@ -48,6 +66,32 @@ export default function BackupIndex({ canCreate, destinationLabel, records }) {
                 eyebrow="Operational recovery"
                 title="Backups"
             />
+
+            <section className="admin-backup-status" aria-label="Backup readiness">
+                <div>
+                    <span>Destination</span>
+                    <strong>{destinationLabel}</strong>
+                </div>
+                <div>
+                    <span>Latest backup</span>
+                    {latest ? (
+                        <StatusText label={latest.status} value={latest.status} />
+                    ) : (
+                        <strong>None recorded</strong>
+                    )}
+                </div>
+                <div>
+                    <span>Latest verification</span>
+                    {latest ? (
+                        <StatusText
+                            label={latest.verification_status || 'pending'}
+                            value={latest.verification_status || 'pending'}
+                        />
+                    ) : (
+                        <strong>Not available</strong>
+                    )}
+                </div>
+            </section>
 
             <section className="admin-detail-section">
                 <h2>Restore safety</h2>
@@ -68,6 +112,10 @@ export default function BackupIndex({ canCreate, destinationLabel, records }) {
                 </EmptyState>
             ) : (
                 <>
+                    <div className="admin-table-toolbar" role="status">
+                        <strong>{records.total} backup records</strong>
+                        <span>Newest first · creation and verification are separate</span>
+                    </div>
                     <div className="admin-table-wrap">
                         <table className="admin-table">
                             <caption className="sr-only">Local backup records</caption>
@@ -109,11 +157,17 @@ export default function BackupIndex({ canCreate, destinationLabel, records }) {
                                         <td>
                                             <button
                                                 className="admin-button admin-button-secondary"
-                                                disabled={record.status !== 'completed'}
+                                                disabled={
+                                                    record.status !== 'completed' ||
+                                                    creating ||
+                                                    verifyingId !== null
+                                                }
                                                 onClick={() => verifyBackup(record)}
                                                 type="button"
                                             >
-                                                Verify restore
+                                                {verifyingId === record.id
+                                                    ? 'Verifying…'
+                                                    : 'Run verification'}
                                             </button>
                                         </td>
                                     </tr>

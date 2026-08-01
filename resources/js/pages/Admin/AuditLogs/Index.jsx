@@ -65,6 +65,7 @@ export default function AuditLogIndex({ canExport, filterOptions, filters, logs 
                     <label htmlFor="action">Action contains</label>
                     <input
                         defaultValue={filters.action}
+                        data-page-search
                         id="action"
                         name="action"
                         placeholder="student.updated"
@@ -151,6 +152,10 @@ export default function AuditLogIndex({ canExport, filterOptions, filters, logs 
                 </EmptyState>
             ) : (
                 <>
+                    <div className="admin-table-toolbar" role="status">
+                        <strong>{logs.total} audit entries</strong>
+                        <span>{hasFilters ? 'Filtered changes' : 'All recorded changes'}</span>
+                    </div>
                     <div className="admin-table-wrap">
                         <table className="admin-table">
                             <caption className="sr-only">

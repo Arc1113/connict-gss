@@ -29,26 +29,31 @@ export default function PwaStatus() {
         window.addEventListener('appinstalled', handleInstalled);
 
         if ('serviceWorker' in navigator && import.meta.env.PROD) {
-            navigator.serviceWorker.register('/sw.js').then((nextRegistration) => {
-                setRegistration(nextRegistration);
+            navigator.serviceWorker
+                .register('/sw.js')
+                .then((nextRegistration) => {
+                    setRegistration(nextRegistration);
 
-                if (nextRegistration.waiting) {
-                    setUpdateReady(true);
-                }
+                    if (nextRegistration.waiting) {
+                        setUpdateReady(true);
+                    }
 
-                nextRegistration.addEventListener('updatefound', () => {
-                    const worker = nextRegistration.installing;
+                    nextRegistration.addEventListener('updatefound', () => {
+                        const worker = nextRegistration.installing;
 
-                    worker?.addEventListener('statechange', () => {
-                        if (
-                            worker.state === 'installed' &&
-                            navigator.serviceWorker.controller
-                        ) {
-                            setUpdateReady(true);
-                        }
+                        worker?.addEventListener('statechange', () => {
+                            if (
+                                worker.state === 'installed' &&
+                                navigator.serviceWorker.controller
+                            ) {
+                                setUpdateReady(true);
+                            }
+                        });
                     });
+                })
+                .catch(() => {
+                    setRegistration(null);
                 });
-            });
         }
 
         return () => {

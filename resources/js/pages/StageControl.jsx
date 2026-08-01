@@ -61,6 +61,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
     const connectedRef = useRef(false);
     const reconnectRef = useRef(false);
     const commandLockRef = useRef(false);
+    const confirmationCancelRef = useRef(null);
 
     const reconcile = useCallback(async (markLoaded = false) => {
         try {
@@ -162,6 +163,25 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
             setConnectionState(current);
         });
     }, [reconcile]);
+
+    useEffect(() => {
+        if (!confirmation) {
+            return undefined;
+        }
+
+        confirmationCancelRef.current?.focus();
+
+        const closeConfirmation = (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setConfirmation(null);
+            }
+        };
+
+        window.addEventListener('keydown', closeConfirmation);
+
+        return () => window.removeEventListener('keydown', closeConfirmation);
+    }, [confirmation]);
 
     async function runCommand(action, url, body = null) {
         if (commandLockRef.current) {
@@ -282,6 +302,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
 
                 {confirmation && (
                     <section
+                        aria-keyshortcuts="Escape"
                         className="stage-control-confirmation"
                         aria-labelledby="stage-confirmation-heading"
                         role="alertdialog"
@@ -294,6 +315,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                         </div>
                         <div>
                             <button
+                                ref={confirmationCancelRef}
                                 className="secondary-action"
                                 onClick={() => setConfirmation(null)}
                                 type="button"
@@ -387,6 +409,9 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                             </div>
 
                             <div className="stage-control-primary-actions">
+                                <p className="stage-control-action-label">
+                                    Safe next action
+                                </p>
                                 {current ? (
                                     <>
                                         {waiting.length > 0 && (
@@ -513,7 +538,12 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
 
                             {automatic && (
                                 <div className="stage-control-automatic">
-                                    <strong>Assisted automatic behavior</strong>
+                                    <span>
+                                        <strong>Assisted automatic</strong>
+                                        <small>
+                                            An accepted scan presents only while the stage is idle. Completion always requires the stage operator.
+                                        </small>
+                                    </span>
                                     <button
                                         className="secondary-action"
                                         disabled={Boolean(pendingAction)}
@@ -539,6 +569,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
 
                         <section
                             className="stage-control-queue"
+                            id="queue"
                             aria-labelledby="waiting-queue-heading"
                         >
                             <div className="stage-control-section-heading">

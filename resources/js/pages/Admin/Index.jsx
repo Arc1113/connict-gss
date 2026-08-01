@@ -48,9 +48,9 @@ export default function AdminIndex({
         <AdminLayout>
             <Head title="Administration" />
             <PageHeader
-                description="Review ceremony readiness and open the operational data task that needs attention."
-                eyebrow="Ceremony Readiness"
-                title="Ceremony operations"
+                description="Resolve readiness exceptions, verify the active ceremony, and open the next preparation task."
+                eyebrow="Overview"
+                title="Ceremony readiness"
             />
 
             <section className="admin-blockers" aria-labelledby="blockers-heading">
@@ -134,7 +134,7 @@ export default function AdminIndex({
                                     <dt>Completed</dt>
                                     <dd>{readiness.completed}</dd>
                                 </div>
-                                <div>
+                                <div className={readiness.needs_review > 0 ? 'is-warning' : undefined}>
                                     <dt>Needs eligibility review</dt>
                                     <dd>{readiness.needs_review}</dd>
                                 </div>
@@ -142,7 +142,7 @@ export default function AdminIndex({
                                     <dt>Audio approved</dt>
                                     <dd>{readiness.audio_approved}</dd>
                                 </div>
-                                <div>
+                                <div className={readiness.audio_needs_review > 0 ? 'is-warning' : undefined}>
                                     <dt>Audio needs review</dt>
                                     <dd>
                                         <Link href="/admin/students?media=audio_needs_review">
@@ -158,7 +158,7 @@ export default function AdminIndex({
                                         </Link>
                                     </dd>
                                 </div>
-                                <div>
+                                <div className={readiness.audio_missing > 0 ? 'is-warning' : undefined}>
                                     <dt>Audio missing</dt>
                                     <dd>
                                         <Link href="/admin/students?media=missing_audio">
@@ -166,7 +166,7 @@ export default function AdminIndex({
                                         </Link>
                                     </dd>
                                 </div>
-                                <div>
+                                <div className={readiness.audio_rejected > 0 ? 'is-danger' : undefined}>
                                     <dt>Audio rejected</dt>
                                     <dd>
                                         <Link href="/admin/students?media=audio_rejected">
@@ -174,7 +174,7 @@ export default function AdminIndex({
                                         </Link>
                                     </dd>
                                 </div>
-                                <div>
+                                <div className={readiness.missing_photo > 0 ? 'is-warning' : undefined}>
                                     <dt>Missing photo</dt>
                                     <dd>{readiness.missing_photo}</dd>
                                 </div>

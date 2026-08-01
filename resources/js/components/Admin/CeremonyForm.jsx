@@ -57,6 +57,22 @@ export default function CeremonyForm({
     function submit(event) {
         event.preventDefault();
 
+        const statusChanged = editing && data.status !== ceremony.status;
+        const changesLiveContext =
+            statusChanged &&
+            (data.status === 'active' || ceremony.status === 'active');
+
+        if (
+            changesLiveContext &&
+            !window.confirm(
+                data.status === 'active'
+                    ? `Activate ${data.name || 'this ceremony'} as the live ceremony used by Scanner and Stage Control?`
+                    : `Remove ${data.name || 'this ceremony'} from the live Scanner and Stage Control context?`,
+            )
+        ) {
+            return;
+        }
+
         post(action, { forceFormData: true, preserveScroll: true });
     }
 
@@ -288,6 +304,14 @@ export default function CeremonyForm({
                             is active.
                         </p>
                         <FieldError id="status-error" message={errors.status} />
+                        <p
+                            className={`ceremony-live-context ceremony-live-context-${data.status === 'active' ? 'active' : 'inactive'}`}
+                            role="status"
+                        >
+                            {data.status === 'active'
+                                ? 'Live context: Scanner, Stage Control, and Audience Stage will use this ceremony.'
+                                : 'Not live: activate this ceremony before opening Scanner or Stage Control for it.'}
+                        </p>
                     </div>
 
                     <div className="admin-field">
