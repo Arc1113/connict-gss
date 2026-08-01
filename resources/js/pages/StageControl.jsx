@@ -48,7 +48,11 @@ function connectionCopy(state) {
     return 'Live updates disconnected — reconnecting automatically';
 }
 
-export default function StageControl({ ceremony, ceremonyStatus }) {
+export default function StageControl({ ceremony }) {
+    const [activeCeremony, setActiveCeremony] = useState(() => ceremony ?? null);
+    const [channelCeremonyId, setChannelCeremonyId] = useState(
+        ceremony?.id ?? null,
+    );
     const [control, setControl] = useState(EMPTY_CONTROL);
     const [stageMode, setStageMode] = useState('idle');
     const [loaded, setLoaded] = useState(false);
@@ -89,10 +93,15 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
             }
 
             const nextControl = queueResult.data.control ?? EMPTY_CONTROL;
+            const nextCeremony =
+                queueResult.data.ceremony ?? stageResult.data.ceremony ?? null;
+
             versionRef.current = Math.max(
                 nextControl.version ?? 0,
                 stageResult.data.state?.version ?? 0,
             );
+            setActiveCeremony(nextCeremony);
+            setChannelCeremonyId(nextCeremony?.id ?? null);
             setControl(nextControl);
             setStageMode(stageResult.data.state?.mode ?? 'idle');
             setSelectedId((current) =>
@@ -115,11 +124,12 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
     useEffect(() => {
         let channel;
         let cancelled = false;
+        let subscribedCeremonyId = null;
 
         async function connect() {
             await reconcile(true);
 
-            if (cancelled || !ceremony) {
+            if (cancelled || channelCeremonyId === null) {
                 return;
             }
 
@@ -130,7 +140,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
             }
 
             channel = echo
-                .private(`stage-control.${ceremony.id}`)
+                .private(`stage-control.${channelCeremonyId}`)
                 .listen('.queue.updated', (event) => {
                     if (event.version <= versionRef.current) {
                         return;
@@ -141,6 +151,8 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                 .subscribed(() => {
                     void reconcile();
                 });
+
+            subscribedCeremonyId = channelCeremonyId;
         }
 
         void connect();
@@ -148,11 +160,11 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
         return () => {
             cancelled = true;
 
-            if (channel && ceremony) {
-                getEcho()?.leave(`stage-control.${ceremony.id}`);
+            if (channel && subscribedCeremonyId !== null) {
+                getEcho()?.leave(`stage-control.${subscribedCeremonyId}`);
             }
         };
-    }, [ceremony, reconcile]);
+    }, [channelCeremonyId, reconcile]);
 
     useEffect(() => {
         return observeEchoConnection((current) => {
@@ -286,8 +298,8 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
     const selected = waiting.find((item) => item.id === selectedId);
     const isHolding = stageMode === 'holding' || control.display_mode === 'holding';
     const stageBusy = Boolean(current);
-    const automatic = ceremony?.presentation_mode === 'automatic';
-    const unavailable = !ceremony || ceremonyStatus !== 'ready';
+    const automatic = activeCeremony?.presentation_mode === 'automatic';
+    const unavailable = !activeCeremony;
 
     return (
         <>
@@ -302,7 +314,7 @@ export default function StageControl({ ceremony, ceremonyStatus }) {
                     <div>
                         <h1>Stage control</h1>
                         <p>
-                            {ceremony?.name ?? 'No active ceremony'}
+                            {activeCeremony?.name ?? 'No active ceremony'}
                             <span aria-hidden="true"> · </span>
                             <strong>
                                 {automatic

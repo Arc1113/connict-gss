@@ -15,6 +15,9 @@ export default function Stage({ ceremony }) {
     const [hasLoaded, setHasLoaded] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(false);
     const [connectionState, setConnectionState] = useState('syncing');
+    const [channelCeremonyId, setChannelCeremonyId] = useState(
+        ceremony?.id ?? null,
+    );
     const [theme, setTheme] = useState(() => ({
         ...DEFAULT_STAGE_THEME,
         ...(ceremony?.theme ?? {}),
@@ -91,9 +94,12 @@ export default function Stage({ ceremony }) {
         try {
             const { data } = await requestJson('/stage/state');
             nextState = data.state ?? IDLE_STATE;
+            setChannelCeremonyId(data.ceremony?.id ?? null);
 
             if (data.ceremony?.theme) {
                 setTheme({ ...DEFAULT_STAGE_THEME, ...data.ceremony.theme });
+            } else {
+                setTheme(DEFAULT_STAGE_THEME);
             }
 
             versionRef.current = nextState.version;
@@ -113,11 +119,12 @@ export default function Stage({ ceremony }) {
     useEffect(() => {
         let cancelled = false;
         let channel;
+        let subscribedCeremonyId = null;
 
         async function connect() {
             await reconcile(true);
 
-            if (cancelled || !ceremony) {
+            if (cancelled || channelCeremonyId === null) {
                 return;
             }
 
@@ -128,7 +135,7 @@ export default function Stage({ ceremony }) {
             }
 
             channel = echo
-                .private(`stage.${ceremony.id}`)
+                .private(`stage.${channelCeremonyId}`)
                 .listen('.student.presented', (event) => {
                     if (event.version <= versionRef.current) {
                         return;
@@ -200,6 +207,8 @@ export default function Stage({ ceremony }) {
                 .subscribed(() => {
                     void reconcile();
                 });
+
+            subscribedCeremonyId = channelCeremonyId;
         }
 
         void connect();
@@ -208,11 +217,11 @@ export default function Stage({ ceremony }) {
             cancelled = true;
             stopAudio();
 
-            if (channel && ceremony) {
-                getEcho()?.leave(`stage.${ceremony.id}`);
+            if (channel && subscribedCeremonyId !== null) {
+                getEcho()?.leave(`stage.${subscribedCeremonyId}`);
             }
         };
-    }, [ceremony, playAudio, reconcile, stopAudio]);
+    }, [channelCeremonyId, playAudio, reconcile, stopAudio]);
 
     useEffect(() => {
         stageStateRef.current = stageState;
