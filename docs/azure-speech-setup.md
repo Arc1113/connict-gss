@@ -1,12 +1,20 @@
 # Azure Speech Preparation Setup and Security
 
-Status: **ENH-TTS-0 design only; Azure is not configured or called**
+Status: **ENH-TTS-2 safe local SSML implemented; Azure is not configured or called**
 
 Last reviewed against official provider documentation: 2026-08-03
 
 Azure Speech is proposed only for pre-ceremony candidate generation. It is not
 a ceremony runtime service. No real key belongs in this repository, React,
 Inertia props, logs, audit records, backups, screenshots, or documentation.
+
+ENH-TTS-1 adds the constrained `azure` provider enum and per-template or
+per-generation voice/locale snapshot fields. ENH-TTS-2 adds only a local,
+deterministic SSML builder and server-side voice allowlist. It adds no Azure
+environment variables, credentials, endpoint, HTTP client, provider class,
+request header, health check, or network call. The default
+`en-PH-JamesNeural` voice and `en-PH` locale are configuration data, not proof
+that a provider is available.
 
 ## Verified provider baseline
 
@@ -103,7 +111,7 @@ untrusted browser input. Browser selections map to server allowlisted values.
 
 ## Voice and locale allowlist
 
-Proposed initial comparison set:
+Implemented server-side comparison set in `config/announcements.php`:
 
 | Locale | Voice | Proposed use |
 | --- | --- | --- |
@@ -112,12 +120,13 @@ Proposed initial comparison set:
 | `fil-PH` | `fil-PH-AngeloNeural` | Filipino male comparison |
 | `fil-PH` | `fil-PH-BlessicaNeural` | Filipino female comparison |
 
-These voices are candidates, not approved defaults. Before enabling one for a
-ceremony, verify it is available for the configured resource/region and compare
-it with fictional and institution-approved test names. Never assume voice
-quality implies correct pronunciation. HD/custom/personal voices, styles, roles,
-multi-voice announcements, and arbitrary catalog selection are outside the
-initial scope.
+`en-PH-JamesNeural` with locale `en-PH` is the approved initial template-domain
+default; that configuration value is not a provider availability claim. Before
+using any voice for a ceremony, a later provider phase must verify availability
+for the configured resource/region and compare it with fictional and
+institution-approved test names. Never assume voice quality implies correct
+pronunciation. HD/custom/personal voices, styles, roles, multi-voice
+announcements, and arbitrary catalog selection are outside the initial scope.
 
 ## Request and output contract
 
@@ -136,10 +145,17 @@ The initial output is one 24 kHz, 48 kbit/s, mono MP3. It is compact and
 compatible with the existing managed upload/stage-browser path. Adding another
 production format requires a verified operational need and browser/venue test.
 
-The SSML builder must select one allowlisted voice/locale, escape all dynamic
-text, use bounded speaking rate and pauses, produce valid XML, preserve readable
-fallback text, and reject raw SSML from every user-controlled field. A human
-pronunciation note is not automatically IPA or a valid phoneme value.
+The ENH-TTS-2 SSML builder selects one allowlisted voice/locale, accepts only an
+integer speaking rate from -20% through +10%, and accepts only integer pauses
+from 0 through 1500 ms. PHP `XMLWriter` creates the namespace, elements, and
+attributes; every dynamic spoken value is written with `XMLWriter::text` and is
+therefore XML-escaped. Known raw SSML in source fields is blocking. The result
+retains the exact human-readable plain text and controlled break metadata. A
+human pronunciation note is not automatically IPA or a valid phoneme value.
+
+No request contract below is executable in ENH-TTS-2. There is still no
+credential configuration, provider endpoint call, authorization header,
+provider health check, HTTP synthesis, or audio response handling.
 
 ## Timeouts, retries, and rate limits
 

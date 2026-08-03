@@ -4,6 +4,7 @@ namespace App\Actions\Admin;
 
 use App\Enums\AudioReadinessStatus;
 use App\Enums\CeremonyStatus;
+use App\Enums\GraduateAudioSourceType;
 use App\Models\Ceremony;
 use App\Models\Student;
 use App\Models\StudentImport;
@@ -127,6 +128,11 @@ final class ConfirmStudentImport
                         ]),
                         'photo_path' => $media['photo_path'],
                         'audio_path' => $media['audio_path'],
+                        'audio_source_type' => $media['audio_path'] === null
+                            ? null
+                            : GraduateAudioSourceType::ManualUpload,
+                        'audio_generation_id' => null,
+                        'audio_source_hash' => null,
                         'audio_readiness_status' => $media['audio_path'] === null
                             ? AudioReadinessStatus::Missing
                             : AudioReadinessStatus::Uploaded,

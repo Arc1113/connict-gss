@@ -124,5 +124,25 @@ class AppServiceProvider extends ServiceProvider
             'reset-ceremony-operations',
             fn (User $user): bool => $user->hasRole(UserRole::Administrator),
         );
+        Gate::define(
+            'manage-announcement-settings',
+            fn (User $user): bool => $user->hasRole(UserRole::Administrator),
+        );
+        Gate::define(
+            'manage-student-awards',
+            fn (User $user): bool => $user->hasRole(UserRole::DataEncoder),
+        );
+        Gate::define(
+            'generate-announcement-candidates',
+            fn (User $user): bool => $user->hasRole(UserRole::DataEncoder),
+        );
+        Gate::define(
+            'review-announcement-candidates',
+            fn (User $user): bool => $user->hasRole(UserRole::Administrator),
+        );
+        Gate::define(
+            'view-announcement-usage',
+            fn (User $user): bool => $user->hasRole(UserRole::Administrator),
+        );
     }
 }

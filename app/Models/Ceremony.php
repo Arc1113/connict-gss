@@ -70,4 +70,20 @@ class Ceremony extends Model
     {
         return $this->hasMany(StudentImport::class);
     }
+
+    public function announcementTemplates(): HasMany
+    {
+        return $this->hasMany(AnnouncementTemplate::class);
+    }
+
+    public function activeAnnouncementTemplate(): HasOne
+    {
+        return $this->hasOne(AnnouncementTemplate::class)
+            ->where('is_active', true);
+    }
+
+    public function announcementGenerations(): HasMany
+    {
+        return $this->hasMany(AnnouncementGeneration::class);
+    }
 }

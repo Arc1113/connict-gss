@@ -63,6 +63,26 @@ class User extends Authenticatable
         return $this->hasMany(StudentImport::class);
     }
 
+    public function createdStudentAwards(): HasMany
+    {
+        return $this->hasMany(StudentAward::class, 'created_by');
+    }
+
+    public function updatedStudentAwards(): HasMany
+    {
+        return $this->hasMany(StudentAward::class, 'updated_by');
+    }
+
+    public function generatedAnnouncements(): HasMany
+    {
+        return $this->hasMany(AnnouncementGeneration::class, 'generated_by');
+    }
+
+    public function reviewedAnnouncements(): HasMany
+    {
+        return $this->hasMany(AnnouncementGeneration::class, 'reviewed_by');
+    }
+
     public function hasRole(UserRole $role): bool
     {
         return $this->role === $role;

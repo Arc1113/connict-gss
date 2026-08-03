@@ -3,6 +3,7 @@
 namespace App\Actions\Admin;
 
 use App\Enums\AudioReadinessStatus;
+use App\Enums\GraduateAudioSourceType;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\StudentQrTokenGenerator;
@@ -77,6 +78,11 @@ final class StudentAdministration
                     'qr_token' => $this->qrTokens->generate(),
                     'photo_path' => $photoPath,
                     'audio_path' => $audioPath,
+                    'audio_source_type' => $audioPath === null
+                        ? null
+                        : GraduateAudioSourceType::ManualUpload,
+                    'audio_generation_id' => null,
+                    'audio_source_hash' => null,
                     'audio_readiness_status' => $audioPath === null
                         ? AudioReadinessStatus::Missing
                         : AudioReadinessStatus::Uploaded,
@@ -178,6 +184,9 @@ final class StudentAdministration
 
                 if ($newAudioPath !== null) {
                     $locked->audio_path = $newAudioPath;
+                    $locked->audio_source_type = GraduateAudioSourceType::ManualUpload;
+                    $locked->audio_generation_id = null;
+                    $locked->audio_source_hash = null;
                     $locked->audio_readiness_status = AudioReadinessStatus::Uploaded;
                     $locked->audio_uploaded_at = now();
                     $locked->audio_approved_at = null;
@@ -285,6 +294,9 @@ final class StudentAdministration
             $locked->setAttribute($column, null);
             if ($type === 'audio') {
                 $locked->audio_readiness_status = AudioReadinessStatus::Missing;
+                $locked->audio_source_type = null;
+                $locked->audio_generation_id = null;
+                $locked->audio_source_hash = null;
                 $locked->audio_uploaded_at = null;
                 $locked->audio_approved_at = null;
                 $locked->audio_approved_by = null;

@@ -1,12 +1,15 @@
 # Graduation Announcement Content Policy
 
-Status: **ENH-TTS-0 proposed policy awaiting institutional approval**
+Status: **ENH-TTS-2 deterministic composition implemented; review UI deferred**
 
 Last reviewed: 2026-08-03
 
-This policy governs the deterministic plain text used for automated candidates
-and the human review of those candidates. It does not authorize generated audio
-for stage playback. Every candidate requires explicit administrator approval.
+This policy governs the future deterministic plain text used for automated
+candidates and their human review. ENH-TTS-2 implements deterministic plain-text
+composition, readiness assessment, safe SSML, and a side-effect-free backend
+preview service. It does not create audio, expose a preview route/UI, or
+authorize generated audio for stage playback. Every future candidate still
+requires explicit administrator approval.
 
 ## Permitted source fields
 
@@ -49,11 +52,18 @@ The composer, not the browser or Azure, owns punctuation and conjunctions.
 Plain text is the review authority; SSML adds only escaped voice/pacing markup
 and must not change the words.
 
-## Initial ceremony-template proposal
+The implemented composer first canonicalizes whitespace and orders awards,
+then creates only non-empty sections in the sequence above. It joins semantic
+sections with commas and one space. A final `?` or `!` is preserved; otherwise
+trailing clause punctuation is replaced by one period. There is no automatic
+truncation. Literal absence markers (`null`, `undefined`, `none`, `N/A`) and
+raw placeholder-only values are blocking and omitted from speech.
 
-The starting template for human approval is:
+## Initial ceremony-template defaults
 
-| Setting | Proposed value |
+The approved starting domain defaults are:
+
+| Setting | Default value |
 | --- | --- |
 | Introduction | `We proudly present` |
 | Include program | Yes |
@@ -116,7 +126,7 @@ and active generated audio.
   rule before implementation.
 - Major is optional and spoken only when non-empty and the ceremony template
   enables it.
-- The proposed default form is `major in {major}` only if the stored major does
+- The future default form is `major in {major}` only if the stored major does
   not already begin with an institution-approved connector. Exact connector
   wording requires institutional approval; until then, preview must expose the
   complete resulting sentence.
@@ -137,18 +147,20 @@ and active generated audio.
 
 ## Structured award rules
 
-Each award has a reviewed administrative `award_name`, a polished plain-text
-`spoken_text`, a positive `display_order`, and
+Each award has a reviewed administrative `award_name`, an optional polished
+plain-text `spoken_text`, a non-negative `display_order`, and
 `is_announcement_enabled`.
 
-- Only enabled awards are spoken and hashed as announcement content.
+- Only enabled awards will be spoken. The source fingerprint retains the ordered
+  award records and their enablement flag so enabling or disabling one changes
+  the hash.
 - Disabled awards remain stored for records/UI but are omitted entirely from
   plain text and SSML.
-- Award order is ascending `display_order`. Accessible move-up/move-down
+- Award order is ascending `display_order`, then primary key. Accessible move-up/move-down
   actions should control that order; creation time and alphabetical sorting do
   not silently change it.
-- Duplicate effective spoken phrases for one student are prohibited after trim
-  and case-insensitive comparison.
+- Exact duplicate award-name/spoken-text pairs for one student are prohibited
+  after trim and case-insensitive comparison.
 - `spoken_text` is a list-ready noun phrase, for example
   `the Best in Research Award`. It must not contain raw SSML, a leading comma,
   a trailing period, or the awards section's lead-in/conjunction.
@@ -173,8 +185,9 @@ is_announcement_enabled: true
 
 `announcement_additional_text` is optional plain text for one short distinction
 that cannot be represented as an honor or structured award. It is disabled by
-default at template level, proposed maximum 200 characters, and must be approved
-by the institution before generation.
+default at template level, has a database maximum of 700 characters, and should
+normally remain within the 200-character content recommendation. It must be
+approved by the institution before generation.
 
 It must not contain a biography, dedication, quotation, joke, sponsor message,
 political/religious statement, contact or sensitive information, raw SSML, or
@@ -194,9 +207,15 @@ For awards, the template lead-in precedes the list once:
 - two: `{lead-in} {award 1} and {award 2}`;
 - three or more: `{lead-in} {award 1}, {award 2}, and {final award}`.
 
-The Oxford comma is the proposed standard for three or more awards. Award
+The Oxford comma is the implemented standard for three or more awards. Award
 `spoken_text` values do not include separators or a final period. Empty or
 duplicate awards are rejected rather than silently producing malformed speech.
+
+The implemented award comparison uses Unicode normalization, case folding,
+punctuation removal, and exact normalized equality. The major/honors duplicate
+check additionally uses padded whole-phrase containment in either direction.
+It is deliberately conservative: no fuzzy matching, abbreviation expansion,
+translation, or AI semantic service is used.
 
 ## Approved-form examples
 
@@ -238,6 +257,32 @@ The UI should also show enabled-award count and a clearly labeled approximate
 speaking time. Character count cannot predict exact duration; voice, language,
 punctuation, pauses, and speaking rate affect it. Final thresholds and override
 authority require institutional approval.
+
+The preview duration is a deterministic range, not a measurement. It counts
+Unicode words, uses 145–165 words per minute, adjusts by the configured integer
+speaking rate, and adds section breaks. Whole seconds are rounded upward to
+avoid floating-point-dependent output. Actual Azure duration may differ.
+
+## Implemented validation codes
+
+The preview result exposes stable codes and human-readable messages:
+
+- required content: `missing_spoken_name`, `missing_program`;
+- safe deduplication: `major_duplicates_program`,
+  `honors_duplicates_section`, `duplicate_award_phrase`;
+- award contract: `empty_enabled_award`, `award_contains_lead_in`,
+  `award_not_list_ready`;
+- source safety: `raw_markup_detected`, `raw_placeholder_detected`;
+- synthesis settings: `unsupported_voice`, `unsupported_locale`,
+  `speaking_rate_out_of_range`, `pause_out_of_range`;
+- limits: `invalid_character_limits`,
+  `announcement_above_recommended_limit`,
+  `announcement_above_maximum_limit`; and
+- preview resolution: `missing_active_template`,
+  `template_ceremony_mismatch`.
+
+Warnings never hide or rewrite source content. Blocking errors prevent SSML
+output. A future provider action must refuse a blocked preview.
 
 ## Pronunciation review
 

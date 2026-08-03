@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\AudioReadinessStatus;
 use App\Enums\CeremonyStatus;
 use App\Enums\EligibilityStatus;
+use App\Enums\GraduateAudioSourceType;
 use App\Enums\PresentationMode;
 use App\Enums\StageAudioStatus;
 use App\Enums\StageDisplayMode;
@@ -140,6 +141,11 @@ class DatabaseSeeder extends Seeder
                     'major' => $student['major'],
                     'honors' => $student['honors'],
                     'audio_path' => $student['audio_path'],
+                    'audio_source_type' => $student['audio_path'] === null
+                        ? null
+                        : GraduateAudioSourceType::ManualUpload,
+                    'audio_generation_id' => null,
+                    'audio_source_hash' => null,
                     'audio_readiness_status' => $student['audio_path'] === null
                         ? AudioReadinessStatus::Missing
                         : AudioReadinessStatus::NeedsReview,

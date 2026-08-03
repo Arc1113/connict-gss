@@ -5,6 +5,7 @@ namespace Tests\Feature\Phase8;
 use App\Actions\Admin\StudentAdministration;
 use App\Enums\AudioReadinessStatus;
 use App\Enums\EligibilityStatus;
+use App\Enums\GraduateAudioSourceType;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Ceremony;
@@ -57,6 +58,9 @@ class AnnouncementAudioReadinessTest extends TestCase
         $this->assertStringStartsWith('graduates/audio/', $storedPath);
         $this->assertStringNotContainsString('ana-final-name', $storedPath);
         $this->assertSame(AudioReadinessStatus::Uploaded, $student->audio_readiness_status);
+        $this->assertSame(GraduateAudioSourceType::ManualUpload, $student->audio_source_type);
+        $this->assertNull($student->audio_generation_id);
+        $this->assertNull($student->audio_source_hash);
         $this->assertNotNull($student->audio_uploaded_at);
         $this->assertNull($student->audio_approved_at);
         $this->assertNull($student->audio_approved_by);
@@ -177,6 +181,9 @@ class AnnouncementAudioReadinessTest extends TestCase
         $student->refresh();
         $this->assertNotSame($approvedPath, $student->audio_path);
         $this->assertSame(AudioReadinessStatus::Uploaded, $student->audio_readiness_status);
+        $this->assertSame(GraduateAudioSourceType::ManualUpload, $student->audio_source_type);
+        $this->assertNull($student->audio_generation_id);
+        $this->assertNull($student->audio_source_hash);
         $this->assertNull($student->audio_approved_at);
         $this->assertNull($student->audio_approved_by);
         Storage::disk('public')->assertMissing($approvedStoragePath);

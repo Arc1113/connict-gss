@@ -31,6 +31,10 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Production traffic arrives through the local Caddy HTTPS proxy.
+        // Honor its forwarded scheme and host for secure redirects and assets.
+        $middleware->trustProxies(at: '*');
+
         $middleware->redirectGuestsTo(fn (Request $request) => route('login'));
         $middleware->redirectUsersTo(fn (Request $request) => route('dashboard'));
 

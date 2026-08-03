@@ -1,8 +1,8 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 12 software architecture verified**
+Document status: **Phase 12 verified; ENH-TTS-2 composition/SSML layer implemented**
 
-Last updated: 2026-07-30
+Last updated: 2026-08-03
 
 ## 1. Architectural intent
 
@@ -11,7 +11,9 @@ commands, persist authoritative ceremony state in PostgreSQL, and receive
 post-commit notifications through Reverb/Echo. The design favors correctness and
 recovery over trusting browser state or transient WebSocket delivery.
 
-The approved architecture has not changed.
+The ceremony-runtime architecture has not changed. ENH-TTS-1 adds the
+preparation-domain PostgreSQL foundation; ENH-TTS-2 adds a pure composition,
+safe SSML, and read-only preview layer.
 
 ## 2. Current stack
 
@@ -32,6 +34,11 @@ The approved architecture has not changed.
 
 No Redis, queue worker, polling loop, separate SPA/API application, SQLite,
 cloud-storage service, cloud speech service, or runtime CDN is used.
+
+Cloud TTS is prohibited during ceremony runtime. Azure Speech is permitted only
+during authorized preparation, with generated files reviewed, approved, and
+stored locally before ceremony. ENH-TTS-2 does not yet add the cloud speech
+service or any network path to it.
 
 Phase 12 does not change the approved architecture. The runtime remains
 HTTP for commands and recovery reads, PostgreSQL for authoritative state,
@@ -949,4 +956,104 @@ not introduced. Human confirmation remains the safety boundary between names.
 The physical event status remains conditional until the actual scanner,
 display, audio system, network, and devices complete the venue rehearsal.
 
-Phase 12 must be reviewed and approved before any subsequent feature phase.
+Phase 12 and ENH-TTS-0 were reviewed before the additive ENH-TTS-1 work began.
+
+## 20. ENH-TTS-1 preparation-domain architecture
+
+ENH-TTS-1 adds five ordered PostgreSQL migrations. Student announcement/source
+columns are added first; awards and templates follow; generations then reference
+the existing `(ceremony_id, student_id)` identity and the template's
+`(ceremony_id, id)` identity; the nullable student-to-generation reference is
+added last. Rollback reverses that order and removes the circular edge before
+dropping generation history.
+
+```text
+ceremonies
+    ├── students
+    │     ├── student_awards (ordered by display_order, id)
+    │     └── announcement_generations
+    └── announcement_templates
+          └── announcement_generations
+
+students.(ceremony_id, id, audio_generation_id)
+    ──> announcement_generations.(ceremony_id, student_id, id) (nullable)
+```
+
+PostgreSQL remains the concurrency and integrity boundary:
+
+- a partial unique index permits historical inactive templates while enforcing
+  one active template per ceremony;
+- activation locks the ceremony row, deactivates the former template, and
+  activates the requested version in one transaction;
+- composite foreign keys reject student/template ceremony mismatches and prevent
+  a student from linking another graduate's generation as active audio;
+- checks constrain providers, generation statuses, hashes, counters, template
+  versions, rates, pauses, and character limits; and
+- restrictive generation foreign keys preserve history while award rows cascade
+  only with an otherwise deletable student.
+
+`BuildAnnouncementSourceFingerprint` accepts a typed source DTO. It recursively
+sorts associative keys, preserves award-list order, emits unescaped Unicode and
+slashes without insignificant whitespace, and hashes the JSON with SHA-256.
+Only allowlisted announcement fields are representable, so timestamps,
+credentials, paths, request IDs, and review notes cannot enter the fingerprint.
+
+`AnnouncementGeneration` hides candidate and approved paths from default model
+serialization and prevents mutation of its persisted source snapshot through
+the model. No large or sensitive relation is globally eager-loaded.
+
+The existing `Gate::before` continues to deny inactive users and grant active
+administrators. Named announcement gates add data-encoder award/generation
+preparation authority without granting review authority to encoders or any
+announcement authority to stage, scanner, or technical operators.
+
+Manual upload and import actions classify audio as `manual_upload`; replacement
+clears any generation link/hash; removal clears all source metadata. The
+existing `AnnouncementAudio`, stage serializers, Reverb events, playback gate,
+routes, and React pages are unchanged. No Azure client, synthesis request, SSML
+builder, candidate write, generation endpoint, promotion workflow, or batch
+worker exists in ENH-TTS-1.
+
+## 21. ENH-TTS-2 pure composition architecture
+
+The new application flow is read-only and server-local:
+
+```text
+Student + active AnnouncementTemplate + ordered StudentAward rows
+    -> PreviewGraduationAnnouncement
+    -> normalized AnnouncementCompositionInput
+    -> ComposeGraduationAnnouncement
+       -> ComposedAnnouncement + source fingerprint
+    -> BuildGraduationAnnouncementSsml
+       -> AnnouncementSsmlResult
+```
+
+The DTO boundary deliberately excludes QR tokens, student numbers, media paths,
+timestamps, credentials, provider responses, and review data. The composer and
+award formatter operate on immutable DTOs rather than unrestricted Eloquent
+models. Normalization collapses Unicode whitespace but preserves approved
+wording. Award ordering is `display_order`, then identifier. Disabled award
+records remain in the fingerprint with their enablement flag but cannot enter
+spoken sections.
+
+Composition is deterministic and section-aware. The fixed order, conservative
+whole-phrase duplicate checks, natural-language award formatter, punctuation,
+Unicode character count, 450/700 default thresholds, and 145–165 WPM estimate
+are owned by domain services. `composition_schema_version: 1` makes future
+spoken-format rule changes an explicit source-hash invalidation decision.
+
+SSML is a one-way projection of ready structured sections. Voice/locale pairs
+come from `config/announcements.php`; rate (-20% through +10%) and pauses
+(0–1500 ms) are typed integers. `XMLWriter` owns the namespace, attributes, and
+elements, while dynamic source strings use its text API. The builder cannot
+accept raw elements, arbitrary attributes, styles, roles, audio, or phonemes.
+Breaks occur only between present sections: the name uses the configured
+name pause and every other non-final section uses the section pause.
+
+Preview resolves an active same-ceremony template, reads ordered awards,
+composes, and returns plain/structured/SSML metadata. It does not authorize a
+route and has no transaction or persistence step. No generation model is
+created, no file or audio readiness changes, no HTTP call or Reverb event is
+made, and stage serializers/playback are untouched. Azure provider integration,
+candidate custody, UI, approval, invalidation, and batch work remain ENH-TTS-3+
+concerns.

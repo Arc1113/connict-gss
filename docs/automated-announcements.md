@@ -1,13 +1,14 @@
 # Automated Voice Announcements
 
-Status: **ENH-TTS-0 requirements and design freeze; no runtime implementation**
+Status: **ENH-TTS-2 deterministic composition and safe SSML implemented; no synthesis or runtime integration**
 
 Last reviewed: 2026-08-03
 
-This document defines the proposed architecture for preparation-time automated
-graduate announcements. It does not authorize migrations, routes, provider
-requests, generated files, or ceremony-runtime changes. Implementation begins
-only after human approval of this design freeze.
+This document defines the approved architecture for preparation-time automated
+graduate announcements. ENH-TTS-1 supplies the PostgreSQL domain foundation.
+ENH-TTS-2 adds immutable composition inputs/results, deterministic plain text,
+safe SSML, and a side-effect-free backend preview service. It does not add
+routes, provider requests, generated files, or ceremony-runtime changes.
 
 ## Objective and non-negotiable boundary
 
@@ -32,11 +33,61 @@ commands, replay, browser recovery, and the audience display must never call or
 wait for Azure. The ceremony remains operable with Azure disabled, the TTS
 worker stopped, and the internet disconnected.
 
-The current requirements and `docs/audio-preparation.md` prohibit cloud TTS
-because no approved cloud workflow exists today. This enhancement is a proposed
-narrow exception for preparation mode only. Those current prohibitions remain
-effective until the applicable enhancement phases are implemented, tested, and
-approved; the prohibition remains permanent for ceremony-runtime paths.
+Cloud TTS is prohibited during ceremony runtime. Azure Speech is permitted only
+during authorized preparation, with generated files reviewed, approved, and
+stored locally before ceremony. ENH-TTS-2 adds no provider integration, so the
+preparation-time network exception is not executable yet.
+
+## Implemented ENH-TTS-2 composition boundary
+
+`PreviewGraduationAnnouncement` resolves the ceremony's active template and
+loads awards in `display_order`, then primary-key order. It maps only approved
+announcement fields into `AnnouncementCompositionInput`; student numbers, QR
+tokens, contact data, timestamps, media paths, credentials, and review notes
+cannot enter the DTO. Preview creates no `AnnouncementGeneration`, performs no
+HTTP request or broadcast, writes no file, and changes no student or stage
+state.
+
+`ComposeGraduationAnnouncement` normalizes surrounding and repeated whitespace,
+preserves Unicode, and builds non-empty sections in this fixed order:
+introduction, spoken name, program, major, honors, enabled awards, additional
+distinction, closing. `tts_spoken_name` has priority over `announcement_name`;
+whitespace-only values are absent, and no display-name inference occurs. A
+missing name blocks. An enabled missing program blocks. Major and honors are
+omitted with a warning only when Unicode case-folded, punctuation-normalized
+whole-phrase comparison safely detects equality or containment; similar but
+distinct wording remains.
+
+Awards use non-empty `spoken_text`, otherwise `award_name`. Disabled awards are
+not spoken. The dedicated formatter rejects empty or duplicate effective
+phrases, raw SSML, placeholders, leading separators/conjunctions, and wording
+that repeats the template lead-in. It emits no clause for zero awards, `and`
+for two, and an Oxford comma for three or more. The template lead-in is emitted
+once.
+
+Plain text uses one space between comma-separated sections and exactly one
+terminal punctuation mark. It is never truncated. Unicode-safe length status
+is `normal` through the configured recommended limit, `warning` above that
+through maximum, and `blocking` above maximum. Defaults remain 450 and 700.
+The deterministic duration range counts Unicode words, assumes configurable
+145–165 words per minute, adjusts by the validated integer speaking rate, and
+adds emitted section pauses. It is explicitly approximate; Azure output may
+differ.
+
+`BuildGraduationAnnouncementSsml` consumes only a ready composed result. PHP's
+`XMLWriter` creates the Azure synthesis namespace, `version="1.0"`, controlled
+`xml:lang`, one allowlisted voice, an integer percentage prosody rate, and
+integer-millisecond breaks. Dynamic text is passed only to `XMLWriter::text`,
+so XML characters are escaped and cannot become elements or attributes. Known
+raw SSML markup blocks composition. No style, role, emotion, phoneme, audio, or
+arbitrary attribute is supported.
+
+The server allowlist is `config/announcements.php`: James/Rosa pair with
+`en-PH`; Angelo/Blessica pair with `fil-PH`. Speaking rate is limited to
+-20% through +10%, and each pause to 0–1500 ms. The fingerprint now includes
+`composition_schema_version: 1`; normalized source values, every ordered award
+record and enablement flag, template settings, voice, locale, rate, pauses, and
+output format determine the hash.
 
 ## Existing audio architecture to preserve
 
@@ -93,10 +144,12 @@ HTTP client and the Azure Text to Speech REST API. No Azure SDK is required.
 Future providers are out of scope and must satisfy the same contract and safety
 rules.
 
-## Proposed domain model
+## Implemented domain foundation
 
-The structures below are appropriate for the current normalized PostgreSQL
-architecture. Exact Laravel migrations and indexes belong to ENH-TTS-1.
+The structures below are implemented in the normalized PostgreSQL architecture.
+Five ordered migrations add student metadata, awards, templates, generations,
+and finally the nullable student-to-generation reference to avoid a circular
+migration dependency.
 
 ### Student additions
 
@@ -120,23 +173,23 @@ audio remain null. Manual upload or browser recording must clear
 | `id` | PostgreSQL bigint identity |
 | `student_id` | Required FK to `students` |
 | `award_name` | Required reviewed administrative label |
-| `spoken_text` | Required polished noun phrase, not SSML and normally not the section lead-in |
-| `display_order` | Positive integer, unique per student |
+| `spoken_text` | Nullable polished noun phrase, not SSML and normally not the section lead-in |
+| `display_order` | Non-negative integer; ties resolve by primary key |
 | `is_announcement_enabled` | Required boolean, default true |
 | timestamps | Time-zone-aware Laravel timestamps |
 
 Awards should be normalized rather than stored as comma-separated text.
-Duplicate effective spoken phrases for one student should be rejected after
+Exact duplicate award-name/spoken-text pairs for one student are rejected after
 trimmed, case-insensitive comparison. Deterministic ordering is
-`display_order`, then `id` only as a corruption-safe tie-breaker. A generation
-stores its rendered text and hash, so later award edits cannot rewrite history.
+`display_order`, then `id`. A generation stores its rendered text and hash, so
+later award edits cannot rewrite history.
 
 The plan's example puts `recipient of` inside each award's `spoken_text`. The
 frozen recommendation is instead to store a list-ready noun phrase such as
 `the Best in Research Award` and let the ceremony template contribute the one
 `recipient of` lead-in. This avoids duplicated lead-ins in multi-award lists.
 
-### `ceremony_announcement_templates`
+### `announcement_templates`
 
 | Proposed field | Constraint or meaning |
 | --- | --- |
@@ -173,8 +226,18 @@ enter raw SSML. A dedicated builder safely escapes every dynamic value.
 
 Generation records should be retained as immutable evidence apart from legal
 status transitions and bounded review/failure metadata. Foreign-key deletion
-must not silently remove an active or historical generation. Student deletion
-is already history-protected; future constraints should preserve that behavior.
+must not silently remove an active or historical generation. ENH-TTS-1 enforces
+ceremony/student and ceremony/template consistency with composite PostgreSQL
+foreign keys. The late student audio-generation link is also composite, so it
+cannot target another graduate's generation. Generation history uses restrictive
+deletion.
+
+One active template per ceremony is enforced with a PostgreSQL partial unique
+index and a ceremony-row-locking activation service. Template versions are
+unique per ceremony. Candidate and approved paths remain nullable and are hidden
+from default model serialization. Creator/updater/generator/reviewer references
+are nullable and become null if an operator account is deleted, while the domain
+record remains.
 
 ## Candidate lifecycle
 
@@ -229,11 +292,11 @@ approval/rejection/outdated status requires institutional approval.
 
 ## Source hash and stale-audio protection
 
-Use a versioned canonical UTF-8 JSON representation and SHA-256. Keys are fixed
-and emitted in the documented order; missing optional values are JSON `null`;
-booleans and integers retain their types; strings use the validated persisted
-text without locale-dependent case conversion; awards are an ordered array.
-Use unescaped Unicode/slashes and no insignificant whitespace.
+`BuildAnnouncementSourceFingerprint` now uses a typed source DTO, versioned
+canonical UTF-8 JSON, and SHA-256. Associative keys are sorted recursively;
+missing optional values are JSON `null`; booleans and integers retain their
+types; and awards remain an ordered list. Unicode and slashes are unescaped and
+no insignificant whitespace is emitted.
 
 The canonical source includes at least:
 
@@ -241,18 +304,24 @@ The canonical source includes at least:
 {
   "schema": 1,
   "student": {
+    "identifier": 42,
     "announcement_name": "...",
     "tts_spoken_name": null,
     "program": "...",
     "major": null,
     "honors": null,
-    "enabled_awards": [
-      {"order": 1, "award_name": "...", "spoken_text": "..."}
+    "awards": [
+      {
+        "display_order": 0,
+        "award_name": "...",
+        "spoken_text": "...",
+        "is_announcement_enabled": true
+      }
     ],
     "announcement_additional_text": null
   },
   "template": {
-    "id": 1,
+    "identifier": 1,
     "version": 1,
     "introduction_text": "...",
     "include_program": true,
@@ -264,10 +333,10 @@ The canonical source includes at least:
     "closing_text": null
   },
   "synthesis": {
-    "provider": "azure_speech",
+    "provider": "azure",
     "voice": "en-PH-JamesNeural",
     "locale": "en-PH",
-    "speaking_rate": "-5%",
+    "speaking_rate_percent": -5,
     "pause_after_name_ms": 250,
     "pause_between_sections_ms": 160,
     "output_format": "audio-24khz-48kbitrate-mono-mp3"
@@ -275,12 +344,12 @@ The canonical source includes at least:
 }
 ```
 
-`source_hash = SHA256(canonical_json)`. The idempotency key additionally binds
-the student ID and output format. Hashing must be unit-tested for stability,
-Unicode, null/empty distinctions, award order, and every invalidating field.
-The canonical key names above are part of hash schema version 1; implementations
-must not silently rename a key or change value normalization without incrementing
-that schema version and making earlier generated audio outdated.
+`source_hash = SHA256(canonical_json)`. The canonical object includes the
+student identifier and output format; it excludes timestamps, credentials,
+paths, request IDs, and review/failure metadata. Tests cover stability, Unicode,
+award addition/removal/order/spoken wording/enablement, student and template
+fields, voice, locale, rate, and pauses. These key names are hash schema version
+1 and must not change without a schema increment and stale-generation handling.
 
 At approval, lock the student, generation, applicable awards, and immutable
 template row; recalculate the hash and reject approval if it differs. On edits
@@ -406,9 +475,9 @@ candidate copy is expired.
 
 ## Verification and testing strategy
 
-All future database behavior must be tested against PostgreSQL. ENH-TTS-1 must
-cover constraints, relationships, legal status transitions, role policies,
-source-hash stability, and every invalidating field. ENH-TTS-2 must cover no,
+All database behavior is tested against PostgreSQL. ENH-TTS-1 covers
+constraints, relationships, minimal enum values, role policies, source-hash
+stability, and every invalidating field. ENH-TTS-2 covers no,
 one, two, and multiple awards; missing optional sections; Unicode; long content;
 spoken-name overrides; deterministic punctuation; XML escaping; and attempted
 SSML injection without making a provider request.
@@ -427,16 +496,17 @@ a local backup; restore it into a disposable PostgreSQL database/media area;
 and prove scanning, presenting, replay, recovery, and live-announcer fallback
 with Azure disabled and internet disconnected. Secret, browser-bundle, log,
 audit, backup, private-path, and same-origin runtime scans are release gates.
-ENH-TTS-0 changes documentation only, so it does not claim those future runtime
-checks have passed.
+ENH-TTS-2 creates no candidate file and makes no provider request, so it does
+not claim those future runtime checks have passed.
 
 ## Proposed enhancement phases
 
-1. **ENH-TTS-0:** requirements/content/security design freeze (this phase).
+1. **ENH-TTS-0:** requirements/content/security design freeze (approved).
 2. **ENH-TTS-1:** PostgreSQL awards, templates, generations, source metadata,
-   models, policies, factories, and tests.
-3. **ENH-TTS-2:** deterministic composer, safe SSML builder, source hash, and
-   preview serializer without Azure calls.
+   deterministic fingerprint foundation, models, policies, factories, and
+   tests (implemented).
+3. **ENH-TTS-2:** deterministic composer, safe SSML builder, current-source
+   assembly, and preview serializer without Azure calls (implemented).
 4. **ENH-TTS-3:** mocked and controlled Azure provider integration with private
    candidate storage.
 5. **ENH-TTS-4:** awards and single-graduate generation UI.
@@ -447,8 +517,8 @@ checks have passed.
 9. **ENH-TTS-8:** full regression, backup/restore, and disconnected ceremony
    rehearsal.
 
-Each phase stops for approval. ENH-TTS-1 must not begin until this design and
-the content policy receive human sign-off.
+Each phase stops for approval. ENH-TTS-3 remains deferred until ENH-TTS-2 is
+reviewed and approved.
 
 ## Risks and unresolved decisions
 

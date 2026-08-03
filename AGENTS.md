@@ -13,15 +13,15 @@ Tests are split between `tests/Feature` and `tests/Unit`. Browser rehearsal scri
 
 PostgreSQL is authoritative. Send commands and recovery reads over HTTP, then broadcast committed changes through Reverb/Echo. Keep controllers thin and state transitions transactional. The system must remain local-network-only: do not add CDNs, cloud media, browser speech, polling, or SQLite fallbacks.
 
-## Build, Test, and Development Commands
-
-- `composer setup` installs dependencies, creates `.env`, migrates, and builds assets.
+## Build, Test, and Development , creates `.env`, migrates, and builds assets.
 - `docker compose up -d --build` starts Laravel, Reverb, and PostgreSQL.
 - `docker compose exec -T app php artisan test` runs the PHPUnit suite.
 - `docker compose exec -T app vendor/bin/pint --test` checks PHP formatting.
 - `npm run lint` checks React and browser-support JavaScript with ESLint.
 - `npm run build` creates the production Vite bundle.
-- `node tests/Support/phase11-browser-rehearsal.mjs` runs the browser rehearsal against a prepared stack.
+Commands
+
+- `composer setup` installs dependencies- `node tests/Support/phase11-browser-rehearsal.mjs` runs the browser rehearsal against a prepared stack.
 
 ## Coding Style & Naming Conventions
 

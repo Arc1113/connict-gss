@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\AudioReadinessStatus;
 use App\Enums\EligibilityStatus;
+use App\Enums\GraduateAudioSourceType;
 use App\Models\Ceremony;
 use App\Models\Student;
 use App\Services\StudentQrTokenGenerator;
@@ -34,6 +35,7 @@ class StudentFactory extends Factory
                 $attributes['first_name'].' '.$attributes['last_name'],
             ),
             'pronunciation_guide' => null,
+            'tts_spoken_name' => null,
             'college' => fake()->optional()->randomElement([
                 'College of Arts and Sciences',
                 'College of Engineering',
@@ -42,9 +44,13 @@ class StudentFactory extends Factory
             'program' => fake()->optional()->words(3, true),
             'major' => null,
             'honors' => null,
+            'announcement_additional_text' => null,
             'sequence_number' => fake()->unique()->numberBetween(1, 100000),
             'photo_path' => null,
             'audio_path' => null,
+            'audio_source_type' => null,
+            'audio_generation_id' => null,
+            'audio_source_hash' => null,
             'audio_readiness_status' => AudioReadinessStatus::Missing,
             'audio_uploaded_at' => null,
             'audio_approved_at' => null,
@@ -61,6 +67,9 @@ class StudentFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'audio_path' => $path,
+            'audio_source_type' => GraduateAudioSourceType::ManualUpload,
+            'audio_generation_id' => null,
+            'audio_source_hash' => null,
             'audio_readiness_status' => AudioReadinessStatus::Approved,
             'audio_uploaded_at' => now(),
             'audio_approved_at' => now(),

@@ -1,8 +1,8 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 12 software requirements verified; physical readiness pending**
+Document status: **Phase 12 verified; ENH-TTS-2 composition/SSML implemented; physical readiness pending**
 
-Last updated: 2026-07-30
+Last updated: 2026-08-03
 
 ## 1. Objective
 
@@ -36,6 +36,12 @@ Phase 12 remediates the highest-risk real-world operating gaps found after that
 review: safe wrong-graduate correction, one-command completion and advancement,
 accurate presentation-mode language, administrator-managed local accounts, and
 role-appropriate navigation.
+ENH-TTS-1 adds the preparation-only PostgreSQL foundation for structured awards,
+versioned ceremony announcement templates, immutable generation-source history,
+audio-source metadata, deterministic fingerprints, and role abilities.
+ENH-TTS-2 adds deterministic composition, readiness assessment, safe SSML, and
+a backend-only preview service. Neither phase adds a provider request, candidate
+file, route, UI, worker, or ceremony-runtime behavior.
 
 ## 2. Fixed architecture and device requirements
 
@@ -47,8 +53,10 @@ role-appropriate navigation.
 - Laravel Reverb provides local WebSocket delivery.
 - Laravel Echo and `pusher-js` are the browser-side WebSocket client.
 - HTTP carries commands, forms, validation, and state retrieval.
-- Runtime operation does not depend on the internet, cloud storage, online speech,
-  browser speech synthesis, polling, or a CDN.
+- Ceremony runtime does not depend on the internet, cloud storage, online speech,
+  browser speech synthesis, polling, or a CDN. Cloud TTS is prohibited during
+  ceremony runtime. Azure Speech is permitted only during authorized preparation,
+  with generated files reviewed, approved, and stored locally before ceremony.
 - The primary setup has a server laptop, scanner laptop, and stage laptop.
 - The primary scan device is a USB 2D keyboard-wedge QR scanner which types a
   token and terminates it with Enter.
@@ -80,6 +88,9 @@ role-appropriate navigation.
 | Backup status, backup creation, and restore verification | `administrator`, `technical_operator` |
 | Operational reset | `administrator` |
 | Local operator-account create/edit/activate/deactivate/role assignment | `administrator` |
+| Announcement template/settings and usage foundations | `administrator` |
+| Structured student awards and future candidate generation request | `data_encoder`, `administrator` |
+| Future generated-candidate approval/rejection | `administrator` |
 | Event readiness review and final operational sign-off | Human lead operator, administrator, and technical operator |
 
 All access uses Phase 2 session authentication, CSRF protection, active-account
@@ -362,7 +373,10 @@ Arbitrary HTML, CSS, remote assets, and executable templates are prohibited.
 ## 14. Local audio requirements
 
 - Audio must come from local application paths.
-- Browser speech synthesis and cloud text-to-speech are prohibited.
+- Browser speech synthesis is prohibited. Cloud TTS is prohibited during
+  ceremony runtime. Azure Speech may be used only by a future authorized
+  preparation workflow whose output is reviewed, approved, and stored locally
+  before ceremony; ENH-TTS-1 performs no such request.
 - A new presentation must stop and rewind any prior playback before starting.
 - Clear must stop playback.
 - Missing audio must remain a valid visual presentation.
@@ -1202,3 +1216,81 @@ scanner operators, and stage operators do not gain account-management access.
 
 Phase 12 ends after this remediation and its verification. Further product
 features require a separately approved phase.
+
+## 27. ENH-TTS-1 announcement domain foundation
+
+ENH-TTS-1 is additive to the verified Phase 3–12 system. PostgreSQL stores:
+
+- ordered, individually enabled student awards with optional polished spoken
+  wording and accountable creator/updater references;
+- versioned ceremony-scoped announcement templates with a transaction-safe,
+  partial-index-enforced single active version;
+- announcement generation history using only `pending`, `generating`,
+  `needs_review`, `approved`, `rejected`, `failed`, `outdated`, and `cancelled`;
+- nullable student spoken-name/additional-text fields; and
+- active-audio source metadata distinguishing `manual_upload` from `azure_tts`.
+
+Existing audio rows are classified as manual uploads; students without audio
+remain unclassified. Manual upload, replacement, import, and removal keep the
+new metadata coherent without changing readiness or stage playback rules.
+
+Generation rows require a lowercase SHA-256 source hash and internally
+consistent ceremony/student/template references. Candidate and approved paths
+are nullable and hidden from default model serialization. No Azure credential,
+endpoint, authorization header, or raw provider response belongs in these
+tables.
+
+The domain fingerprint uses deterministic Unicode-safe JSON. It includes every
+announcement-relevant student, ordered award, template, voice, locale, rate,
+pause, and output-format value; it excludes timestamps, credentials, paths,
+request IDs, and review/failure metadata.
+
+The administrator receives all announcement abilities. A data encoder may
+manage awards and request future generation, but may not review candidates.
+Stage, scanner, and technical operators receive no announcement-management
+authority. Existing inactive-account denial remains authoritative.
+
+ENH-TTS-1 does not implement text composition, SSML, Azure HTTP, audio files,
+preview/generation/review routes, React pages, jobs, broadcasts, stage payload
+changes, promotion, or batch generation.
+
+## 28. ENH-TTS-2 announcement composition and safe SSML
+
+ENH-TTS-2 is an additive, server-only formatting layer. It maps the active
+template, one student, and ordered awards into an immutable announcement DTO.
+Only announcement-approved fields are representable. The name fallback order is
+non-empty `tts_spoken_name`, then `announcement_name`; no name fabrication or
+display-name inference is permitted.
+
+The canonical section order is introduction, name, enabled program, distinct
+enabled major, distinct enabled honors, enabled awards, enabled additional
+distinction, and closing. Optional empty sections disappear without empty
+punctuation or breaks. Awards use `spoken_text` before `award_name`, order by
+`display_order` then primary key, emit the template lead-in once, use `and` for
+two, and use the Oxford comma for three or more. Invalid enabled awards block
+SSML rather than being silently accepted.
+
+The composed result contains plain text, structured sections, Unicode character
+count, enabled award count, warnings, blocking errors, SHA-256 source hash,
+voice and locale through its normalized input, and an approximate duration
+range. Configured character limits are authoritative when valid: through
+recommended is normal, above recommended through maximum warns, and above
+maximum blocks. Output is never truncated.
+
+The approved server voice/locale pairs are James/Rosa with `en-PH` and
+Angelo/Blessica with `fil-PH`. Speaking rate is an integer from -20 through +10
+percent. Pauses are integers from 0 through 1500 milliseconds. `XMLWriter`
+constructs the Azure Speech namespace and all structural values; source text is
+written only as escaped text. Raw SSML and arbitrary voice/locale/rate/pause
+values cannot enter generated XML.
+
+Source fingerprints contain `composition_schema_version: 1`, normalized spoken
+sources, ordered award records and enablement, template version and switches,
+voice, locale, speaking rate, pauses, and output format. Preview is read-only:
+it creates no generation row, changes no audio readiness or student/stage data,
+writes no file, broadcasts no event, and makes no HTTP request.
+
+ENH-TTS-2 adds no Azure configuration, credential, endpoint, provider client,
+health check, synthesis, MP3/WAV handling, controller, route, React page,
+candidate workflow, approval/rejection action, batch job, stage payload change,
+or readiness transition. ENH-TTS-3 remains unimplemented pending approval.

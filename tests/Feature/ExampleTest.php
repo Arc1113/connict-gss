@@ -12,4 +12,21 @@ class ExampleTest extends TestCase
 
         $this->get('/')->assertRedirect('/login');
     }
+
+    public function test_forwarded_https_requests_keep_secure_redirects(): void
+    {
+        $this->withoutVite();
+
+        $response = $this
+            ->withServerVariables([
+                'REMOTE_ADDR' => '172.18.0.10',
+                'HTTP_HOST' => '192.168.110.50',
+                'HTTP_X_FORWARDED_HOST' => '192.168.110.50',
+                'HTTP_X_FORWARDED_PORT' => '443',
+                'HTTP_X_FORWARDED_PROTO' => 'https',
+            ])
+            ->get('/');
+
+        $response->assertRedirect('https://192.168.110.50/login');
+    }
 }
