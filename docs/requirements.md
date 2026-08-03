@@ -1,6 +1,6 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 12 verified; ENH-TTS-2 composition/SSML implemented; physical readiness pending**
+Document status: **Phase 12 verified; ENH-TTS-3 provider/candidate generation implemented; physical readiness pending**
 
 Last updated: 2026-08-03
 
@@ -40,8 +40,9 @@ ENH-TTS-1 adds the preparation-only PostgreSQL foundation for structured awards,
 versioned ceremony announcement templates, immutable generation-source history,
 audio-source metadata, deterministic fingerprints, and role abilities.
 ENH-TTS-2 adds deterministic composition, readiness assessment, safe SSML, and
-a backend-only preview service. Neither phase adds a provider request, candidate
-file, route, UI, worker, or ceremony-runtime behavior.
+a backend-only preview service. ENH-TTS-3 adds an explicitly invoked,
+disabled-by-default Azure request and private candidate file. It adds no route,
+UI, worker, approval, active-audio change, or ceremony-runtime behavior.
 
 ## 2. Fixed architecture and device requirements
 
@@ -1290,7 +1291,42 @@ voice, locale, speaking rate, pauses, and output format. Preview is read-only:
 it creates no generation row, changes no audio readiness or student/stage data,
 writes no file, broadcasts no event, and makes no HTTP request.
 
-ENH-TTS-2 adds no Azure configuration, credential, endpoint, provider client,
-health check, synthesis, MP3/WAV handling, controller, route, React page,
-candidate workflow, approval/rejection action, batch job, stage payload change,
-or readiness transition. ENH-TTS-3 remains unimplemented pending approval.
+ENH-TTS-2 itself added no Azure configuration, credential, endpoint, provider
+client, health check, synthesis, or MP3 handling. The provider and private
+candidate boundary added by ENH-TTS-3 is defined below; controllers, routes,
+React pages, approval/rejection, batch jobs, stage payload changes, and readiness
+transitions remain unimplemented.
+
+## 29. ENH-TTS-3 controlled provider and private candidate generation
+
+The application binds `TextToSpeechProvider` to `AzureSpeechProvider` and keeps
+Azure disabled in committed examples. Safe configuration requires a printable
+server-only key, constrained region, approved HTTPS Azure hostname/path, bounded
+timeouts/retries/response size, and the single approved MP3 output format.
+Redirects, endpoint injection, browser credentials, arbitrary headers, and
+provider response-body persistence are prohibited.
+
+Only an authorized data encoder or administrator may invoke the backend
+generation action; only an administrator may force regeneration instead of
+reusing an identical readable candidate. The action persists immutable source
+text/SSML/hash/settings, performs synthesis outside a database transaction,
+validates the response, writes privately and atomically, and then moves the
+generation to `needs_review`. Safe failures move it to `failed` with an
+allowlisted bounded code/message and attempt count.
+
+Candidate MP3 responses require an approved audio content type, non-empty body,
+maximum 15 MiB size, and an MP3 signature. Temporary and final files use private
+permissions, random non-identifying names, and the existing local private disk.
+Partial files are removed; a database finalization failure compensates by
+deleting the candidate.
+
+Monthly successful-character usage is derived from PostgreSQL generation rows
+and is explicitly labeled an estimate. Identical reuse creates neither another
+row nor another billable request. Configuration health is offline by default;
+the explicit network health check calls only the voice catalog and synthesizes
+nothing.
+
+ENH-TTS-3 adds no controller, route, React page, candidate playback endpoint,
+approval/rejection/promotion, active-audio mutation, stage hash gate, stage
+payload change, Reverb event, batch, queue job, or ceremony-time cloud call.
+Those remain later approved phases.

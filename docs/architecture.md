@@ -1,6 +1,6 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 12 verified; ENH-TTS-2 composition/SSML layer implemented**
+Document status: **Phase 12 verified; ENH-TTS-3 provider/private candidate layer implemented**
 
 Last updated: 2026-08-03
 
@@ -12,8 +12,9 @@ post-commit notifications through Reverb/Echo. The design favors correctness and
 recovery over trusting browser state or transient WebSocket delivery.
 
 The ceremony-runtime architecture has not changed. ENH-TTS-1 adds the
-preparation-domain PostgreSQL foundation; ENH-TTS-2 adds a pure composition,
-safe SSML, and read-only preview layer.
+preparation-domain PostgreSQL foundation; ENH-TTS-2 adds pure composition and
+safe SSML; ENH-TTS-3 adds an optional preparation-only provider and private
+candidate workflow.
 
 ## 2. Current stack
 
@@ -37,8 +38,9 @@ cloud-storage service, cloud speech service, or runtime CDN is used.
 
 Cloud TTS is prohibited during ceremony runtime. Azure Speech is permitted only
 during authorized preparation, with generated files reviewed, approved, and
-stored locally before ceremony. ENH-TTS-2 does not yet add the cloud speech
-service or any network path to it.
+stored locally before ceremony. ENH-TTS-3 adds a disabled-by-default network
+path only for explicit authorized preparation generation. No ceremony path
+calls it.
 
 Phase 12 does not change the approved architecture. The runtime remains
 HTTP for commands and recovery reads, PostgreSQL for authoritative state,
@@ -1054,6 +1056,46 @@ Preview resolves an active same-ceremony template, reads ordered awards,
 composes, and returns plain/structured/SSML metadata. It does not authorize a
 route and has no transaction or persistence step. No generation model is
 created, no file or audio readiness changes, no HTTP call or Reverb event is
-made, and stage serializers/playback are untouched. Azure provider integration,
-candidate custody, UI, approval, invalidation, and batch work remain ENH-TTS-3+
+made, and stage serializers/playback are untouched. ENH-TTS-3 adds provider and
+candidate custody below; UI, approval, invalidation, and batch work remain later
 concerns.
+
+## 22. ENH-TTS-3 provider and private-candidate architecture
+
+The preparation-only provider path is isolated behind two interfaces:
+
+```text
+GenerateAnnouncementCandidate
+    -> PreviewGraduationAnnouncement
+    -> TextToSpeechProvider (AzureSpeechProvider)
+    -> CandidateAudioStore (AtomicPrivateCandidateAudioStore)
+    -> announcement_generations.needs_review
+```
+
+Configuration is loaded once through Laravel config and is disabled by default.
+`AzureSpeechConfiguration` validates the key as a header-safe server value, the
+region, HTTPS Azure Speech host/path, timeouts, retry bounds, response limit, and
+user agent. The provider never follows redirects or accepts a request-supplied
+endpoint, key, output format, voice, or locale. HTTP failures become bounded
+safe exceptions without upstream bodies or secret-bearing context.
+
+The generation action authorizes before reporting configuration state. A short
+PostgreSQL transaction locks the student, composes the current source, reuses an
+identical readable candidate when available, or creates the immutable generation
+snapshot and moves it to `generating`. The network request is deliberately
+outside the transaction. Success validates and atomically stores the MP3 before
+a second locked transaction moves the row to `needs_review`. A finalization
+failure deletes the new file; provider/storage failures retain only safe status,
+code, message, and attempt metadata.
+
+Candidate storage uses the existing local disk rooted at `storage/app/private`.
+Random UUID directory/file names contain no graduate identity. A same-directory
+mode-0600 temporary file is written completely, flushed, synchronized, and
+atomically renamed. Invalid, partial, or failed files are removed. Database
+paths remain hidden from default serialization and are not exposed by a route.
+
+The workflow creates no active-audio link and does not update student audio
+source, readiness, stage state, Reverb, or payloads. Configuration health is
+offline unless an explicit caller requests the bounded voice-catalog check.
+Approval, candidate playback, promotion, invalidation, stage guarding, and UI
+remain later-phase architecture.

@@ -1,15 +1,16 @@
 # Graduation Announcement Content Policy
 
-Status: **ENH-TTS-2 deterministic composition implemented; review UI deferred**
+Status: **ENH-TTS-3 private candidate generation implemented; review UI deferred**
 
 Last reviewed: 2026-08-03
 
 This policy governs the future deterministic plain text used for automated
 candidates and their human review. ENH-TTS-2 implements deterministic plain-text
 composition, readiness assessment, safe SSML, and a side-effect-free backend
-preview service. It does not create audio, expose a preview route/UI, or
-authorize generated audio for stage playback. Every future candidate still
-requires explicit administrator approval.
+preview service. ENH-TTS-3 may create one private preparation candidate through
+the approved provider action, but exposes no preview route/UI and does not
+authorize generated audio for stage playback. Every candidate still requires a
+future explicit administrator approval workflow.
 
 ## Permitted source fields
 

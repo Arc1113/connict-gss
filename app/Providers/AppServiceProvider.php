@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\CandidateAudioStore;
+use App\Contracts\TextToSpeechProvider;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Ceremony;
@@ -12,6 +14,8 @@ use App\Policies\AuditLogPolicy;
 use App\Policies\CeremonyPolicy;
 use App\Policies\StudentImportPolicy;
 use App\Policies\StudentPolicy;
+use App\Services\AtomicPrivateCandidateAudioStore;
+use App\Services\AzureSpeechProvider;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,7 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(TextToSpeechProvider::class, AzureSpeechProvider::class);
+        $this->app->bind(CandidateAudioStore::class, AtomicPrivateCandidateAudioStore::class);
     }
 
     /**

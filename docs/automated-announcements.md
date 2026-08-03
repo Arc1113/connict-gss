@@ -1,14 +1,16 @@
 # Automated Voice Announcements
 
-Status: **ENH-TTS-2 deterministic composition and safe SSML implemented; no synthesis or runtime integration**
+Status: **ENH-TTS-3 controlled Azure provider and private candidate generation implemented; no UI or runtime integration**
 
 Last reviewed: 2026-08-03
 
 This document defines the approved architecture for preparation-time automated
 graduate announcements. ENH-TTS-1 supplies the PostgreSQL domain foundation.
 ENH-TTS-2 adds immutable composition inputs/results, deterministic plain text,
-safe SSML, and a side-effect-free backend preview service. It does not add
-routes, provider requests, generated files, or ceremony-runtime changes.
+safe SSML, and a side-effect-free backend preview service. ENH-TTS-3 adds a
+disabled-by-default Azure provider, private atomic candidate storage, generation
+records, safe health results, usage estimates, and identical-candidate reuse.
+It adds no route, React UI, approval/promotion, or ceremony-runtime change.
 
 ## Objective and non-negotiable boundary
 
@@ -35,8 +37,46 @@ worker stopped, and the internet disconnected.
 
 Cloud TTS is prohibited during ceremony runtime. Azure Speech is permitted only
 during authorized preparation, with generated files reviewed, approved, and
-stored locally before ceremony. ENH-TTS-2 adds no provider integration, so the
-preparation-time network exception is not executable yet.
+stored locally before ceremony. ENH-TTS-3 makes the preparation-time network
+exception executable only when an authorized backend caller explicitly starts
+generation and safe server configuration enables Azure.
+
+## Implemented ENH-TTS-3 provider and candidate boundary
+
+`TextToSpeechProvider` decouples the generation action from Azure.
+`AzureSpeechProvider` uses Laravel's HTTP client with no redirects, the
+subscription-key header, `application/ssml+xml`, the approved MP3 output header,
+and a bounded user agent. The endpoint is either derived from a validated Azure
+region or constrained to HTTPS Azure Speech host suffixes with no user info,
+query, fragment, or non-443 port.
+
+The provider retries only connection failures, timeouts, HTTP 429, 502, and 503,
+up to three retries after the initial request. Backoff is bounded exponential
+delay with jitter; a small bounded integer `Retry-After` is honored. HTTP
+400/401/403 and unexpected responses do not retry. Upstream bodies, credentials,
+headers, endpoint values, SSML, names, and paths never enter stored failure
+messages.
+
+A successful response must be HTTP 200, `audio/mpeg` or `audio/mp3`, non-empty,
+at most 15 MiB, and begin with an ID3 header or MPEG frame sync. The local disk
+is rooted at `storage/app/private`. Candidate filenames contain two random UUIDs
+and no graduate data. Bytes are written to a mode-0600 temporary file on the
+same filesystem, flushed/synchronized, atomically renamed, and removed on every
+failed promotion. Candidate paths remain hidden by the generation model.
+
+`GenerateAnnouncementCandidate` authorizes the actor, validates local provider
+configuration, locks the student for source assembly, persists an immutable
+`pending`/`generating` snapshot, synthesizes outside the transaction, stores the
+candidate, then commits `needs_review`. Provider/storage failures persist only
+allowlisted safe codes. An identical readable `needs_review` candidate is reused
+without another provider call. Only an administrator may explicitly force a
+new request. Generation never changes the student's active audio, readiness,
+stage state, or audience payload.
+
+`AnnouncementUsage` sums successful generated characters for a calendar month
+from PostgreSQL and compares the local estimate with the configured budget and
+warning point. Reuse is not counted twice. This is not an invoice or Azure quota
+balance.
 
 ## Implemented ENH-TTS-2 composition boundary
 
@@ -482,7 +522,7 @@ one, two, and multiple awards; missing optional sections; Unicode; long content;
 spoken-name overrides; deterministic punctuation; XML escaping; and attempted
 SSML injection without making a provider request.
 
-ENH-TTS-3 must use Laravel HTTP fakes for configuration, authentication,
+ENH-TTS-3 uses Laravel HTTP fakes for configuration, authentication,
 timeout, rate-limit, retry, wrong-content, size, partial-write, idempotency, and
 secret-redaction cases. A real provider check, if separately approved, uses only
 fictional content and does not replace mocked coverage. Approval integration
@@ -496,8 +536,8 @@ a local backup; restore it into a disposable PostgreSQL database/media area;
 and prove scanning, presenting, replay, recovery, and live-announcer fallback
 with Azure disabled and internet disconnected. Secret, browser-bundle, log,
 audit, backup, private-path, and same-origin runtime scans are release gates.
-ENH-TTS-2 creates no candidate file and makes no provider request, so it does
-not claim those future runtime checks have passed.
+ENH-TTS-3 tests create only fake private candidates and make no real provider
+request. Controlled live verification remains an explicit preparation procedure.
 
 ## Proposed enhancement phases
 
@@ -508,7 +548,7 @@ not claim those future runtime checks have passed.
 3. **ENH-TTS-2:** deterministic composer, safe SSML builder, current-source
    assembly, and preview serializer without Azure calls (implemented).
 4. **ENH-TTS-3:** mocked and controlled Azure provider integration with private
-   candidate storage.
+   candidate storage (implemented).
 5. **ENH-TTS-4:** awards and single-graduate generation UI.
 6. **ENH-TTS-5:** review, promotion, rejection, invalidation, stage guard, and
    backup integration.
@@ -517,7 +557,7 @@ not claim those future runtime checks have passed.
 9. **ENH-TTS-8:** full regression, backup/restore, and disconnected ceremony
    rehearsal.
 
-Each phase stops for approval. ENH-TTS-3 remains deferred until ENH-TTS-2 is
+Each phase stops for approval. ENH-TTS-4 remains deferred until ENH-TTS-3 is
 reviewed and approved.
 
 ## Risks and unresolved decisions

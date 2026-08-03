@@ -1,6 +1,6 @@
 # Azure Speech Preparation Setup and Security
 
-Status: **ENH-TTS-2 safe local SSML implemented; Azure is not configured or called**
+Status: **ENH-TTS-3 controlled provider implemented; disabled and unconfigured by default**
 
 Last reviewed against official provider documentation: 2026-08-03
 
@@ -8,13 +8,13 @@ Azure Speech is proposed only for pre-ceremony candidate generation. It is not
 a ceremony runtime service. No real key belongs in this repository, React,
 Inertia props, logs, audit records, backups, screenshots, or documentation.
 
-ENH-TTS-1 adds the constrained `azure` provider enum and per-template or
-per-generation voice/locale snapshot fields. ENH-TTS-2 adds only a local,
-deterministic SSML builder and server-side voice allowlist. It adds no Azure
-environment variables, credentials, endpoint, HTTP client, provider class,
-request header, health check, or network call. The default
-`en-PH-JamesNeural` voice and `en-PH` locale are configuration data, not proof
-that a provider is available.
+ENH-TTS-1 adds the constrained `azure` provider enum and generation metadata.
+ENH-TTS-2 adds deterministic SSML and the voice allowlist. ENH-TTS-3 adds blank
+environment placeholders, strict configuration validation, the Laravel HTTP
+provider, explicit health checking, MP3 validation, private atomic candidate
+storage, safe generation records, and usage estimation. Azure remains disabled
+in every committed example. The default voice/locale does not prove provider
+availability.
 
 ## Verified provider baseline
 
@@ -25,8 +25,9 @@ authorization for Text to Speech REST requests, SSML request bodies with
 `application/ssml+xml`, and the `X-Microsoft-OutputFormat` header. The proposed
 MP3 output `audio-24khz-48kbitrate-mono-mp3` remains listed.
 
-Provider catalogs, regions, quotas, and pricing can change. ENH-TTS-3 must
-recheck the official pages before implementation and deployment:
+Provider catalogs, regions, quotas, and pricing can change. ENH-TTS-3 was
+reviewed against these official pages on 2026-08-03; deployment must recheck
+them:
 
 - <https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support>
 - <https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech>
@@ -35,11 +36,10 @@ recheck the official pages before implementation and deployment:
 - <https://learn.microsoft.com/en-us/azure/ai-services/speech-service/speech-synthesis-markup-pronunciation>
 - <https://azure.microsoft.com/en-us/pricing/details/speech/>
 
-## Proposed environment variables
+## Environment variables
 
-Credential placeholders must remain blank in reviewed example files. The
-following non-secret defaults may later be added to example configuration only
-in an approved implementation phase:
+Credential placeholders remain blank in reviewed example files. The following
+disabled defaults are implemented:
 
 ```dotenv
 AZURE_SPEECH_ENABLED=false
@@ -153,9 +153,15 @@ therefore XML-escaped. Known raw SSML in source fields is blocking. The result
 retains the exact human-readable plain text and controlled break metadata. A
 human pronunciation note is not automatically IPA or a valid phoneme value.
 
-No request contract below is executable in ENH-TTS-2. There is still no
-credential configuration, provider endpoint call, authorization header,
-provider health check, HTTP synthesis, or audio response handling.
+The request contract is executable only from the authorized backend generation
+action when `AZURE_SPEECH_ENABLED=true` and all server configuration validates.
+There is no browser-provided endpoint, key, region, output format, SSML, or raw
+header value.
+
+Configuration-only health is the default and makes no request. An explicit
+network health call fetches the Azure voice-list endpoint with bounded timeouts
+and returns only `available`, `authentication_failed`, `rate_limited`,
+`unavailable`, or `unknown`. It does not synthesize sample audio.
 
 ## Timeouts, retries, and rate limits
 
@@ -236,10 +242,10 @@ Only allowlisted codes and bounded redacted guidance may be stored or shown:
 | Safe code | Typical classification | Retry |
 | --- | --- | --- |
 | `azure_not_configured` | Disabled/missing/invalid server config | No |
+| `azure_request_invalid` | Invalid local typed synthesis request | No |
 | `azure_authentication_failed` | 401/403 | No |
 | `azure_rate_limited` | 429 | Bounded |
 | `azure_invalid_ssml` | 400 attributable to validated request | No |
-| `azure_voice_unavailable` | Allowlist/catalog/resource mismatch | No |
 | `azure_timeout` | Connection/request timeout | Bounded |
 | `azure_service_unavailable` | 502/503 or temporary connection failure | Bounded |
 | `candidate_validation_failed` | Empty/wrong/oversized/invalid audio | No |
@@ -265,9 +271,10 @@ Provider fakes must not use a real key. Any controlled integration uses fictiona
 data, a non-production ceremony, private storage, explicit cost awareness, and a
 post-run secret/output inspection.
 
-## Future configuration procedure
+## Controlled integration procedure
 
-After ENH-TTS-3 is approved, an administrator and technical operator will:
+After ENH-TTS-3 implementation is approved, an administrator and technical
+operator will:
 
 1. Confirm institutional approval, budget owner, region, authentication method,
    data-processing/privacy requirements, and voice allowlist.
@@ -280,12 +287,17 @@ After ENH-TTS-3 is approved, an administrator and technical operator will:
 6. Clear/rebuild Laravel configuration cache without displaying environment
    values.
 7. Run the non-network configuration check.
-8. Run one explicit provider health/integration check with fictional text.
-9. Generate and privately review fictional voice samples, character counts, and
-   safe failure behavior.
-10. Verify no key/token/private path appears in HTML, Inertia props, JavaScript
+8. Invoke the explicit network health method from a controlled backend
+   preparation session; confirm its safe status without printing configuration.
+9. Invoke `GenerateAnnouncementCandidate` for a non-production ceremony record
+   containing only fictional content, then verify the resulting hidden path is
+   under `storage/app/private/announcement-candidates` with mode-0600 content.
+10. Inspect the fictional candidate, character estimate, generation row, retry
+    count, and safe failure behavior. Remove it according to the approved test
+    retention procedure.
+11. Verify no key/token/private path appears in HTML, Inertia props, JavaScript
     bundles, HTTP responses, logs, audit records, backups, screenshots, or Git.
-11. Disable Azure and disconnect internet, then run the complete ceremony
+12. Disable Azure and disconnect internet, then run the complete ceremony
     playback/recovery rehearsal.
 
 ## Decisions requiring human approval
