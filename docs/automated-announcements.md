@@ -1,6 +1,6 @@
 # Automated Voice Announcements
 
-Status: **ENH-TTS-5 review, promotion, invalidation, stage guard, and backup integration implemented**
+Status: **ENH-TTS-6 ceremony settings and controlled voice comparison implemented**
 
 Last reviewed: 2026-08-04
 
@@ -14,7 +14,31 @@ ENH-TTS-4 adds authorized award editing, deterministic preview, individual
 generation, private candidate playback, and safe history on the graduate detail
 page. ENH-TTS-5 adds administrator-only review, compensated local promotion,
 automatic source invalidation, stage-time hash validation, and private-candidate
-backup coverage without adding a ceremony-time cloud dependency.
+backup coverage without adding a ceremony-time cloud dependency. ENH-TTS-6 adds
+administrator-managed versioned ceremony settings, bounded fictional previews,
+and explicit temporary voice comparison without using graduate records.
+
+## Implemented ENH-TTS-6 settings and voice comparison
+
+Administrators can publish a new immutable ceremony-template version from the
+ceremony settings workspace. Voice and locale must be an approved pair from the
+server allowlist; speaking rate, pauses, and recommended/maximum character
+limits are bounded server-side. Publishing deactivates the prior version,
+preserves its history, and marks candidates built from earlier settings stale.
+
+Draft preview uses one fixed fictional graduate and the same deterministic
+composer and SSML builder as candidate generation. It writes no template or
+generation and never calls Azure. Voice comparison is a separate explicit
+command for one to four distinct allowlisted voices. It shows a character
+estimate first, requires a configured provider, and stores validated MP3s in a
+separate private temporary area with protected no-store playback and expiry.
+Expired sample rows and files are pruned on the next comparison command.
+
+Comparison samples cannot be promoted as graduate audio and never use live
+graduate data. Their private paths, SSML, credentials, and provider bodies are
+not serialized or audited. Temporary sample files and row data are excluded
+from backups; their successful character counts remain part of the local
+monthly usage estimate.
 
 ## Implemented ENH-TTS-5 review and runtime guard
 
@@ -613,12 +637,13 @@ request. Controlled live verification remains an explicit preparation procedure.
 5. **ENH-TTS-4:** awards and single-graduate generation UI (implemented).
 6. **ENH-TTS-5:** review, promotion, rejection, invalidation, stage guard, and
    backup integration (implemented).
-7. **ENH-TTS-6:** ceremony settings and fictional-data voice comparison.
+7. **ENH-TTS-6:** ceremony settings and fictional-data voice comparison
+   (implemented).
 8. **ENH-TTS-7:** bounded batch generation.
 9. **ENH-TTS-8:** full regression, backup/restore, and disconnected ceremony
    rehearsal.
 
-Each phase stops for approval. ENH-TTS-6 remains deferred until ENH-TTS-5 is
+Each phase stops for approval. ENH-TTS-7 remains deferred until ENH-TTS-6 is
 reviewed, committed, and approved.
 
 ## Risks and unresolved decisions

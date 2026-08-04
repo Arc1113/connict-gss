@@ -65,6 +65,11 @@ class AnnouncementTemplate extends Model
         return $this->hasMany(AnnouncementGeneration::class);
     }
 
+    public function voiceSamples(): HasMany
+    {
+        return $this->hasMany(AnnouncementVoiceSample::class);
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

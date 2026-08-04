@@ -27,7 +27,8 @@ Excluded:
 - application key, Reverb secret, database password, and user passwords outside
   the database dump;
 - `vendor/`, `node_modules/`, cache files, screenshots, and temporary imports;
-- public web output directories.
+- public web output directories; and
+- expiring fictional voice-comparison sample row data and temporary MP3 files.
 
 ## Primary Docker backup command
 

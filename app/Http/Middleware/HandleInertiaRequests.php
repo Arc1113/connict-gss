@@ -78,6 +78,7 @@ class HandleInertiaRequests extends Middleware
                     'create_backups' => $user->can('create-backups'),
                     'manage_device_connections' => $user->can('manage-device-connections'),
                     'reset_ceremony_operations' => $user->can('reset-ceremony-operations'),
+                    'manage_announcement_settings' => $user->can('manage-announcement-settings'),
                 ],
             ],
             'flash' => [

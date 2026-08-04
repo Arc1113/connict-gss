@@ -6,6 +6,7 @@ use App\Data\AnnouncementUsageEstimate;
 use App\Enums\AnnouncementGenerationStatus;
 use App\Enums\AnnouncementProvider;
 use App\Models\AnnouncementGeneration;
+use App\Models\AnnouncementVoiceSample;
 use Carbon\CarbonImmutable;
 
 final class AnnouncementUsage
@@ -22,6 +23,12 @@ final class AnnouncementUsage
                 AnnouncementGenerationStatus::Outdated->value,
             ])
             ->whereBetween('generated_at', [
+                $month->startOfMonth(),
+                $month->endOfMonth(),
+            ])
+            ->sum('character_count');
+        $successfulCharacters += (int) AnnouncementVoiceSample::query()
+            ->whereBetween('created_at', [
                 $month->startOfMonth(),
                 $month->endOfMonth(),
             ])

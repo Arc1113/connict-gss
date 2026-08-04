@@ -20,6 +20,12 @@ return [
         'maximum' => 165,
     ],
     'default_output_format' => 'audio-24khz-48kbitrate-mono-mp3',
+    'voice_comparison' => [
+        'maximum_voices' => 4,
+        'maximum_active_samples_per_user' => 12,
+        'retention_minutes' => 60,
+        'directory' => 'announcement-voice-samples',
+    ],
     'azure' => [
         'enabled' => (bool) env('AZURE_SPEECH_ENABLED', false),
         'key' => env('AZURE_SPEECH_KEY'),

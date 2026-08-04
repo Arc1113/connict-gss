@@ -1144,3 +1144,26 @@ An active generated source is moved back to `needs_review`. The stage payload,
 preload, and replay paths all pass through `AnnouncementAudio`, which requires a
 readable file, approved generation, matching stored hashes, and a matching live
 recomposition. Azure is never called by this runtime guard.
+
+## 25. ENH-TTS-6 ceremony settings and voice comparison
+
+The administrator-only settings workspace reads a server-built projection and
+publishes changes through one versioning action. The action locks the ceremony,
+deactivates the current template, inserts the next version, and invalidates
+earlier candidates transactionally. Old template rows remain available for
+history and source attribution. Request validation enforces the configured
+voice/locale allowlist, plain-text fields, pacing bounds, and coherent character
+limits independently of the React form.
+
+Draft preview composes a fixed fictional input in memory and has no provider or
+database side effects. Explicit comparison performs provider calls outside the
+database transaction, validates and atomically stores MP3s in a dedicated
+private temporary directory, then records expiring metadata after rechecking
+the active template under the ceremony lock. Failure removes prepared files.
+Playback revalidates nested ceremony ownership, expiry, existence, and MP3
+content and returns a private no-store response.
+
+Comparison rows are PostgreSQL-authoritative while active, but their payloads
+and files are disposable: database dumps exclude their row data and the backup
+media copy never includes their separate directory. The stage serializer and
+runtime audio decision remain unchanged and local-only.

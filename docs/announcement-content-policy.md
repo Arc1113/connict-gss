@@ -1,6 +1,6 @@
 # Graduation Announcement Content Policy
 
-Status: **ENH-TTS-5 explicit administrator approval and automatic invalidation implemented**
+Status: **ENH-TTS-6 versioned ceremony settings and fictional voice comparison implemented**
 
 Last reviewed: 2026-08-04
 
@@ -12,7 +12,8 @@ the approved provider action. ENH-TTS-4 exposes the deterministic plain text and
 protected private candidate audio to authorized preparation users. ENH-TTS-5
 requires explicit administrator review, rejects stale fingerprints, and removes
 generated audio from stage eligibility whenever an approved spoken source
-changes.
+changes. ENH-TTS-6 implements administrator-only versioned settings and an
+explicit comparison workflow that always uses the fixed fictional sample.
 
 ## Permitted source fields
 
@@ -326,6 +327,9 @@ approximately -16 LUFS integrated loudness, and true peak at or below about
 - Samples remain temporary/private and can never become active graduate audio.
 - Selecting a ceremony default versions the template and makes earlier hashes
   stale; each graduate still requires candidate-specific human review.
+- The implemented comparison accepts one to four distinct allowlisted voices,
+  stores validated samples privately for a short configured lifetime, and never
+  permits their promotion into a graduate's active audio.
 
 ## Human approval requirement
 

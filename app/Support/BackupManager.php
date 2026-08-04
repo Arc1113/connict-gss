@@ -131,6 +131,7 @@ final class BackupManager
             '--format=plain',
             '--no-owner',
             '--no-privileges',
+            '--exclude-table-data=announcement_voice_samples',
         ]), base_path(), $connection->environment());
         $process->setTimeout(120);
         $process->run();

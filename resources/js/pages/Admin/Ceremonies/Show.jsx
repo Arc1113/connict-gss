@@ -39,6 +39,14 @@ export default function CeremonyShow({ ceremony }) {
                                 Edit ceremony
                             </Link>
                         )}
+                        {auth.abilities.manage_announcement_settings && (
+                            <Link
+                                className="admin-button admin-button-secondary"
+                                href={`/admin/ceremonies/${ceremony.id}/announcement-settings`}
+                            >
+                                Announcement settings
+                            </Link>
+                        )}
                     </>
                 }
                 description="Ceremony configuration and protected operational history."

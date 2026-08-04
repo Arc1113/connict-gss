@@ -1383,3 +1383,28 @@ affected candidates. Stage, preload, and replay payloads must omit generated
 audio unless its generation remains approved, the managed file is readable,
 and its stored and recomputed source hashes match. This guard is local-only and
 must never synthesize during ceremony runtime.
+
+## 32. ENH-TTS-6 ceremony settings and voice comparison
+
+Only administrators may view or publish ceremony announcement settings or
+generate and play comparison samples. Every publish creates the next template
+version, preserves history, leaves exactly one active version, and invalidates
+reviewable or approved candidates from earlier settings.
+
+The backend must enforce the voice/locale allowlist, speaking-rate and pause
+bounds, plain-text template fields, and coherent recommended/maximum character
+limits. Draft preview must use only the fixed fictional example, share the
+production composer, persist nothing, and make no provider request.
+
+Voice comparison must be an explicit preparation-time action for one to four
+distinct allowlisted voices, show the estimated characters before execution,
+and remain disabled when the provider is unavailable. Samples must use the same
+fictional text and pacing, be validated MP3s stored separately from graduate
+candidates, expire, require authenticated nested administrator playback, use
+private no-store responses, and never be promotable to graduate audio.
+
+Sample paths, SSML, secrets, and provider bodies must not appear in browser
+props or audits. Temporary sample files and row data are excluded from backups,
+while successful sample characters contribute to the labeled local monthly
+usage estimate. No settings read, draft preview, stage operation, or page load
+may call Azure.

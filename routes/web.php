@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AnnouncementCandidateAudioController;
 use App\Http\Controllers\Admin\AnnouncementCandidateReviewController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Admin\CeremonyAnnouncementSettingsController;
 use App\Http\Controllers\Admin\CeremonyController;
 use App\Http\Controllers\Admin\CeremonyOperationalResetController;
 use App\Http\Controllers\Admin\CeremonySummaryController;
@@ -17,6 +18,8 @@ use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudentImportController;
 use App\Http\Controllers\Admin\StudentQrCodeController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VoiceComparisonAudioController;
+use App\Http\Controllers\Admin\VoiceComparisonController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CompleteCurrentPresentationController;
 use App\Http\Controllers\LocalCertificateController;
@@ -128,6 +131,26 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/backups/{backup}/verify', [BackupController::class, 'verify'])->name('backups.verify');
 
         Route::resource('ceremonies', CeremonyController::class);
+        Route::get(
+            '/ceremonies/{ceremony}/announcement-settings',
+            [CeremonyAnnouncementSettingsController::class, 'show'],
+        )->name('ceremonies.announcement-settings.show');
+        Route::post(
+            '/ceremonies/{ceremony}/announcement-settings',
+            [CeremonyAnnouncementSettingsController::class, 'store'],
+        )->name('ceremonies.announcement-settings.store');
+        Route::post(
+            '/ceremonies/{ceremony}/announcement-settings/preview',
+            [CeremonyAnnouncementSettingsController::class, 'preview'],
+        )->name('ceremonies.announcement-settings.preview');
+        Route::post(
+            '/ceremonies/{ceremony}/announcement-settings/voice-comparison',
+            [VoiceComparisonController::class, 'store'],
+        )->name('ceremonies.announcement-settings.voice-comparison.store');
+        Route::get(
+            '/ceremonies/{ceremony}/announcement-settings/voice-comparison/{sample}',
+            VoiceComparisonAudioController::class,
+        )->name('ceremonies.announcement-settings.voice-comparison.show');
         Route::post(
             '/ceremonies/{ceremony}/operational-reset',
             CeremonyOperationalResetController::class,
