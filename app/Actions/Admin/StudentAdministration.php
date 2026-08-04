@@ -29,10 +29,12 @@ final class StudentAdministration
         'display_name',
         'announcement_name',
         'pronunciation_guide',
+        'tts_spoken_name',
         'college',
         'program',
         'major',
         'honors',
+        'announcement_additional_text',
         'sequence_number',
         'eligibility_status',
     ];
@@ -167,6 +169,7 @@ final class StudentAdministration
                     'display_name',
                     'announcement_name',
                     'pronunciation_guide',
+                    'tts_spoken_name',
                 ] as $field) {
                     if (
                         array_key_exists($field, $data)

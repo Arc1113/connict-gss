@@ -1,6 +1,6 @@
 # Azure Speech Preparation Setup and Security
 
-Status: **ENH-TTS-3 controlled provider implemented; disabled and unconfigured by default**
+Status: **ENH-TTS-4 authorized preparation UI implemented; Azure remains disabled and unconfigured by default**
 
 Last reviewed against official provider documentation: 2026-08-03
 
@@ -15,6 +15,13 @@ provider, explicit health checking, MP3 validation, private atomic candidate
 storage, safe generation records, and usage estimation. Azure remains disabled
 in every committed example. The default voice/locale does not prove provider
 availability.
+
+ENH-TTS-4 adds an explicit authorized generation button and protected candidate
+playback. The browser receives only allowlisted voice labels, configuration
+health, safe history, and protected application URLs. It never receives the
+subscription key, provider endpoint, request headers, SSML, provider request ID,
+or private storage path. Opening a graduate page or refreshing text preview does
+not call Azure.
 
 ## Verified provider baseline
 

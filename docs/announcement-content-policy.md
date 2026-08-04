@@ -1,6 +1,6 @@
 # Graduation Announcement Content Policy
 
-Status: **ENH-TTS-3 private candidate generation implemented; review UI deferred**
+Status: **ENH-TTS-4 preparation preview and private candidate playback implemented; approval deferred**
 
 Last reviewed: 2026-08-03
 
@@ -8,7 +8,8 @@ This policy governs the future deterministic plain text used for automated
 candidates and their human review. ENH-TTS-2 implements deterministic plain-text
 composition, readiness assessment, safe SSML, and a side-effect-free backend
 preview service. ENH-TTS-3 may create one private preparation candidate through
-the approved provider action, but exposes no preview route/UI and does not
+the approved provider action. ENH-TTS-4 exposes the deterministic plain text and
+protected private candidate audio to authorized preparation users, but does not
 authorize generated audio for stage playback. Every candidate still requires a
 future explicit administrator approval workflow.
 

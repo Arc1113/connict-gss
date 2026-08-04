@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AnnouncementCandidateAudioController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\CeremonyController;
@@ -9,6 +10,8 @@ use App\Http\Controllers\Admin\CeremonySummaryController;
 use App\Http\Controllers\Admin\DeviceConnectionController;
 use App\Http\Controllers\Admin\ScanLogController;
 use App\Http\Controllers\Admin\StageEventController;
+use App\Http\Controllers\Admin\StudentAnnouncementController;
+use App\Http\Controllers\Admin\StudentAwardController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudentImportController;
 use App\Http\Controllers\Admin\StudentQrCodeController;
@@ -205,6 +208,34 @@ Route::middleware(['auth', 'active'])->group(function () {
             '/students/{student}/audio/reject',
             [StudentController::class, 'rejectAudio'],
         )->name('students.audio.reject');
+        Route::post(
+            '/students/{student}/awards',
+            [StudentAwardController::class, 'store'],
+        )->name('students.awards.store');
+        Route::put(
+            '/students/{student}/awards/{award}',
+            [StudentAwardController::class, 'update'],
+        )->name('students.awards.update');
+        Route::delete(
+            '/students/{student}/awards/{award}',
+            [StudentAwardController::class, 'destroy'],
+        )->name('students.awards.destroy');
+        Route::post(
+            '/students/{student}/awards/{award}/move',
+            [StudentAwardController::class, 'move'],
+        )->name('students.awards.move');
+        Route::get(
+            '/students/{student}/announcement-preview',
+            [StudentAnnouncementController::class, 'preview'],
+        )->name('students.announcement-preview');
+        Route::post(
+            '/students/{student}/announcement-candidates',
+            [StudentAnnouncementController::class, 'generate'],
+        )->name('students.announcement-candidates.store');
+        Route::get(
+            '/students/{student}/announcement-candidates/{generation}',
+            AnnouncementCandidateAudioController::class,
+        )->name('students.announcement-candidates.show');
         Route::resource('students', StudentController::class);
     });
 

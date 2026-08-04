@@ -12,6 +12,7 @@ use App\Exceptions\AnnouncementCandidateGenerationException;
 use App\Exceptions\CandidateAudioStorageException;
 use App\Exceptions\SpeechSynthesisException;
 use App\Models\AnnouncementGeneration;
+use App\Models\AnnouncementTemplate;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\PreviewGraduationAnnouncement;
@@ -31,6 +32,8 @@ final class GenerateAnnouncementCandidate
         Student $student,
         User $actor,
         bool $force = false,
+        ?AnnouncementTemplate $template = null,
+        ?string $voice = null,
     ): AnnouncementCandidateGenerationResult {
         Gate::forUser($actor)->authorize('generate-announcement-candidates');
 
@@ -46,9 +49,20 @@ final class GenerateAnnouncementCandidate
         }
 
         /** @var array{result?: AnnouncementCandidateGenerationResult, generation?: AnnouncementGeneration, request?: AnnouncementSynthesisRequest} $prepared */
-        $prepared = DB::transaction(function () use ($student, $actor, $force): array {
+        $prepared = DB::transaction(function () use (
+            $student,
+            $actor,
+            $force,
+            $template,
+            $voice,
+        ): array {
             $lockedStudent = Student::query()->lockForUpdate()->findOrFail($student->getKey());
-            $preview = $this->previewer->preview($lockedStudent);
+            $selectedTemplate = $template === null
+                ? null
+                : AnnouncementTemplate::query()
+                    ->whereBelongsTo($lockedStudent->ceremony)
+                    ->findOrFail($template->getKey());
+            $preview = $this->previewer->preview($lockedStudent, $selectedTemplate, $voice);
 
             if (! $preview->isReady() || $preview->composition === null
                 || $preview->ssml?->ssml === null) {
@@ -77,6 +91,26 @@ final class GenerateAnnouncementCandidate
                 if ($existing !== null
                     && $this->candidateStore->exists((string) $existing->candidate_audio_path)) {
                     return ['result' => new AnnouncementCandidateGenerationResult($existing, true)];
+                }
+
+                $inProgress = AnnouncementGeneration::query()
+                    ->whereBelongsTo($lockedStudent)
+                    ->where('provider', AnnouncementProvider::Azure->value)
+                    ->where('provider_voice', $composition->voice)
+                    ->where('locale', $composition->locale)
+                    ->where('output_format', $input->outputFormat)
+                    ->where('source_hash', $composition->sourceHash)
+                    ->whereIn('status', [
+                        AnnouncementGenerationStatus::Pending->value,
+                        AnnouncementGenerationStatus::Generating->value,
+                    ])
+                    ->exists();
+
+                if ($inProgress) {
+                    throw new AnnouncementCandidateGenerationException(
+                        'generation_in_progress',
+                        'An identical announcement candidate is already being generated.',
+                    );
                 }
             }
 

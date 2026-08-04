@@ -11,5 +11,7 @@ interface CandidateAudioStore
 
     public function exists(string $path): bool;
 
+    public function read(string $path): string;
+
     public function delete(string $path): void;
 }

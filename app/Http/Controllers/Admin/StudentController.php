@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\SaveStudentRequest;
 use App\Models\Ceremony;
 use App\Models\Student;
+use App\Services\StudentAnnouncementWorkspace;
 use App\Support\AnnouncementAudio;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -22,6 +23,7 @@ class StudentController extends Controller
 {
     public function __construct(
         private readonly AnnouncementAudio $announcementAudio,
+        private readonly StudentAnnouncementWorkspace $announcementWorkspace,
     ) {}
 
     public function index(Request $request): Response
@@ -137,7 +139,7 @@ class StudentController extends Controller
             ->with('success', 'Graduate record created.');
     }
 
-    public function show(Student $student): Response
+    public function show(Request $request, Student $student): Response
     {
         Gate::authorize('view', $student);
 
@@ -156,6 +158,10 @@ class StudentController extends Controller
 
         return Inertia::render('Admin/Students/Show', [
             'student' => $this->serializeDetail($student),
+            'announcement' => $this->announcementWorkspace->forStudent(
+                $student,
+                $request->user(),
+            ),
         ]);
     }
 
@@ -453,10 +459,12 @@ class StudentController extends Controller
             'display_name' => $student->display_name,
             'announcement_name' => $student->announcement_name,
             'pronunciation_guide' => $student->pronunciation_guide,
+            'tts_spoken_name' => $student->tts_spoken_name,
             'college' => $student->college,
             'program' => $student->program,
             'major' => $student->major,
             'honors' => $student->honors,
+            'announcement_additional_text' => $student->announcement_additional_text,
             'sequence_number' => $student->sequence_number,
             'eligibility_status' => $student->eligibility_status->value,
             'qr_token_configured' => $student->qr_token !== '',

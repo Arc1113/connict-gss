@@ -70,6 +70,28 @@ final class AtomicPrivateCandidateAudioStore implements CandidateAudioStore
         }
     }
 
+    public function read(string $path): string
+    {
+        if (! $this->isSafePath($path)) {
+            throw new CandidateAudioStorageException;
+        }
+
+        try {
+            $bytes = Storage::disk(
+                (string) config('announcements.azure.candidate_disk', 'local'),
+            )->get($path);
+            $this->validator->validate(
+                $bytes,
+                'audio/mpeg',
+                (int) config('announcements.azure.maximum_response_bytes'),
+            );
+        } catch (Throwable) {
+            throw new CandidateAudioStorageException;
+        }
+
+        return $bytes;
+    }
+
     private function isSafePath(string $path): bool
     {
         $directory = trim((string) config(

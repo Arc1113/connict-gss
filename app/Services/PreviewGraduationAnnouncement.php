@@ -20,6 +20,7 @@ final class PreviewGraduationAnnouncement
     public function preview(
         Student $student,
         ?AnnouncementTemplate $template = null,
+        ?string $voice = null,
     ): AnnouncementPreviewResult {
         $template ??= $this->activeTemplateResolver->resolve($student->ceremony);
 
@@ -44,6 +45,11 @@ final class PreviewGraduationAnnouncement
             ),
         )->all();
 
+        $selectedVoice = $voice ?? $template->default_voice;
+        $selectedLocale = $voice === null
+            ? $template->default_locale
+            : (string) config("announcements.voices.{$voice}", '');
+
         $input = new AnnouncementCompositionInput(
             studentIdentifier: $student->getKey(),
             announcementName: $student->announcement_name,
@@ -63,8 +69,8 @@ final class PreviewGraduationAnnouncement
             includeAdditionalText: $template->include_additional_text,
             awardsLeadIn: $template->awards_lead_in,
             closingText: $template->closing_text,
-            voice: $template->default_voice,
-            locale: $template->default_locale,
+            voice: $selectedVoice,
+            locale: $selectedLocale,
             speakingRatePercent: $template->speaking_rate_percent,
             pauseAfterNameMs: $template->pause_after_name_ms,
             pauseBetweenSectionsMs: $template->pause_between_sections_ms,

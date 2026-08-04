@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import AdminLayout from '../../../components/Admin/AdminLayout';
 import AudioPreview from '../../../components/Admin/AudioPreview';
+import AnnouncementWorkspace from '../../../components/Admin/AnnouncementWorkspace';
 import { ValidationSummary } from '../../../components/Admin/FormSupport';
 import PageHeader from '../../../components/Admin/PageHeader';
 import StatusText from '../../../components/Admin/StatusText';
@@ -28,7 +29,7 @@ function formatFileSize(value) {
     return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function StudentShow({ student }) {
+export default function StudentShow({ announcement, student }) {
     const { auth, errors } = usePage().props;
     const audioReview = useForm({
         audio_review_notes: student.media.audio_review_notes ?? '',
@@ -352,6 +353,8 @@ export default function StudentShow({ student }) {
                     </div>
                 </dl>
             </section>
+
+            <AnnouncementWorkspace announcement={announcement} student={student} />
 
             <section className="admin-detail-section">
                 <h2>Record protection</h2>

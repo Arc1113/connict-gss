@@ -1,6 +1,6 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 12 verified; ENH-TTS-3 provider/private candidate layer implemented**
+Document status: **Phase 12 verified; ENH-TTS-4 preparation workspace implemented**
 
 Last updated: 2026-08-03
 
@@ -1097,5 +1097,34 @@ paths remain hidden from default serialization and are not exposed by a route.
 The workflow creates no active-audio link and does not update student audio
 source, readiness, stage state, Reverb, or payloads. Configuration health is
 offline unless an explicit caller requests the bounded voice-catalog check.
-Approval, candidate playback, promotion, invalidation, stage guarding, and UI
-remain later-phase architecture.
+ENH-TTS-4 adds authorized candidate playback and preparation UI below. Approval,
+promotion, invalidation, and stage guarding remain later-phase architecture.
+
+## 23. ENH-TTS-4 awards and single-graduate workspace
+
+The graduate detail response is extended through `StudentAnnouncementWorkspace`.
+It serializes only reviewed announcement source, ordered awards, safe template
+and voice choices, plain-text preview metadata, provider configuration health,
+safe generation history, and authorized usage estimates. SSML, provider request
+IDs, credentials, and private paths remain server-only.
+
+```text
+Graduate detail page
+    -> award POST/PUT/DELETE/move commands -> PostgreSQL + safe audit
+    -> preview GET -> same-ceremony template + allowlisted voice -> JSON
+    -> generation POST -> GenerateAnnouncementCandidate
+    -> candidate GET -> nested authorization -> validated private MP3 bytes
+```
+
+Award commands use the established HTTP-command pattern and transactional row
+locks. Preview is a recovery/read projection and never calls Azure. Generation
+retains the ENH-TTS-3 two-transaction provider boundary, adds exact in-progress
+duplicate blocking, and can select a persisted same-ceremony template snapshot
+and allowlisted voice. Candidate delivery uses no-store same-origin responses
+with a generic filename and revalidates the MP3 before serving it.
+
+The React workspace disables duplicate submissions, confirms force generation,
+uses accessible move buttons, and keeps the existing manual media controls
+visible. There are no approval/rejection/promotion commands, no active-audio or
+readiness update, no source invalidation mutation, no Reverb event, and no stage
+serializer change. Those remain ENH-TTS-5 concerns.

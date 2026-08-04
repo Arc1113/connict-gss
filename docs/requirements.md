@@ -1326,7 +1326,41 @@ row nor another billable request. Configuration health is offline by default;
 the explicit network health check calls only the voice catalog and synthesizes
 nothing.
 
-ENH-TTS-3 adds no controller, route, React page, candidate playback endpoint,
+ENH-TTS-3 itself added no controller, route, React page, candidate playback endpoint,
 approval/rejection/promotion, active-audio mutation, stage hash gate, stage
 payload change, Reverb event, batch, queue job, or ceremony-time cloud call.
 Those remain later approved phases.
+
+## 30. ENH-TTS-4 awards and single-graduate preparation UI
+
+Authorized data encoders and administrators can manage one graduate's structured
+awards through nested HTTP commands. Award names and optional spoken phrases are
+trimmed, length-limited plain text; exact normalized duplicates and list-breaking
+punctuation are rejected. Creation appends deterministically, deletion compacts
+order, and accessible up/down commands reorder under a student row lock. Every
+write records a safe award audit.
+
+The graduate form exposes the existing `tts_spoken_name` and
+`announcement_additional_text` columns. The graduate detail page shows source
+fields, awards, same-ceremony template versions, allowlisted voices, deterministic
+plain-text preview, warning/blocking messages, character and award counts, an
+explicit approximate-duration range, provider configuration status, and safe
+generation history. Administrators additionally see the local monthly usage
+estimate.
+
+Preview is read-only and never calls Azure. Generation is explicit, disables
+duplicate browser submission, reuses an identical readable candidate, and
+rejects an identical request already pending or generating. Only administrators
+may confirm force regeneration. Safe provider failures return as validation
+feedback without provider bodies or secrets.
+
+Private MP3 candidates are available only through an authenticated nested route
+after student/generation ownership, path, existence, and audio validation checks.
+Responses use a generic filename and private no-store caching. Candidate paths,
+keys, endpoints, SSML, and provider request IDs are not serialized to the browser.
+
+ENH-TTS-4 introduces no migration, package, template-management UI, voice sample,
+candidate approval/rejection/promotion, automatic invalidation, active-audio
+mutation, stage payload change, Reverb event, batch generation, or ceremony-time
+Azure dependency. Manual upload remains fully available and generated candidates
+remain `needs_review` until ENH-TTS-5 implements the separate human-approval flow.

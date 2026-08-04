@@ -17,6 +17,7 @@ use App\Models\Ceremony;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\AnnouncementUsage;
+use App\Services\PreviewGraduationAnnouncement;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Broadcasting\BroadcastEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,6 +83,36 @@ class AnnouncementCandidateGenerationTest extends AnnouncementTestCase
         $this->assertSame($first->generation->id, $second->generation->id);
         $this->assertSame(1, AnnouncementGeneration::query()->count());
         Http::assertSentCount(1);
+    }
+
+    public function test_identical_generation_already_in_progress_blocks_a_second_provider_request(): void
+    {
+        Http::fake();
+        [$student, $actor] = $this->fixture();
+        $preview = app(PreviewGraduationAnnouncement::class)->preview($student);
+        $composition = $preview->composition;
+        $template = $student->ceremony->activeAnnouncementTemplate;
+        AnnouncementGeneration::factory()
+            ->for($student)
+            ->for($student->ceremony)
+            ->for($template, 'template')
+            ->create([
+                'provider_voice' => $composition->voice,
+                'locale' => $composition->locale,
+                'source_hash' => $composition->sourceHash,
+                'output_format' => $composition->input->outputFormat,
+                'status' => AnnouncementGenerationStatus::Generating,
+            ]);
+
+        try {
+            app(GenerateAnnouncementCandidate::class)->generate($student, $actor);
+            $this->fail('A duplicate in-progress generation was not blocked.');
+        } catch (AnnouncementCandidateGenerationException $exception) {
+            $this->assertSame('generation_in_progress', $exception->safeCode);
+        }
+
+        Http::assertNothingSent();
+        $this->assertSame(1, AnnouncementGeneration::query()->count());
     }
 
     public function test_force_generation_creates_a_distinct_candidate(): void
@@ -150,6 +181,11 @@ class AnnouncementCandidateGenerationTest extends AnnouncementTestCase
             public function exists(string $path): bool
             {
                 return false;
+            }
+
+            public function read(string $path): string
+            {
+                throw new CandidateAudioStorageException;
             }
 
             public function delete(string $path): void {}

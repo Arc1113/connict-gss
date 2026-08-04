@@ -47,10 +47,12 @@ class SaveStudentRequest extends FormRequest
             'display_name' => ['required', 'string', 'max:255'],
             'announcement_name' => ['required', 'string', 'max:255'],
             'pronunciation_guide' => ['nullable', 'string', 'max:255'],
+            'tts_spoken_name' => ['nullable', 'string', 'max:255', 'not_regex:/[<>]/'],
             'college' => ['nullable', 'string', 'max:255'],
             'program' => ['required', 'string', 'max:255'],
             'major' => ['nullable', 'string', 'max:255'],
             'honors' => ['nullable', 'string', 'max:1000'],
+            'announcement_additional_text' => ['nullable', 'string', 'max:500', 'not_regex:/[<>]/'],
             'sequence_number' => ['required', 'integer', 'min:1', 'max:4294967295',
                 Rule::unique('students', 'sequence_number')
                     ->where(fn ($query) => $query->where(
@@ -94,10 +96,12 @@ class SaveStudentRequest extends FormRequest
             'display_name',
             'announcement_name',
             'pronunciation_guide',
+            'tts_spoken_name',
             'college',
             'program',
             'major',
             'honors',
+            'announcement_additional_text',
         ] as $field) {
             $value = $this->input($field);
 

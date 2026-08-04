@@ -1,6 +1,6 @@
 # Automated Voice Announcements
 
-Status: **ENH-TTS-3 controlled Azure provider and private candidate generation implemented; no UI or runtime integration**
+Status: **ENH-TTS-4 awards and single-graduate generation workspace implemented; no approval or runtime integration**
 
 Last reviewed: 2026-08-03
 
@@ -10,7 +10,9 @@ ENH-TTS-2 adds immutable composition inputs/results, deterministic plain text,
 safe SSML, and a side-effect-free backend preview service. ENH-TTS-3 adds a
 disabled-by-default Azure provider, private atomic candidate storage, generation
 records, safe health results, usage estimates, and identical-candidate reuse.
-It adds no route, React UI, approval/promotion, or ceremony-runtime change.
+ENH-TTS-4 adds authorized award editing, deterministic preview, individual
+generation, private candidate playback, and safe history on the graduate detail
+page. It adds no approval/promotion or ceremony-runtime change.
 
 ## Objective and non-negotiable boundary
 
@@ -40,6 +42,38 @@ during authorized preparation, with generated files reviewed, approved, and
 stored locally before ceremony. ENH-TTS-3 makes the preparation-time network
 exception executable only when an authorized backend caller explicitly starts
 generation and safe server configuration enables Azure.
+
+## Implemented ENH-TTS-4 preparation workspace
+
+The existing graduate detail page now receives a server-built announcement
+workspace. It shows approved source fields, ordered awards, same-ceremony
+template versions, allowlisted voices, deterministic plain text, character and
+award counts, approximate-duration labeling, length warnings, provider
+configuration status, safe generation history, and administrator-only monthly
+usage estimates. TTS spoken-name and additional approved distinction fields are
+editable through the existing graduate form.
+
+Data encoders and administrators may add, edit, enable/disable, remove, and use
+keyboard-accessible move-up/move-down controls for structured awards. Award
+writes lock the student, normalize order transactionally, rely on the PostgreSQL
+normalized duplicate constraint, and record safe audits without candidate paths.
+Preview accepts only a template from the graduate's ceremony and a configured
+voice/locale pair; it makes no provider request.
+
+Generation is an explicit POST and the UI disables repeated submission while a
+request is active. The backend reuses an identical readable candidate and now
+also blocks a second identical `pending`/`generating` request. Administrator
+force regeneration requires confirmation. Provider failures return only the
+safe mapped message.
+
+Candidate audio is served inline only from an authenticated, authorized nested
+student/generation route. The route confirms ownership, validates the private
+path and MP3 again, uses `private, no-store` caching, and exposes a generic
+filename rather than the stored path. No candidate path, key, SSML, provider
+response, or authorization header enters Inertia props.
+
+The workspace has no Approve or Reject Candidate action. Candidate status stays
+`needs_review`; active/manual audio and stage readiness remain untouched.
 
 ## Implemented ENH-TTS-3 provider and candidate boundary
 
@@ -549,7 +583,7 @@ request. Controlled live verification remains an explicit preparation procedure.
    assembly, and preview serializer without Azure calls (implemented).
 4. **ENH-TTS-3:** mocked and controlled Azure provider integration with private
    candidate storage (implemented).
-5. **ENH-TTS-4:** awards and single-graduate generation UI.
+5. **ENH-TTS-4:** awards and single-graduate generation UI (implemented).
 6. **ENH-TTS-5:** review, promotion, rejection, invalidation, stage guard, and
    backup integration.
 7. **ENH-TTS-6:** ceremony settings and fictional-data voice comparison.
@@ -557,7 +591,7 @@ request. Controlled live verification remains an explicit preparation procedure.
 9. **ENH-TTS-8:** full regression, backup/restore, and disconnected ceremony
    rehearsal.
 
-Each phase stops for approval. ENH-TTS-4 remains deferred until ENH-TTS-3 is
+Each phase stops for approval. ENH-TTS-5 remains deferred until ENH-TTS-4 is
 reviewed and approved.
 
 ## Risks and unresolved decisions

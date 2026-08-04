@@ -59,10 +59,13 @@ export default function StudentForm({
         display_name: student?.display_name ?? '',
         announcement_name: student?.announcement_name ?? '',
         pronunciation_guide: student?.pronunciation_guide ?? '',
+        tts_spoken_name: student?.tts_spoken_name ?? '',
         college: student?.college ?? '',
         program: student?.program ?? '',
         major: student?.major ?? '',
         honors: student?.honors ?? '',
+        announcement_additional_text:
+            student?.announcement_additional_text ?? '',
         sequence_number: student?.sequence_number ?? '',
         eligibility_status: student?.eligibility_status ?? 'pending',
         photo: null,
@@ -239,6 +242,15 @@ export default function StudentForm({
                         onChange={setData}
                         wide
                     />
+                    <TextField
+                        data={data}
+                        errors={errors}
+                        field="tts_spoken_name"
+                        label="TTS spoken-name override"
+                        maxLength={255}
+                        onChange={setData}
+                        wide
+                    />
                 </div>
                 <p className="admin-form-note">
                     Display and announcement names are reviewed fields. They are not
@@ -288,6 +300,34 @@ export default function StudentForm({
                             value={data.honors}
                         />
                         <FieldError id="honors-error" message={errors.honors} />
+                    </div>
+                    <div className="admin-field admin-field-wide">
+                        <label htmlFor="announcement_additional_text">
+                            Additional approved announcement distinction
+                        </label>
+                        <textarea
+                            aria-describedby={describedBy(
+                                'announcement_additional_text',
+                                errors.announcement_additional_text,
+                            )}
+                            aria-invalid={Boolean(
+                                errors.announcement_additional_text,
+                            )}
+                            id="announcement_additional_text"
+                            maxLength="500"
+                            onChange={(event) =>
+                                setData(
+                                    'announcement_additional_text',
+                                    event.target.value,
+                                )
+                            }
+                            rows="3"
+                            value={data.announcement_additional_text}
+                        />
+                        <FieldError
+                            id="announcement_additional_text-error"
+                            message={errors.announcement_additional_text}
+                        />
                     </div>
                     <div className="admin-field">
                         <label htmlFor="eligibility_status">
