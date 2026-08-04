@@ -47,6 +47,14 @@ export default function CeremonyShow({ ceremony }) {
                                 Announcement settings
                             </Link>
                         )}
+                        {auth.abilities.manage_announcement_batches && (
+                            <Link
+                                className="admin-button admin-button-secondary"
+                                href={`/admin/ceremonies/${ceremony.id}/announcement-batches`}
+                            >
+                                Announcement batches
+                            </Link>
+                        )}
                     </>
                 }
                 description="Ceremony configuration and protected operational history."

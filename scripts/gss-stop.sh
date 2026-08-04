@@ -85,6 +85,6 @@ else
     printf 'Skipping final backup by operator request.\n'
 fi
 
-printf 'Stopping HTTPS proxy, application, Reverb, and PostgreSQL without removing volumes...\n'
-gss_compose "${env_file}" stop proxy app reverb database
+printf 'Stopping HTTPS proxy, application, Reverb, TTS worker, and PostgreSQL without removing volumes...\n'
+gss_compose "${env_file}" stop proxy app reverb tts-worker database
 printf 'Shutdown complete. Volumes, media, backups, containers, and images were preserved.\n'

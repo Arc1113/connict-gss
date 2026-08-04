@@ -1,6 +1,6 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 12 verified; ENH-TTS-5 approval and stale-audio guard implemented**
+Document status: **Phase 12 verified; ENH-TTS-7 bounded preparation queue implemented**
 
 Last updated: 2026-08-03
 
@@ -29,12 +29,14 @@ candidate workflow.
 | Scanner | USB 2D keyboard wedge | Types opaque QR token into `/scanner` |
 | Media | Local public paths | Test fixtures and managed graduate photos/audio with readiness approval |
 | QR rendering | BaconQrCode 3.1.1 | Local deterministic SVG from the current PostgreSQL token |
-| Packaging | Docker Compose | Reproducible app, Reverb, and PostgreSQL processes |
+| Preparation queue | Laravel database queue | Sequential, resumable TTS batch items outside ceremony runtime |
+| Packaging | Docker Compose | Reproducible app, Reverb, preparation worker, and PostgreSQL processes |
 | Backup | Docker-aware local scripts and metadata table | PostgreSQL dump, media copy, manifest, checksum, restore verification |
 | Readiness | Phase 11–12 test and browser rehearsal harnesses | Release-candidate and real-world operations verification |
 
-No Redis, queue worker, polling loop, separate SPA/API application, SQLite,
-cloud-storage service, cloud speech service, or runtime CDN is used.
+No Redis, browser polling loop, separate SPA/API application, SQLite,
+cloud-storage service, or runtime CDN is used. One database-backed worker exists
+only for preparation-time TTS batches and is not ceremony-critical.
 
 Cloud TTS is prohibited during ceremony runtime. Azure Speech is permitted only
 during authorized preparation, with generated files reviewed, approved, and
@@ -1167,3 +1169,32 @@ Comparison rows are PostgreSQL-authoritative while active, but their payloads
 and files are disposable: database dumps exclude their row data and the backup
 media copy never includes their separate directory. The stage serializer and
 runtime audio decision remain unchanged and local-only.
+
+## 26. ENH-TTS-7 bounded batch architecture
+
+`announcement_generation_batches` and ordered batch items are the authoritative
+progress ledger. A ceremony row lock serializes starts, and a partial unique
+index prevents duplicate active selections. Selection is limited to 50,
+ceremony-scoped, excludes ineligible records, follows sequence number then ID,
+and must pass the real preview pipeline. The active template and voice are
+snapshotted by foreign key; each worker item recomposes the current graduate
+source before synthesis.
+
+One `tts-worker` Compose service consumes only `tts-preparation`. It has one
+job attempt and processes one item per job, while Azure's client retains bounded
+transient retries. Completion dispatches the next item only after persisted
+state. A worker interruption returns the processing item to queued and pauses
+the batch; rate limits, timeouts, and temporary outages also pause for explicit
+resume. Cancellation transactionally marks queued items and never interrupts a
+provider call midway.
+
+The worker reuses `GenerateAnnouncementCandidate`, so source idempotency,
+private atomic storage, safe failures, and `needs_review` remain identical to
+single generation. It cannot review, approve, promote, or mutate active audio.
+Private Reverb notifications contain only batch ID, status, and counts; the
+browser recovers full state over authorized HTTP and never polls.
+
+The app, proxy, Reverb, and PostgreSQL have no dependency on `tts-worker`.
+Ceremony health intentionally ignores it. Stopping the worker leaves persisted
+batch progress but cannot affect scanning, stage state, local playback, or live
+announcer fallback.

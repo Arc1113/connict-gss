@@ -23,6 +23,7 @@ Server laptop
 ├── Local HTTPS proxy      TCP 443, ceremony LAN only
 ├── Laravel HTTP app       TCP 8000, server loopback only
 ├── Laravel Reverb         TCP 8080, server loopback only
+├── TTS preparation worker Database queue, no listening port
 ├── PostgreSQL             Docker network + server loopback only
 ├── Local media            Docker volume / storage
 └── Local backups          storage/app/gss-backups
@@ -41,9 +42,9 @@ assets are served from `public/build`.
 
 - `compose.yaml`: shared service definitions and safe development defaults.
 - `compose.deploy.yaml`: production-oriented override with restart policies,
-  app/Reverb health checks, deployment image, persistent app storage, and no
-  Vite service.
-- `docker/php/Dockerfile.deploy`: release image for the Laravel app and Reverb.
+  app/Reverb health checks, deployment image, persistent app storage, a
+  preparation-only TTS worker, and no Vite service.
+- `docker/php/Dockerfile.deploy`: release image for Laravel, Reverb, and the TTS worker.
 - `.env.deployment.example`: example only; copy to an untracked `.env.production`
   or `.env` and replace all secrets.
 - `scripts/gss-start.sh`: validated startup.
@@ -174,11 +175,17 @@ Startup policy:
 - require `public/build/manifest.json`;
 - start PostgreSQL first;
 - wait for PostgreSQL health;
-- start Laravel and Reverb;
+- start Laravel and Reverb, apply migrations, then start the preparation-only
+  TTS worker;
 - run `php artisan migrate --force` only when `--migrate` is selected;
 - never run `migrate:fresh`;
 - never run seeders automatically;
 - print scanner, stage, and stage-control URLs without secrets.
+
+The TTS worker is not checked by ceremony readiness. It may be stopped with
+`docker compose stop tts-worker` after preparation; queued batch progress stays
+in PostgreSQL, and scanning, stage control, replay, recovery, and approved local
+audio continue normally.
 
 ## Migration deployment policy
 

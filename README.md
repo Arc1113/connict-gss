@@ -438,10 +438,12 @@ name, program, major, honors, local photo/audio URL, and presentation time.
 | Reverb WebSocket | `8080` | Loopback by default; LAN when explicitly enabled |
 | PostgreSQL | `54329` | Loopback only |
 | Vite dev server | Vite default | Development only; not required for compiled runtime |
+| TTS preparation worker | None | Database queue only; not ceremony-critical |
 
-The required runtime processes are Laravel, PostgreSQL, and Reverb. Phase 3 events
-implement `ShouldBroadcastNow` and are dispatched only after the transaction
-returns, so no queue worker is required.
+The required ceremony processes are Laravel, PostgreSQL, and Reverb. Committed
+ceremony events use `ShouldBroadcastNow`. ENH-TTS-7 adds one separate database
+queue worker only for preparation-time TTS batches; ceremony operation does not
+depend on it.
 
 ## First-time Docker setup
 

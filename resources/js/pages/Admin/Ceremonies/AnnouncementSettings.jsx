@@ -123,7 +123,7 @@ export default function AnnouncementSettings({ announcement }) {
         <AdminLayout>
             <Head title={`Announcement settings · ${ceremony.name}`} />
             <PageHeader
-                actions={<Link className="admin-button admin-button-secondary" href={`/admin/ceremonies/${ceremony.id}`}>Back to ceremony</Link>}
+                actions={<><Link className="admin-button admin-button-secondary" href={`/admin/ceremonies/${ceremony.id}/announcement-batches`}>Batch generation</Link><Link className="admin-button admin-button-secondary" href={`/admin/ceremonies/${ceremony.id}`}>Back to ceremony</Link></>}
                 description="Publish reviewed wording, voice, and pacing as a new immutable version."
                 eyebrow="Ceremony announcements"
                 title={ceremony.name}

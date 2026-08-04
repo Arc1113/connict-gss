@@ -34,3 +34,11 @@ Broadcast::channel('stage-control.{ceremonyId}', function (
         && $activeCeremonyIds->count() === 1
         && (int) $activeCeremonyIds->first() === $ceremonyId;
 });
+
+Broadcast::channel('announcement-batches.{ceremonyId}', function (
+    User $user,
+    int $ceremonyId,
+): bool {
+    return $user->can('manage-announcement-batches')
+        && Ceremony::query()->whereKey($ceremonyId)->exists();
+});

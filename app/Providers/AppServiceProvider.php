@@ -158,5 +158,9 @@ class AppServiceProvider extends ServiceProvider
             'view-announcement-usage',
             fn (User $user): bool => $user->hasRole(UserRole::Administrator),
         );
+        Gate::define(
+            'manage-announcement-batches',
+            fn (User $user): bool => $user->hasRole(UserRole::Administrator),
+        );
     }
 }

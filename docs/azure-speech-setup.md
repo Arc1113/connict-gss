@@ -230,6 +230,14 @@ source edit. Reuse an identical successful candidate when policy allows;
 otherwise require explicit force-regeneration confirmation. Batch selection and
 concurrency remain bounded.
 
+ENH-TTS-7 implements the concurrency-one boundary with a dedicated database
+queue named `tts-preparation`. One job handles one graduate and dispatches the
+next only after PostgreSQL progress is committed. Laravel jobs use one attempt;
+the provider retains the bounded retry behavior above. Rate limits, timeouts,
+service unavailability, or worker interruption pause persisted work for an
+explicit administrator resume. The worker is preparation-only and is excluded
+from ceremony-critical health.
+
 ## Preparation-only health check
 
 A future authorized health action may perform two levels:

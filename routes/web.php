@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AnnouncementBatchController;
 use App\Http\Controllers\Admin\AnnouncementCandidateAudioController;
 use App\Http\Controllers\Admin\AnnouncementCandidateReviewController;
 use App\Http\Controllers\Admin\AuditLogController;
@@ -151,6 +152,22 @@ Route::middleware(['auth', 'active'])->group(function () {
             '/ceremonies/{ceremony}/announcement-settings/voice-comparison/{sample}',
             VoiceComparisonAudioController::class,
         )->name('ceremonies.announcement-settings.voice-comparison.show');
+        Route::get(
+            '/ceremonies/{ceremony}/announcement-batches',
+            [AnnouncementBatchController::class, 'index'],
+        )->name('ceremonies.announcement-batches.index');
+        Route::post(
+            '/ceremonies/{ceremony}/announcement-batches',
+            [AnnouncementBatchController::class, 'store'],
+        )->name('ceremonies.announcement-batches.store');
+        Route::post(
+            '/ceremonies/{ceremony}/announcement-batches/{batch}/cancel',
+            [AnnouncementBatchController::class, 'cancel'],
+        )->name('ceremonies.announcement-batches.cancel');
+        Route::post(
+            '/ceremonies/{ceremony}/announcement-batches/{batch}/resume',
+            [AnnouncementBatchController::class, 'resume'],
+        )->name('ceremonies.announcement-batches.resume');
         Route::post(
             '/ceremonies/{ceremony}/operational-reset',
             CeremonyOperationalResetController::class,

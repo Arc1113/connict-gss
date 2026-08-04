@@ -1408,3 +1408,31 @@ props or audits. Temporary sample files and row data are excluded from backups,
 while successful sample characters contribute to the labeled local monthly
 usage estimate. No settings read, draft preview, stage operation, or page load
 may call Azure.
+
+## 33. ENH-TTS-7 bounded batch candidate generation
+
+Only administrators may start, resume, cancel, or subscribe to batch progress.
+Each selection must contain 1–50 distinct, same-ceremony, non-ineligible
+graduates whose current announcement preview is ready. The server orders items
+by ceremony sequence and stable ID, uses the active versioned template/default
+voice, calculates proposed characters, and requires acknowledgement when the
+configured local budget warning threshold would be reached.
+
+Batch and item progress must persist in PostgreSQL. Identical active selections
+must be idempotent. Processing uses the dedicated `tts-preparation` database
+queue at concurrency one, one graduate per job, one job attempt, and the
+provider client's bounded transient retry limits. Successful generation must
+remain `needs_review`; no batch path may approve, promote, or replace active
+audio.
+
+Rate limiting, timeouts, temporary service failure, and worker interruption must
+pause without spinning and provide safe explicit resume guidance. Cancellation
+must stop queued work and allow an in-flight request to finalize safely. A
+ceremony-template version change must stop remaining items. Progress events may
+contain only batch identity/status/counts, use an administrator-only private
+channel, and trigger authorized HTTP recovery reads rather than polling.
+
+The preparation worker and Azure must not be dependencies of Laravel, Reverb,
+PostgreSQL, proxy health, scanner commands, stage control, approved local audio,
+replay, or recovery. Ceremony operation must continue while the worker is
+stopped.

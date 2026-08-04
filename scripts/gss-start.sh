@@ -106,6 +106,9 @@ else
     printf 'Skipping migrations by operator request.\n'
 fi
 
+printf 'Starting the preparation-only TTS worker.\n'
+gss_compose "${env_file}" up -d tts-worker
+
 app_url="$(gss_required_env_value "${env_file}" APP_URL)"
 app_port="$(gss_required_env_value "${env_file}" APP_FORWARD_PORT)"
 https_port="$(gss_required_env_value "${env_file}" HTTPS_FORWARD_PORT)"

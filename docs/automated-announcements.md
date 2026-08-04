@@ -1,6 +1,6 @@
 # Automated Voice Announcements
 
-Status: **ENH-TTS-6 ceremony settings and controlled voice comparison implemented**
+Status: **ENH-TTS-7 bounded persistent batch generation implemented**
 
 Last reviewed: 2026-08-04
 
@@ -39,6 +39,34 @@ graduate data. Their private paths, SSML, credentials, and provider bodies are
 not serialized or audited. Temporary sample files and row data are excluded
 from backups; their successful character counts remain part of the local
 monthly usage estimate.
+
+## Implemented ENH-TTS-7 batch preparation
+
+Administrators can select at most 50 ceremony-owned, non-ineligible graduates
+whose current preview is ready. The server revalidates selection, active
+template, deterministic ceremony sequence order, character estimates, provider
+configuration, and the local monthly budget warning before creating work.
+Identical active selections reuse one batch instead of duplicating jobs.
+
+PostgreSQL stores each batch and ordered item. A dedicated
+`tts-preparation` database queue runs one item at a time with one worker and one
+Laravel job attempt; the provider retains its existing bounded internal retry
+policy. Each item invokes the same idempotent single-candidate action and enters
+only `needs_review` or a safe failure state. Batch processing never approves or
+promotes audio.
+
+Transient rate limiting, timeouts, and provider unavailability pause the batch
+without spinning. Administrators can explicitly resume or cancel; cancellation
+stops queued work while allowing an in-flight request to finish safely. A
+template version change cancels remaining work. Progress, safe failure guidance,
+and deterministic item order survive reloads in PostgreSQL and committed changes
+notify the administrator through a private Reverb channel with an HTTP refresh
+recovery control.
+
+The preparation worker is a separate Compose service and is not part of
+ceremony-critical health. Laravel, PostgreSQL, Reverb, scanning, stage control,
+approved local playback, and recovery continue when that worker and Azure are
+stopped.
 
 ## Implemented ENH-TTS-5 review and runtime guard
 
@@ -639,11 +667,11 @@ request. Controlled live verification remains an explicit preparation procedure.
    backup integration (implemented).
 7. **ENH-TTS-6:** ceremony settings and fictional-data voice comparison
    (implemented).
-8. **ENH-TTS-7:** bounded batch generation.
+8. **ENH-TTS-7:** bounded batch generation (implemented).
 9. **ENH-TTS-8:** full regression, backup/restore, and disconnected ceremony
    rehearsal.
 
-Each phase stops for approval. ENH-TTS-7 remains deferred until ENH-TTS-6 is
+Each phase stops for approval. ENH-TTS-8 remains deferred until ENH-TTS-7 is
 reviewed, committed, and approved.
 
 ## Risks and unresolved decisions

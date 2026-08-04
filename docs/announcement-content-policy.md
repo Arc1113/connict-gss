@@ -1,6 +1,6 @@
 # Graduation Announcement Content Policy
 
-Status: **ENH-TTS-6 versioned ceremony settings and fictional voice comparison implemented**
+Status: **ENH-TTS-7 bounded batch preparation without automatic approval implemented**
 
 Last reviewed: 2026-08-04
 
@@ -14,6 +14,8 @@ requires explicit administrator review, rejects stale fingerprints, and removes
 generated audio from stage eligibility whenever an approved spoken source
 changes. ENH-TTS-6 implements administrator-only versioned settings and an
 explicit comparison workflow that always uses the fixed fictional sample.
+ENH-TTS-7 applies the same content, source-hash, private-candidate, and human
+review rules to each item in a bounded sequential batch.
 
 ## Permitted source fields
 

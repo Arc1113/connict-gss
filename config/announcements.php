@@ -26,6 +26,10 @@ return [
         'retention_minutes' => 60,
         'directory' => 'announcement-voice-samples',
     ],
+    'batch_generation' => [
+        'maximum_students' => 50,
+        'queue' => 'tts-preparation',
+    ],
     'azure' => [
         'enabled' => (bool) env('AZURE_SPEECH_ENABLED', false),
         'key' => env('AZURE_SPEECH_KEY'),

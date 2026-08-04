@@ -91,4 +91,9 @@ class Ceremony extends Model
     {
         return $this->hasMany(AnnouncementVoiceSample::class);
     }
+
+    public function announcementGenerationBatches(): HasMany
+    {
+        return $this->hasMany(AnnouncementGenerationBatch::class);
+    }
 }

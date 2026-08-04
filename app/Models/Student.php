@@ -109,6 +109,11 @@ class Student extends Model
         return $this->hasMany(AnnouncementGeneration::class);
     }
 
+    public function announcementGenerationBatchItems(): HasMany
+    {
+        return $this->hasMany(AnnouncementGenerationBatchItem::class);
+    }
+
     public function activeAudioGeneration(): BelongsTo
     {
         return $this->belongsTo(AnnouncementGeneration::class, 'audio_generation_id');

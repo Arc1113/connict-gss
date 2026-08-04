@@ -55,6 +55,26 @@ services:
         volumes: !override
             - gss-storage:/app/storage
 
+    tts-worker:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile.deploy
+        image: graduation-stage-system-app:deploy
+        command:
+            - sh
+            - -lc
+            - >-
+                mkdir -p storage/app/public storage/framework/cache/data
+                storage/framework/sessions storage/framework/views storage/logs
+                && php artisan queue:work database --queue=tts-preparation
+                --sleep=1 --tries=1 --timeout=180 --max-time=3600
+        env_file:
+            - ${GSS_ENV_FILE:-.env}
+        restart: unless-stopped
+        user: root
+        volumes: !override
+            - gss-storage:/app/storage
+
     database:
         restart: unless-stopped
 

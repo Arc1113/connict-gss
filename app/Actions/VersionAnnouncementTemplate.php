@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\AnnouncementTemplate;
 use App\Models\Ceremony;
 use App\Models\User;
+use App\Services\CancelAnnouncementBatchesForSettingsChange;
 use App\Services\InvalidateAnnouncementCandidates;
 use App\Support\AdministrativeAuditLogger;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,7 @@ final class VersionAnnouncementTemplate
 {
     public function __construct(
         private readonly InvalidateAnnouncementCandidates $invalidator,
+        private readonly CancelAnnouncementBatchesForSettingsChange $batchCanceller,
         private readonly AdministrativeAuditLogger $auditLogger,
     ) {}
 
@@ -54,6 +56,7 @@ final class VersionAnnouncementTemplate
             ]);
 
             $this->invalidator->forCeremony($lockedCeremony->id, $template->id);
+            $this->batchCanceller->forCeremony($lockedCeremony->id);
             $this->auditLogger->record(
                 $actor,
                 'announcement_template.published',

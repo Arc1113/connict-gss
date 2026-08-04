@@ -59,6 +59,33 @@ services:
             - .:/app
         working_dir: /app
 
+    tts-worker:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        command:
+            - php
+            - artisan
+            - queue:work
+            - database
+            - --queue=tts-preparation
+            - --sleep=1
+            - --tries=1
+            - --timeout=180
+            - --max-time=3600
+        depends_on:
+            database:
+                condition: service_healthy
+        environment:
+            DB_HOST: database
+            DB_PORT: 5432
+            HOME: /tmp
+        restart: unless-stopped
+        user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+        volumes:
+            - .:/app
+        working_dir: /app
+
     database:
         image: postgres:16-alpine
         environment:
