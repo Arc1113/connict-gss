@@ -1,6 +1,6 @@
 # Graduation Stage System
 
-Status: **Phase 12 — Real-World Operations and UX Remediation completed; physical readiness remains CONDITIONAL GO**
+Status: **ENH-TTS-8 software gate complete; physical readiness remains CONDITIONAL GO**
 
 The Graduation Stage System is a local-network-only application for reliable,
 QR-driven graduation presentation. Phase 3 established the complete operational
@@ -65,6 +65,13 @@ administration navigation now respects each role's authorized landing page.
 The approved backend, queue, scan, broadcast, recovery, and local-only runtime
 architecture remains unchanged.
 
+ENH-TTS-1 through ENH-TTS-7 add deterministic automated-announcement
+preparation: structured awards, safe SSML, disabled-by-default Azure candidate
+generation, human review and local promotion, versioned settings, fictional
+voice comparison, and a bounded persistent batch queue. ENH-TTS-8 verifies the
+complete enhancement with full regression, announcement-aware backup/restore,
+and a browser rehearsal on an internal-only Docker network with Azure disabled.
+
 ## Phase 12 operations remediation
 
 - **Complete and present next** completes the current graduate and presents the
@@ -90,6 +97,19 @@ multi-profile Chromium rehearsal at 1440×900, 1366×768, 1024×768, 1920×1080,
 and reduced-motion states. The remaining CONDITIONAL GO items require the
 physical USB scanner, three laptops, projector/LED display, router, and venue
 audio.
+
+## ENH-TTS-8 final software gate
+
+The full PostgreSQL suite passed with 333 tests and 2,731 assertions. The
+focused announcement suite passed with 121 tests and 646 assertions. Pint,
+ESLint, Vite build, Composer validation/advisory audit, npm audit, Compose
+validation, migration rollback/reapply, backup creation, disposable restore,
+and disconnected-browser rehearsal passed. The verified backup is
+`storage/app/gss-backups/gss-backup-20260804-122018`.
+
+Software status is GO. Overall event readiness remains CONDITIONAL GO until the
+real scanner, printed cards, three-laptop LAN, projector/LED, venue sound path,
+and final institutional content/pronunciation review pass.
 
 ## Phase 11 readiness
 
@@ -893,5 +913,6 @@ not required at runtime, and PostgreSQL remains loopback-only.
 
 See [requirements](docs/requirements.md) and
 [architecture](docs/architecture.md) for the normative Phase 3 through Phase 12
-contracts. Do not begin another feature phase until Phase 12 receives explicit
-human approval.
+and ENH-TTS-1 through ENH-TTS-8 contracts. The automated-announcement
+enhancement is complete; any further product feature requires a separately
+approved phase.

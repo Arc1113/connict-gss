@@ -73,6 +73,8 @@ if gss_compose "${env_file}" ps app --format json >/dev/null 2>&1; then
 fi
 
 if [[ "${backup_mode}" == "backup" ]]; then
+    printf 'Stopping the preparation-only TTS worker before the final snapshot.\n'
+    gss_compose "${env_file}" stop tts-worker
     backup_path="$(gss_env_value "${env_file}" GSS_BACKUP_PATH)"
     if [[ -z "${backup_path}" ]]; then
         backup_path="storage/app/gss-backups"

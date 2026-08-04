@@ -1,8 +1,8 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 12 verified; ENH-TTS-7 bounded preparation queue implemented**
+Document status: **Phase 12 verified; ENH-TTS-8 software readiness gate verified**
 
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 ## 1. Architectural intent
 
@@ -1198,3 +1198,26 @@ The app, proxy, Reverb, and PostgreSQL have no dependency on `tts-worker`.
 Ceremony health intentionally ignores it. Stopping the worker leaves persisted
 batch progress but cannot affect scanning, stage state, local playback, or live
 announcer fallback.
+
+## 27. ENH-TTS-8 readiness and recovery architecture
+
+The final enhancement gate adds no ceremony-time service. A backup may start
+only while announcement preparation is quiescent: no generation may be
+`generating` and no batch item may be `processing`. Every database-referenced
+private candidate must have exactly one readable, non-empty file under the
+configured protected candidate root, and orphan candidate files make the
+snapshot fail safely.
+
+Voice-comparison row data and temporary samples remain excluded. The manifest
+records announcement entity counts, the quiet-snapshot rule, and candidate
+retention policy. Disposable restore verification rechecks counts, lowercase
+SHA-256 source hashes, active generated-audio ownership/hash relationships,
+safe media roots, readable non-empty files, and the absence of orphan private
+candidates before reporting success.
+
+`compose.offline-rehearsal.yaml` makes the Compose default network internal for
+an isolated rehearsal. Azure and the preparation worker remain disabled while
+the scanner, stage control, audience display, approved local audio, visual-only
+fallback, and HTTP recovery are exercised. This rehearsal verifies the
+software boundary; physical LAN, scanner, projector, and venue audio tests are
+still separate event-certification work.

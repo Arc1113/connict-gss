@@ -2,8 +2,13 @@
 
 namespace App\Support;
 
+use App\Models\AnnouncementGeneration;
+use App\Models\AnnouncementGenerationBatch;
+use App\Models\AnnouncementGenerationBatchItem;
+use App\Models\AnnouncementTemplate;
 use App\Models\BackupRecord;
 use App\Models\Ceremony;
+use App\Models\StudentAward;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -31,6 +36,8 @@ final class BackupManager
         ]);
 
         try {
+            $this->ensureAnnouncementPreparationIsQuiescent();
+            $this->ensureCandidateRetentionPolicy();
             File::ensureDirectoryExists($workspace);
             $dump = $workspace.'/database.sql';
             $this->databaseDump($dump);
@@ -61,6 +68,15 @@ final class BackupManager
                     'ceremonies' => Ceremony::query()->count(),
                     'active_ceremonies' => Ceremony::query()->where('status', 'active')->count(),
                 ],
+                'announcement_summary' => [
+                    'awards' => StudentAward::query()->count(),
+                    'templates' => AnnouncementTemplate::query()->count(),
+                    'generations' => AnnouncementGeneration::query()->count(),
+                    'batches' => AnnouncementGenerationBatch::query()->count(),
+                    'batch_items' => AnnouncementGenerationBatchItem::query()->count(),
+                ],
+                'snapshot_rule' => 'Preparation mutations and the tts-preparation worker must be stopped for the backup window.',
+                'candidate_retention' => 'Referenced private candidates are retained under protected backup media.',
                 'status' => 'completed',
                 'verification_status' => 'passed',
                 'restore_instructions' => 'docs/backup-and-restore.md',
@@ -147,6 +163,61 @@ final class BackupManager
 
         if (! is_file($path) || filesize($path) === 0) {
             throw new RuntimeException('PostgreSQL dump was empty.');
+        }
+    }
+
+    private function ensureAnnouncementPreparationIsQuiescent(): void
+    {
+        $generating = AnnouncementGeneration::query()
+            ->where('status', 'generating')
+            ->exists();
+        $processing = AnnouncementGenerationBatchItem::query()
+            ->where('status', 'processing')
+            ->exists();
+
+        if ($generating || $processing) {
+            throw new RuntimeException(
+                'Backup requires a quiet preparation window. Wait for the active synthesis request to finish and stop the TTS worker.',
+            );
+        }
+    }
+
+    private function ensureCandidateRetentionPolicy(): void
+    {
+        $directory = trim((string) config(
+            'announcements.azure.candidate_directory',
+            'announcement-candidates',
+        ), '/');
+        $root = Storage::disk((string) config(
+            'announcements.azure.candidate_disk',
+            'local',
+        ))->path($directory);
+        $prefix = $directory.'/';
+        $expected = AnnouncementGeneration::query()
+            ->whereNotNull('candidate_audio_path')
+            ->pluck('candidate_audio_path')
+            ->map(function (string $path) use ($prefix): string {
+                if (! str_starts_with($path, $prefix) || str_contains($path, '..')) {
+                    throw new RuntimeException('Announcement candidate retention contains an unsafe path.');
+                }
+
+                return substr($path, strlen($prefix));
+            })
+            ->sort()
+            ->values()
+            ->all();
+        $actual = is_dir($root)
+            ? collect(File::allFiles($root))
+                ->map(fn ($file): string => $file->getRelativePathname())
+                ->sort()
+                ->values()
+                ->all()
+            : [];
+
+        if ($actual !== $expected) {
+            throw new RuntimeException(
+                'Private candidate storage does not match generation metadata. Reconcile missing or orphan files before backup.',
+            );
         }
     }
 

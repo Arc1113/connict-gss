@@ -1,6 +1,6 @@
 # Ceremony Rehearsal
 
-Status: Phase 12 software remediation verified; physical rehearsal pending
+Status: ENH-TTS-8 disconnected software rehearsal verified; physical rehearsal pending
 
 Release candidate: Phase 12 working-tree candidate based on
 `e6f1888aea01923eded291d3bf2a65a0e2f5f1ab`
@@ -69,6 +69,17 @@ The rehearsal used fictional data only and covered:
 - Local assets: passed; no remote runtime requests were observed in the browser
   rehearsal.
 - Horizontal overflow: one admin topbar overflow defect was found and corrected.
+
+## ENH-TTS-8 disconnected rehearsal
+
+On 2026-08-04, a clean disposable Compose project ran on an internal-only
+Docker network. External egress from the application container was blocked,
+Azure was disabled, and no preparation worker was running. The browser
+rehearsal passed role login, invalid/valid/duplicate scans, durable queueing,
+present/replay/complete-next, approved same-origin WAV playback, missing-audio
+live-announcer fallback, HTTP reload recovery, and desktop-fit checks. No Azure
+or external browser request was observed. Scanner, control, and audience views
+were visually inspected at their operational desktop sizes.
 
 ## Physical rehearsal still required
 

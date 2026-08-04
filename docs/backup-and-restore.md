@@ -1,13 +1,16 @@
 # Backup and Restore
 
-Status: Phase 11 backup and disposable restore verified
+Status: ENH-TTS-8 announcement-aware backup and disposable restore verified
 
 The Graduation Stage System backup workflow is local-only. It does not upload to
 cloud storage, email, or any internet service.
 
-Phase 11 verified backup `storage/app/gss-backups/gss-backup-20260730-171515`
-and restored it into a disposable database/media directory. The restore
-verification reported 2 ceremonies, 14 graduates, and 15 media files.
+ENH-TTS-8 verified backup
+`storage/app/gss-backups/gss-backup-20260804-122018` and restored it into a
+disposable database/media directory. Verification reported 3 ceremonies, 17
+graduates, 34 media files, 2 awards, 1 template, 1 generation, 1 batch, 1 batch
+item, 1 private candidate, and 1 active generated-audio file. Temporary voice
+comparison row data and its file were excluded.
 
 ## Backup contents
 
@@ -41,6 +44,13 @@ bash scripts/gss-backup-docker.sh storage/app/gss-backups
 The script uses the Docker Compose `database` service and does not assume host
 `pg_dump` exists. The destination must not be inside `public/`.
 
+Use a quiet preparation window: stop `tts-worker`, wait for any in-flight
+synthesis or promotion to finish, and prevent award/template/generation changes
+until the snapshot completes. The backup fails safely if a generation or batch
+item is still processing, or if referenced private candidates and the managed
+candidate directory do not match. `gss-stop.sh --backup` stops the worker before
+creating its final snapshot.
+
 During Phase 10 deployment shutdown, the safe wrapper is:
 
 ```bash
@@ -67,7 +77,8 @@ manifest.json
 
 The `media/private-announcement-candidates/` subtree preserves candidate files
 for generation-history recovery. It is checksum-covered and must be restored to
-the configured private candidate disk/directory, never under `public/`. The
+the configured private candidate disk/directory (`storage/app/private` for the
+default local disk), never under `public/`. The
 database dump supplies the corresponding private paths; the manifest and UI do
 not enumerate them.
 
@@ -94,8 +105,13 @@ The script:
 2. creates a disposable PostgreSQL database;
 3. restores `database.sql` into that disposable database;
 4. copies media into a temporary local directory;
-5. checks expected table counts;
-6. removes the disposable database and temporary media.
+5. checks ceremony, graduate, award, template, generation, batch, and batch-item
+   counts;
+6. validates source-hash shape and active generated-audio references;
+7. verifies each referenced private candidate and approved generated file is
+   present, readable, non-empty, and inside its approved subtree;
+8. rejects orphan private candidates; and
+9. removes the disposable database and temporary media.
 
 It does not overwrite the primary database.
 

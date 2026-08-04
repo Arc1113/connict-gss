@@ -1,6 +1,6 @@
 # Automated Voice Announcements
 
-Status: **ENH-TTS-7 bounded persistent batch generation implemented**
+Status: **ENH-TTS-8 final software readiness gate verified**
 
 Last reviewed: 2026-08-04
 
@@ -17,6 +17,13 @@ automatic source invalidation, stage-time hash validation, and private-candidate
 backup coverage without adding a ceremony-time cloud dependency. ENH-TTS-6 adds
 administrator-managed versioned ceremony settings, bounded fictional previews,
 and explicit temporary voice comparison without using graduate records.
+
+ENH-TTS-8 completes the software gate with full PostgreSQL regression coverage,
+strict announcement-aware backup/restore validation, and an isolated Docker
+network browser rehearsal. With Azure disabled and external egress blocked,
+scanning, queueing, presentation, approved same-origin playback, HTTP recovery,
+and live-announcer fallback all passed. Physical venue and institutional
+content/pronunciation acceptance remain human sign-off items.
 
 ## Implemented ENH-TTS-6 settings and voice comparison
 
@@ -669,10 +676,10 @@ request. Controlled live verification remains an explicit preparation procedure.
    (implemented).
 8. **ENH-TTS-7:** bounded batch generation (implemented).
 9. **ENH-TTS-8:** full regression, backup/restore, and disconnected ceremony
-   rehearsal.
+   rehearsal (implemented and verified).
 
-Each phase stops for approval. ENH-TTS-8 remains deferred until ENH-TTS-7 is
-reviewed, committed, and approved.
+Each phase stops for approval. ENH-TTS-8 is the final readiness gate and stops
+after its documented sign-off.
 
 ## Risks and unresolved decisions
 

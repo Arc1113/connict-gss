@@ -1,8 +1,8 @@
 # Graduation Stage System Requirements
 
-Document status: **Phase 12 verified; ENH-TTS-3 provider/candidate generation implemented; physical readiness pending**
+Document status: **Phase 12 verified; ENH-TTS-8 software readiness gate verified; physical readiness pending**
 
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 ## 1. Objective
 
@@ -43,6 +43,10 @@ ENH-TTS-2 adds deterministic composition, readiness assessment, safe SSML, and
 a backend-only preview service. ENH-TTS-3 adds an explicitly invoked,
 disabled-by-default Azure request and private candidate file. It adds no route,
 UI, worker, approval, active-audio change, or ceremony-runtime behavior.
+ENH-TTS-4 through ENH-TTS-7 add the authorized preparation workspace, review
+and local promotion, ceremony settings and fictional voice comparison, and a
+bounded persistent preparation queue. ENH-TTS-8 verifies the complete feature
+and the original ceremony workflow with external network access blocked.
 
 ## 2. Fixed architecture and device requirements
 
@@ -1436,3 +1440,24 @@ The preparation worker and Azure must not be dependencies of Laravel, Reverb,
 PostgreSQL, proxy health, scanner commands, stage control, approved local audio,
 replay, or recovery. Ceremony operation must continue while the worker is
 stopped.
+
+## 34. ENH-TTS-8 final readiness acceptance
+
+- Clean PostgreSQL migrations, rollback/reapply, the full regression suite,
+  focused announcement tests, and concurrency tests must pass.
+- Pint, ESLint, the production Vite build, strict Composer validation and
+  advisory audit, npm audit, and every Compose configuration must pass.
+- A real local backup must fail safely during in-flight preparation and must
+  retain exactly the referenced private graduate candidates while excluding
+  temporary comparison samples.
+- Disposable restore must verify announcement counts, hashes, references,
+  protected candidate files, approved generated media, and orphan absence.
+- With an internal-only Docker network, Azure disabled, and the preparation
+  worker stopped, authenticated scanning, queueing, presentation, replay,
+  reload recovery, same-origin approved audio, and live-announcer fallback must
+  remain operational without external browser requests.
+- Source, history, browser bundles, logs, audits, backups, and browser payloads
+  must not expose an Azure key, private candidate path, SSML, provider body, or
+  other secret-bearing context.
+- Physical scanner, three-device LAN, projector/display, venue sound, and final
+  institutional wording and pronunciation approval remain explicit human gates.
