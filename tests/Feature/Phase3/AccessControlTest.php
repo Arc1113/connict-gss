@@ -34,8 +34,8 @@ class AccessControlTest extends TestCase
         $this->withoutVite();
 
         $this->get('/stage')->assertRedirect('/login');
-        $this->getJson('/stage/state')->assertRedirect('/login');
-        $this->postJson('/stage/complete-current')->assertRedirect('/login');
+        $this->getJson('/stage/state')->assertUnauthorized();
+        $this->postJson('/stage/complete-current')->assertUnauthorized();
 
         foreach (UserRole::cases() as $role) {
             $user = User::factory()->role($role)->create();

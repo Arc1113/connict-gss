@@ -1364,3 +1364,22 @@ candidate approval/rejection/promotion, automatic invalidation, active-audio
 mutation, stage payload change, Reverb event, batch generation, or ceremony-time
 Azure dependency. Manual upload remains fully available and generated candidates
 remain `needs_review` until ENH-TTS-5 implements the separate human-approval flow.
+
+## 31. ENH-TTS-5 review, approval, rejection, and invalidation
+
+Final generated-audio approval is administrator-only and separate from
+generation. Approval must revalidate nested ownership, candidate readability,
+and the current deterministic source hash under row locks. Stale candidates are
+marked `outdated`; rejected candidates retain their private history and cannot
+replace active media. Review audits contain decisions and safe metadata only.
+
+Promotion must compensate across filesystem and PostgreSQL failure: a new
+managed file is removed after rollback, while prior active audio is removed only
+after commit. Approved generated audio records `azure_tts`, generation ID, and
+source hash. Manual upload clears those generated references and supersedes it.
+
+Changes to spoken student fields, awards/order, templates, or voices invalidate
+affected candidates. Stage, preload, and replay payloads must omit generated
+audio unless its generation remains approved, the managed file is readable,
+and its stored and recomputed source hashes match. This guard is local-only and
+must never synthesize during ceremony runtime.

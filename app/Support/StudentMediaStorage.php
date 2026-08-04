@@ -4,7 +4,9 @@ namespace App\Support;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 final class StudentMediaStorage
 {
@@ -16,6 +18,29 @@ final class StudentMediaStorage
     public function storeAudio(UploadedFile $audio): string
     {
         return $this->store($audio, 'graduates/audio', 'audio');
+    }
+
+    public function promoteGeneratedAudio(string $bytes): string
+    {
+        $disk = Storage::disk('public');
+        $identifier = (string) Str::uuid();
+        $temporary = "graduates/audio/.candidate-{$identifier}.tmp";
+        $destination = "graduates/audio/{$identifier}.mp3";
+
+        try {
+            if (! $disk->put($temporary, $bytes) || ! $disk->move($temporary, $destination)
+                || ! $disk->exists($destination)) {
+                throw new \RuntimeException('Generated audio promotion failed.');
+            }
+        } catch (Throwable) {
+            $disk->delete([$temporary, $destination]);
+
+            throw ValidationException::withMessages([
+                'announcement_review' => 'The candidate could not be promoted safely. The active audio was not changed.',
+            ]);
+        }
+
+        return 'storage/'.$destination;
     }
 
     /**

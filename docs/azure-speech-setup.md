@@ -1,8 +1,8 @@
 # Azure Speech Preparation Setup and Security
 
-Status: **ENH-TTS-4 authorized preparation UI implemented; Azure remains disabled and unconfigured by default**
+Status: **ENH-TTS-5 approval and local promotion implemented; Azure remains disabled and unconfigured by default**
 
-Last reviewed against official provider documentation: 2026-08-03
+Last reviewed against official provider documentation: 2026-08-04
 
 Azure Speech is proposed only for pre-ceremony candidate generation. It is not
 a ceremony runtime service. No real key belongs in this repository, React,
@@ -21,7 +21,9 @@ playback. The browser receives only allowlisted voice labels, configuration
 health, safe history, and protected application URLs. It never receives the
 subscription key, provider endpoint, request headers, SSML, provider request ID,
 or private storage path. Opening a graduate page or refreshing text preview does
-not call Azure.
+not call Azure. ENH-TTS-5 approval also makes no provider request: it validates
+and promotes the already-local candidate. Stage hash/readability checks are
+local and never synthesize.
 
 ## Verified provider baseline
 

@@ -5,11 +5,16 @@ namespace App\Providers;
 use App\Contracts\CandidateAudioStore;
 use App\Contracts\TextToSpeechProvider;
 use App\Enums\UserRole;
+use App\Models\AnnouncementTemplate;
 use App\Models\AuditLog;
 use App\Models\Ceremony;
 use App\Models\Student;
+use App\Models\StudentAward;
 use App\Models\StudentImport;
 use App\Models\User;
+use App\Observers\AnnouncementTemplateSourceObserver;
+use App\Observers\StudentAnnouncementSourceObserver;
+use App\Observers\StudentAwardAnnouncementObserver;
 use App\Policies\AuditLogPolicy;
 use App\Policies\CeremonyPolicy;
 use App\Policies\StudentImportPolicy;
@@ -35,6 +40,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Student::observe(StudentAnnouncementSourceObserver::class);
+        StudentAward::observe(StudentAwardAnnouncementObserver::class);
+        AnnouncementTemplate::observe(AnnouncementTemplateSourceObserver::class);
+
         Gate::policy(Ceremony::class, CeremonyPolicy::class);
         Gate::policy(Student::class, StudentPolicy::class);
         Gate::policy(StudentImport::class, StudentImportPolicy::class);

@@ -6,6 +6,7 @@ use App\Models\BackupRecord;
 use App\Models\Ceremony;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Process\Process;
 use Throwable;
@@ -159,10 +160,23 @@ final class BackupManager
 
     private function copyMedia(string $target): void
     {
-        foreach ([
+        $sources = [
             storage_path('app/public/graduates') => 'storage-graduates',
             public_path('media/phase3') => 'development-phase3-media',
-        ] as $source => $label) {
+        ];
+        $candidateDirectory = trim((string) config(
+            'announcements.azure.candidate_directory',
+            'announcement-candidates',
+        ), '/');
+
+        if ($candidateDirectory !== '' && ! str_contains($candidateDirectory, '..')) {
+            $sources[Storage::disk((string) config(
+                'announcements.azure.candidate_disk',
+                'local',
+            ))->path($candidateDirectory)] = 'private-announcement-candidates';
+        }
+
+        foreach ($sources as $source => $label) {
             if (! is_dir($source)) {
                 continue;
             }

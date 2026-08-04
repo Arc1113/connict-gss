@@ -1,6 +1,6 @@
 # Graduation Stage System Architecture
 
-Document status: **Phase 12 verified; ENH-TTS-4 preparation workspace implemented**
+Document status: **Phase 12 verified; ENH-TTS-5 approval and stale-audio guard implemented**
 
 Last updated: 2026-08-03
 
@@ -1128,3 +1128,19 @@ uses accessible move buttons, and keeps the existing manual media controls
 visible. There are no approval/rejection/promotion commands, no active-audio or
 readiness update, no source invalidation mutation, no Reverb event, and no stage
 serializer change. Those remain ENH-TTS-5 concerns.
+
+## 24. ENH-TTS-5 review, promotion, and invalidation
+
+Candidate review uses nested student/generation HTTP commands and the existing
+administrator-only review ability. Approval locks the student before the
+generation, recalculates the deterministic fingerprint, validates the private
+MP3, promotes a unique managed copy, and updates the generation and student's
+active-audio metadata in one compensated workflow. The previous managed audio
+is deleted only after commit; the promoted file is deleted on rollback.
+
+Model observers invalidate affected `needs_review` and `approved` generations
+after spoken student fields, ordered awards, or template/voice inputs change.
+An active generated source is moved back to `needs_review`. The stage payload,
+preload, and replay paths all pass through `AnnouncementAudio`, which requires a
+readable file, approved generation, matching stored hashes, and a matching live
+recomposition. Azure is never called by this runtime guard.

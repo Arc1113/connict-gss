@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\CandidateAudioStore;
+use App\Enums\AnnouncementGenerationStatus;
 use App\Models\AnnouncementGeneration;
 use App\Models\AnnouncementTemplate;
 use App\Models\Student;
@@ -28,6 +29,7 @@ final class StudentAnnouncementWorkspace
         $activeTemplate = $student->ceremony->activeAnnouncementTemplate;
         $preview = $this->previewer->preview($student, $activeTemplate);
         $canGenerate = $actor->can('generate-announcement-candidates');
+        $canReview = $actor->can('review-announcement-candidates');
         $canViewUsage = $actor->can('view-announcement-usage');
 
         return [
@@ -35,6 +37,7 @@ final class StudentAnnouncementWorkspace
                 'manage_awards' => $actor->can('manage-student-awards'),
                 'generate' => $canGenerate,
                 'force_generate' => $actor->can('manage-announcement-settings'),
+                'review' => $canReview,
             ],
             'source' => [
                 'announcement_name' => $student->announcement_name,
@@ -96,7 +99,7 @@ final class StudentAnnouncementWorkspace
     {
         return AnnouncementGeneration::query()
             ->whereBelongsTo($student)
-            ->with(['template:id,name,version', 'generatingUser:id,name'])
+            ->with(['template:id,name,version', 'generatingUser:id,name', 'reviewingUser:id,name'])
             ->latest('id')
             ->limit(20)
             ->get()
@@ -122,6 +125,11 @@ final class StudentAnnouncementWorkspace
                     'created_at' => $generation->created_at?->toIso8601String(),
                     'failure_code' => $generation->failure_code,
                     'failure_message' => $generation->failure_message,
+                    'reviewed_by' => $generation->reviewingUser?->name,
+                    'reviewed_at' => $generation->reviewed_at?->toIso8601String(),
+                    'review_notes' => $generation->review_notes,
+                    'can_review' => $generation->status === AnnouncementGenerationStatus::NeedsReview,
+                    'is_active_audio' => (int) $student->audio_generation_id === (int) $generation->id,
                     'candidate_preview_url' => $hasCandidate
                         ? route('admin.students.announcement-candidates.show', [$student, $generation])
                         : null,

@@ -49,8 +49,8 @@ class StageControlAuthorizationTest extends TestCase
         StageState::factory()->create(['ceremony_id' => $ceremony->id]);
 
         $this->get('/stage-control')->assertRedirect('/login');
-        $this->getJson('/stage/queue')->assertRedirect('/login');
-        $this->postJson('/stage/present-next')->assertRedirect('/login');
+        $this->getJson('/stage/queue')->assertUnauthorized();
+        $this->postJson('/stage/present-next')->assertUnauthorized();
 
         foreach (UserRole::cases() as $role) {
             $user = User::factory()->role($role)->create();

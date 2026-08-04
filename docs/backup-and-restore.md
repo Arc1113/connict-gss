@@ -15,6 +15,7 @@ Included:
 
 - PostgreSQL production database dump;
 - managed graduate photos and announcement audio under local media storage;
+- private generated announcement candidates under a protected backup media subtree;
 - Phase 3 development media fixtures when present;
 - `manifest.json`;
 - `SHA256SUMS`;
@@ -62,6 +63,12 @@ media/
 SHA256SUMS
 manifest.json
 ```
+
+The `media/private-announcement-candidates/` subtree preserves candidate files
+for generation-history recovery. It is checksum-covered and must be restored to
+the configured private candidate disk/directory, never under `public/`. The
+database dump supplies the corresponding private paths; the manifest and UI do
+not enumerate them.
 
 ## Manifest and checksums
 

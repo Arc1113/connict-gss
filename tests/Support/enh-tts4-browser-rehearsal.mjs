@@ -1,3 +1,5 @@
+/* global document */
+
 import { chromium } from 'playwright';
 import process from 'node:process';
 

@@ -2,13 +2,20 @@
 
 namespace App\Support;
 
+use App\Enums\AnnouncementGenerationStatus;
 use App\Enums\AudioReadinessStatus;
+use App\Enums\GraduateAudioSourceType;
 use App\Models\Student;
+use App\Services\PreviewGraduationAnnouncement;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 final class AnnouncementAudio
 {
+    public function __construct(
+        private readonly PreviewGraduationAnnouncement $previewer,
+    ) {}
+
     /**
      * @return array{value: string, label: string}
      */
@@ -42,8 +49,33 @@ final class AnnouncementAudio
 
     public function isApprovedAndReadable(Student $student): bool
     {
-        return $student->audio_readiness_status === AudioReadinessStatus::Approved
-            && $this->isReadable($student->audio_path);
+        if ($student->audio_readiness_status !== AudioReadinessStatus::Approved
+            || ! $this->isReadable($student->audio_path)) {
+            return false;
+        }
+
+        if ($student->audio_source_type !== GraduateAudioSourceType::AzureTts) {
+            return true;
+        }
+
+        $generation = $student->activeAudioGeneration()->with('template')->first();
+
+        if ($generation === null
+            || $generation->status !== AnnouncementGenerationStatus::Approved
+            || ! is_string($student->audio_source_hash)
+            || ! hash_equals($generation->source_hash, $student->audio_source_hash)) {
+            return false;
+        }
+
+        $preview = $this->previewer->preview(
+            $student,
+            $generation->template,
+            $generation->provider_voice,
+        );
+
+        return $preview->isReady()
+            && $preview->composition !== null
+            && hash_equals($generation->source_hash, $preview->composition->sourceHash);
     }
 
     public function isReadable(?string $path): bool

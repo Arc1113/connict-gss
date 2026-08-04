@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AnnouncementCandidateAudioController;
+use App\Http\Controllers\Admin\AnnouncementCandidateReviewController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\CeremonyController;
@@ -236,6 +237,14 @@ Route::middleware(['auth', 'active'])->group(function () {
             '/students/{student}/announcement-candidates/{generation}',
             AnnouncementCandidateAudioController::class,
         )->name('students.announcement-candidates.show');
+        Route::post(
+            '/students/{student}/announcement-candidates/{generation}/approve',
+            [AnnouncementCandidateReviewController::class, 'approve'],
+        )->name('students.announcement-candidates.approve');
+        Route::post(
+            '/students/{student}/announcement-candidates/{generation}/reject',
+            [AnnouncementCandidateReviewController::class, 'reject'],
+        )->name('students.announcement-candidates.reject');
         Route::resource('students', StudentController::class);
     });
 

@@ -58,6 +58,8 @@ export default function AnnouncementWorkspace({ announcement, student }) {
     const [previewing, setPreviewing] = useState(false);
     const [previewError, setPreviewError] = useState(null);
     const [editingAwardId, setEditingAwardId] = useState(null);
+    const [reviewNotes, setReviewNotes] = useState({});
+    const [reviewing, setReviewing] = useState(null);
     const awardForm = useForm({
         award_name: '',
         spoken_text: '',
@@ -182,6 +184,25 @@ export default function AnnouncementWorkspace({ announcement, student }) {
             {
                 preserveScroll: true,
                 onFinish: () => generationForm.transform((data) => data),
+            },
+        );
+    }
+
+    function reviewCandidate(generation, decision) {
+        const notes = reviewNotes[generation.id] ?? '';
+
+        if (decision === 'reject' && !notes.trim()) return;
+        if (decision === 'approve' && !window.confirm(
+            'Approve this candidate and replace the active stage audio?',
+        )) return;
+
+        setReviewing(`${generation.id}:${decision}`);
+        router.post(
+            `/admin/students/${student.id}/announcement-candidates/${generation.id}/${decision}`,
+            { review_notes: notes },
+            {
+                preserveScroll: true,
+                onFinish: () => setReviewing(null),
             },
         );
     }
@@ -360,6 +381,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                                     <div>
                                         <strong>Candidate #{generation.id}</strong>
                                         <p>{generation.template ? `${generation.template.name} · v${generation.template.version}` : 'Template unavailable'} · {generation.voice}</p>
+                                        {generation.is_active_audio && <small>Current active audio</small>}
                                     </div>
                                     <StatusText label={generation.status_label} value={generation.status} />
                                 </div>
@@ -369,10 +391,49 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                                     <div><dt>Attempts</dt><dd>{generation.attempt_count}</dd></div>
                                     <div><dt>Generated</dt><dd>{formatDateTime(generation.generated_at || generation.created_at)}</dd></div>
                                     <div><dt>Requested by</dt><dd>{generation.generated_by || 'Deleted user'}</dd></div>
+                                    <div><dt>Reviewed</dt><dd>{formatDateTime(generation.reviewed_at)}</dd></div>
+                                    <div><dt>Reviewer</dt><dd>{generation.reviewed_by || 'Not reviewed'}</dd></div>
                                 </dl>
+                                {generation.review_notes && <p className="admin-field-hint">Review note: {generation.review_notes}</p>}
                                 {generation.failure_message && <p className="announcement-notice announcement-notice-error">{generation.failure_message}</p>}
                                 {generation.candidate_preview_url && (
                                     <AudioPreview label={`Private announcement candidate ${generation.id} for ${student.display_name}`} src={generation.candidate_preview_url} />
+                                )}
+                                {announcement.permissions.review && generation.can_review && (
+                                    <div className="announcement-review-controls">
+                                        <div className="admin-field">
+                                            <label htmlFor={`candidate-review-${generation.id}`}>Review notes</label>
+                                            <textarea
+                                                id={`candidate-review-${generation.id}`}
+                                                maxLength="1000"
+                                                onChange={(event) => setReviewNotes((current) => ({
+                                                    ...current,
+                                                    [generation.id]: event.target.value,
+                                                }))}
+                                                placeholder="Required when rejecting"
+                                                rows="3"
+                                                value={reviewNotes[generation.id] ?? ''}
+                                            />
+                                        </div>
+                                        <div className="admin-form-actions">
+                                            <button
+                                                className="admin-button admin-button-primary"
+                                                disabled={reviewing !== null}
+                                                onClick={() => reviewCandidate(generation, 'approve')}
+                                                type="button"
+                                            >
+                                                {reviewing === `${generation.id}:approve` ? 'Approving…' : 'Approve candidate'}
+                                            </button>
+                                            <button
+                                                className="admin-button admin-button-danger"
+                                                disabled={reviewing !== null || !(reviewNotes[generation.id] ?? '').trim()}
+                                                onClick={() => reviewCandidate(generation, 'reject')}
+                                                type="button"
+                                            >
+                                                {reviewing === `${generation.id}:reject` ? 'Rejecting…' : 'Reject candidate'}
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
                             </article>
                         ))}

@@ -1,8 +1,8 @@
 # Automated Voice Announcements
 
-Status: **ENH-TTS-4 awards and single-graduate generation workspace implemented; no approval or runtime integration**
+Status: **ENH-TTS-5 review, promotion, invalidation, stage guard, and backup integration implemented**
 
-Last reviewed: 2026-08-03
+Last reviewed: 2026-08-04
 
 This document defines the approved architecture for preparation-time automated
 graduate announcements. ENH-TTS-1 supplies the PostgreSQL domain foundation.
@@ -12,7 +12,34 @@ disabled-by-default Azure provider, private atomic candidate storage, generation
 records, safe health results, usage estimates, and identical-candidate reuse.
 ENH-TTS-4 adds authorized award editing, deterministic preview, individual
 generation, private candidate playback, and safe history on the graduate detail
-page. It adds no approval/promotion or ceremony-runtime change.
+page. ENH-TTS-5 adds administrator-only review, compensated local promotion,
+automatic source invalidation, stage-time hash validation, and private-candidate
+backup coverage without adding a ceremony-time cloud dependency.
+
+## Implemented ENH-TTS-5 review and runtime guard
+
+Only an administrator may approve or reject a `needs_review` candidate. Approval
+locks the student and generation, rebuilds the announcement with the candidate's
+same-ceremony template and allowlisted voice, and compares the current source
+hash before reading or promoting the private MP3. A stale attempt is committed
+as `outdated` and returns validation feedback.
+
+Successful approval writes a uniquely named managed MP3 through a temporary
+same-disk path, then records the Azure source type, generation reference, source
+hash, reviewer, readiness, and safe audit metadata transactionally. A file or
+database failure removes the new file and preserves the prior active audio.
+Rejection requires a note and never changes active audio. A later manual upload
+clears the generated source reference and remains the explicit override.
+
+Student spoken fields, structured awards, and template/voice changes invalidate
+affected reviewable or approved generations. Active generated audio becomes
+`needs_review`. `AnnouncementAudio` independently rebuilds and compares the
+current hash before stage, preload, or replay URLs are serialized, so stale or
+unreadable generated media falls back to the live announcer.
+
+Backups now include private candidates under a non-public media subtree with
+the existing per-file checksums. Credentials, SSML, provider bodies, and private
+database paths remain absent from browser props and review audits.
 
 ## Objective and non-negotiable boundary
 
@@ -585,14 +612,14 @@ request. Controlled live verification remains an explicit preparation procedure.
    candidate storage (implemented).
 5. **ENH-TTS-4:** awards and single-graduate generation UI (implemented).
 6. **ENH-TTS-5:** review, promotion, rejection, invalidation, stage guard, and
-   backup integration.
+   backup integration (implemented).
 7. **ENH-TTS-6:** ceremony settings and fictional-data voice comparison.
 8. **ENH-TTS-7:** bounded batch generation.
 9. **ENH-TTS-8:** full regression, backup/restore, and disconnected ceremony
    rehearsal.
 
-Each phase stops for approval. ENH-TTS-5 remains deferred until ENH-TTS-4 is
-reviewed and approved.
+Each phase stops for approval. ENH-TTS-6 remains deferred until ENH-TTS-5 is
+reviewed, committed, and approved.
 
 ## Risks and unresolved decisions
 
