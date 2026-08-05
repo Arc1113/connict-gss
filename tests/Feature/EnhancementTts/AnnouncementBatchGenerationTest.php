@@ -177,6 +177,12 @@ class AnnouncementBatchGenerationTest extends AnnouncementTestCase
         $this->assertSame(0, Student::query()
             ->where('audio_readiness_status', AudioReadinessStatus::Approved->value)
             ->count());
+        $this->actingAs($administrator)
+            ->get(route('admin.ceremonies.announcement-batches.index', $ceremony))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('workspace.batches.0.awaiting_review_count', 2)
+                ->where('workspace.batches.0.approved_count', 0)
+                ->where('workspace.batches.0.items.0.generation.status', 'needs_review'));
         Http::assertSentCount(2);
         Event::assertDispatched(AnnouncementBatchProgressUpdated::class);
     }
@@ -396,8 +402,8 @@ class AnnouncementBatchGenerationTest extends AnnouncementTestCase
         }
     }
 
-    private function mp3(): string
+    protected function mp3(): string
     {
-        return 'ID3'.str_repeat("\0", 64);
+        return parent::mp3();
     }
 }

@@ -332,8 +332,8 @@ class AnnouncementWorkspaceTest extends AnnouncementTestCase
         }
     }
 
-    private function mp3(): string
+    protected function mp3(): string
     {
-        return 'ID3'.str_repeat("\0", 64);
+        return parent::mp3();
     }
 }

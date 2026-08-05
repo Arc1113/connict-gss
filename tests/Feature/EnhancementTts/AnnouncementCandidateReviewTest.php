@@ -123,6 +123,26 @@ class AnnouncementCandidateReviewTest extends AnnouncementTestCase
         $this->assertStringNotContainsString($generation->source_hash, $audit);
     }
 
+    public function test_candidate_without_playable_audio_frames_cannot_be_approved(): void
+    {
+        [$student, $template] = $this->fixture();
+        $generation = $this->candidate($student, $template);
+        Storage::disk('local')->put(
+            $generation->candidate_audio_path,
+            'ID3'.str_repeat("\0", 64),
+        );
+        $administrator = User::factory()->role(UserRole::Administrator)->create();
+
+        $this->actingAs($administrator)->post(route(
+            'admin.students.announcement-candidates.approve',
+            [$student, $generation],
+        ))->assertSessionHasErrors('announcement_review');
+
+        $this->assertSame(AnnouncementGenerationStatus::NeedsReview, $generation->refresh()->status);
+        $this->assertNull($student->refresh()->audio_path);
+        Storage::disk('public')->assertDirectoryEmpty('graduates/audio');
+    }
+
     public function test_source_and_template_changes_invalidate_candidates_and_stage_excludes_stale_audio(): void
     {
         [$student, $template] = $this->fixture();
@@ -286,8 +306,8 @@ class AnnouncementCandidateReviewTest extends AnnouncementTestCase
         return $generation;
     }
 
-    private function mp3(): string
+    protected function mp3(): string
     {
-        return 'ID3'.str_repeat("\0", 64);
+        return parent::mp3();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AnnouncementGenerationStatus;
 use App\Enums\EligibilityStatus;
 use App\Models\AnnouncementGenerationBatch;
 use App\Models\AnnouncementTemplate;
@@ -81,6 +82,7 @@ final class AnnouncementBatchWorkspace
                     'template:id,name,version',
                     'requester:id,name',
                     'items.student:id,display_name,sequence_number',
+                    'items.generation:id,status',
                 ])
                 ->latest('id')
                 ->limit(12)
@@ -92,6 +94,13 @@ final class AnnouncementBatchWorkspace
     /** @return array<string, mixed> */
     private function serializeBatch(AnnouncementGenerationBatch $batch): array
     {
+        $awaitingReviewCount = $batch->items->filter(
+            fn ($item): bool => $item->generation?->status === AnnouncementGenerationStatus::NeedsReview,
+        )->count();
+        $approvedCount = $batch->items->filter(
+            fn ($item): bool => $item->generation?->status === AnnouncementGenerationStatus::Approved,
+        )->count();
+
         return [
             'id' => $batch->id,
             'status' => $batch->status->value,
@@ -100,6 +109,8 @@ final class AnnouncementBatchWorkspace
             'succeeded_count' => $batch->succeeded_count,
             'reused_count' => $batch->reused_count,
             'failed_count' => $batch->failed_count,
+            'awaiting_review_count' => $awaitingReviewCount,
+            'approved_count' => $approvedCount,
             'estimated_character_count' => $batch->estimated_character_count,
             'voice' => $batch->provider_voice,
             'locale' => $batch->locale,
@@ -127,6 +138,14 @@ final class AnnouncementBatchWorkspace
                     'sequence_number' => $item->student->sequence_number,
                 ],
                 'failure_message' => $item->failure_message,
+                'generation' => $item->generation === null ? null : [
+                    'id' => $item->generation->id,
+                    'status' => $item->generation->status->value,
+                    'status_label' => str($item->generation->status->value)
+                        ->replace('_', ' ')
+                        ->title()
+                        ->toString(),
+                ],
             ]),
         ];
     }

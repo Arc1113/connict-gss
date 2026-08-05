@@ -65,7 +65,7 @@ try {
     await page.getByRole('heading', { name: 'Preparation boundary' }).waitFor();
     await page.getByText('Provider disabled').waitFor();
     await page.getByText('Generated candidates are never approved automatically', { exact: false }).waitFor();
-    assert.equal(await page.getByRole('button', { name: 'Queue selected candidates' }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: 'Generate selected audio' }).isDisabled(), true);
     assert.equal(await page.getByLabel('Select Blocked Browser').isDisabled(), true);
     await page.evaluate(() => globalThis.scrollTo(0, 0));
     await page.screenshot({ path: '/tmp/enh-tts-7-desktop-initial.png' });
@@ -73,8 +73,8 @@ try {
     await page.getByRole('button', { name: 'Select first 3 ready' }).click();
     await page.getByText('3 selected', { exact: true }).waitFor();
     assert.match(await page.locator('.announcement-batch-estimate').innerText(), /proposed characters/);
-    assert.equal(await page.getByRole('button', { name: 'Queue selected candidates' }).isDisabled(), true);
-    await page.getByRole('button', { name: 'Clear' }).click();
+    assert.equal(await page.getByRole('button', { name: 'Generate selected audio' }).isDisabled(), true);
+    await page.getByRole('button', { name: 'Clear selection' }).click();
     await page.getByText('0 selected', { exact: true }).waitFor();
 
     await page.getByLabel('Select Ana Browser').check();
@@ -86,10 +86,10 @@ try {
     const paused = batchCard(page, pausedBatchId);
     const queued = batchCard(page, queuedBatchId);
     await completed.getByText('3/3', { exact: true }).waitFor();
-    await completed.getByText('completed', { exact: true }).waitFor();
+    await completed.getByText('Preparation complete', { exact: true }).waitFor();
     await paused.getByText('paused', { exact: true }).waitFor();
     assert.equal(await paused.getByRole('button', { name: 'Resume batch' }).isDisabled(), true);
-    await completed.getByText('View deterministic item order').click();
+    await completed.getByText('View item results and review links').click();
     await completed.getByText('1. Ana Browser').waitFor();
     await completed.getByText('2. Ben Browser').waitFor();
     await completed.getByText('3. Cara Browser').waitFor();
@@ -103,7 +103,7 @@ try {
     await batchCard(page, queuedBatchId).locator('.admin-status').getByText('cancelled', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Refresh progress' }).click();
     await batchCard(page, queuedBatchId).locator('.admin-status').getByText('cancelled', { exact: true }).waitFor();
-    await page.getByRole('heading', { name: 'Persistent batch history' }).scrollIntoViewIfNeeded();
+    await page.getByRole('heading', { name: 'Batch history and review' }).scrollIntoViewIfNeeded();
     await page.screenshot({ path: '/tmp/enh-tts-7-desktop-history.png' });
     await assertHorizontalFit(page);
     await desktop.close();
@@ -119,7 +119,7 @@ try {
     await mobilePage.goto(`${baseUrl}/admin/ceremonies/${ceremonyId}/announcement-batches`, { waitUntil: 'networkidle' });
     await mobilePage.getByRole('heading', { name: 'ENH TTS 7 Browser Ceremony batch generation' }).waitFor();
     await mobilePage.screenshot({ path: '/tmp/enh-tts-7-mobile-initial.png' });
-    await mobilePage.getByRole('heading', { name: 'Persistent batch history' }).scrollIntoViewIfNeeded();
+    await mobilePage.getByRole('heading', { name: 'Batch history and review' }).scrollIntoViewIfNeeded();
     await mobilePage.screenshot({ path: '/tmp/enh-tts-7-mobile-history.png' });
     await assertHorizontalFit(mobilePage);
     await mobile.close();

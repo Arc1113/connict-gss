@@ -56,10 +56,12 @@ export default function AnnouncementWorkspace({ announcement, student }) {
     );
     const [voice, setVoice] = useState(announcement.selected.voice ?? '');
     const [previewing, setPreviewing] = useState(false);
+    const [previewDirty, setPreviewDirty] = useState(false);
     const [previewError, setPreviewError] = useState(null);
     const [editingAwardId, setEditingAwardId] = useState(null);
     const [reviewNotes, setReviewNotes] = useState({});
     const [reviewing, setReviewing] = useState(null);
+    const [candidatePlayable, setCandidatePlayable] = useState({});
     const awardForm = useForm({
         award_name: '',
         spoken_text: '',
@@ -84,6 +86,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
 
         setTemplateId(nextId);
         setVoice(nextVoice);
+        setPreviewDirty(true);
         generationForm.setData((data) => ({
             ...data,
             announcement_template_id: nextId || null,
@@ -93,6 +96,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
 
     function selectVoice(event) {
         setVoice(event.target.value);
+        setPreviewDirty(true);
         generationForm.setData('voice', event.target.value || null);
     }
 
@@ -117,6 +121,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
             }
 
             setPreview(data.preview);
+            setPreviewDirty(false);
         } catch {
             setPreviewError('The announcement preview could not be refreshed.');
         } finally {
@@ -211,6 +216,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
         generationForm.processing ||
         previewing ||
         !preview.ready ||
+        previewDirty ||
         !announcement.provider?.configured;
 
     return (
@@ -329,6 +335,11 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                         This is not the ceremony’s active template. The generated candidate will preserve this version for review.
                     </p>
                 )}
+                {previewDirty && (
+                    <p className="announcement-notice announcement-notice-warning" role="status">
+                        Template or voice changed. Refresh the preview before generating audio.
+                    </p>
+                )}
                 <div className="admin-form-actions">
                     <button className="admin-button admin-button-secondary" disabled={previewing} onClick={refreshPreview} type="button">
                         {previewing ? 'Refreshing preview…' : 'Preview announcement'}
@@ -376,7 +387,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                 ) : (
                     <div className="announcement-generation-list">
                         {announcement.generations.map((generation) => (
-                            <article key={generation.id}>
+                            <article id={`announcement-candidate-${generation.id}`} key={generation.id}>
                                 <div className="admin-section-heading">
                                     <div>
                                         <strong>Candidate #{generation.id}</strong>
@@ -397,10 +408,20 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                                 {generation.review_notes && <p className="admin-field-hint">Review note: {generation.review_notes}</p>}
                                 {generation.failure_message && <p className="announcement-notice announcement-notice-error">{generation.failure_message}</p>}
                                 {generation.candidate_preview_url && (
-                                    <AudioPreview label={`Private announcement candidate ${generation.id} for ${student.display_name}`} src={generation.candidate_preview_url} />
+                                    <AudioPreview
+                                        label={`Private announcement candidate ${generation.id} for ${student.display_name}`}
+                                        onPlayableChange={(playable) => setCandidatePlayable((current) => ({
+                                            ...current,
+                                            [generation.id]: playable,
+                                        }))}
+                                        src={generation.candidate_preview_url}
+                                    />
                                 )}
                                 {announcement.permissions.review && generation.can_review && (
                                     <div className="announcement-review-controls">
+                                        <p className="admin-field-hint">
+                                            Play the candidate and confirm the name, pronunciation, and pacing before approval.
+                                        </p>
                                         <div className="admin-field">
                                             <label htmlFor={`candidate-review-${generation.id}`}>Review notes</label>
                                             <textarea
@@ -418,7 +439,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                                         <div className="admin-form-actions">
                                             <button
                                                 className="admin-button admin-button-primary"
-                                                disabled={reviewing !== null}
+                                                disabled={reviewing !== null || candidatePlayable[generation.id] !== true}
                                                 onClick={() => reviewCandidate(generation, 'approve')}
                                                 type="button"
                                             >

@@ -219,6 +219,7 @@ class CeremonyAnnouncementSettingsTest extends AnnouncementTestCase
     public function test_comparison_is_bounded_explicit_and_disabled_without_provider_configuration(): void
     {
         Http::fake();
+        config()->set('announcements.azure.enabled', false);
         $ceremony = Ceremony::factory()->create();
         AnnouncementTemplate::factory()->active()->for($ceremony)->create();
         $administrator = User::factory()->role(UserRole::Administrator)->create();
@@ -280,8 +281,8 @@ class CeremonyAnnouncementSettingsTest extends AnnouncementTestCase
         }
     }
 
-    private function mp3(): string
+    protected function mp3(): string
     {
-        return 'ID3'.str_repeat("\0", 64);
+        return parent::mp3();
     }
 }

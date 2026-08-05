@@ -234,6 +234,11 @@ class AzureSpeechProviderTest extends AnnouncementTestCase
         $this->assertInvalidAudio('not-an-mp3', 'audio/mpeg');
     }
 
+    public function test_id3_header_without_audio_frames_is_rejected(): void
+    {
+        $this->assertInvalidAudio('ID3'.str_repeat("\0", 64), 'audio/mpeg');
+    }
+
     public function test_oversized_audio_is_rejected(): void
     {
         config()->set('announcements.azure.maximum_response_bytes', 4);
@@ -320,9 +325,9 @@ class AzureSpeechProviderTest extends AnnouncementTestCase
         );
     }
 
-    private function mp3(): string
+    protected function mp3(): string
     {
-        return 'ID3'.str_repeat("\0", 64);
+        return parent::mp3();
     }
 
     private function assertInvalidAudio(string $body, string $contentType): void
