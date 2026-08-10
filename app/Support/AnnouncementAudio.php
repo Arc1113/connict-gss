@@ -54,7 +54,10 @@ final class AnnouncementAudio
             return false;
         }
 
-        if ($student->audio_source_type !== GraduateAudioSourceType::AzureTts) {
+        if (! in_array($student->audio_source_type, [
+            GraduateAudioSourceType::AzureTts,
+            GraduateAudioSourceType::LocalTts,
+        ], true)) {
             return true;
         }
 

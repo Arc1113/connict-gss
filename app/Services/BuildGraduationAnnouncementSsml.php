@@ -96,7 +96,11 @@ final class BuildGraduationAnnouncementSsml
     private function settingIssues(ComposedAnnouncement $composition): array
     {
         $input = $composition->input;
-        $issues = $this->approvedVoices->validationIssues($input->voice, $input->locale);
+        $issues = $this->approvedVoices->validationIssues(
+            $input->voice,
+            $input->locale,
+            $input->provider,
+        );
 
         if ($input->speakingRatePercent < $this->approvedVoices->minimumSpeakingRatePercent()
             || $input->speakingRatePercent > $this->approvedVoices->maximumSpeakingRatePercent()) {

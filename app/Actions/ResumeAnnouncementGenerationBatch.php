@@ -2,14 +2,15 @@
 
 namespace App\Actions;
 
-use App\Contracts\TextToSpeechProvider;
 use App\Enums\AnnouncementBatchStatus;
+use App\Enums\AnnouncementProvider;
 use App\Events\AnnouncementBatchProgressUpdated;
 use App\Exceptions\AnnouncementBatchException;
 use App\Jobs\ProcessAnnouncementGenerationBatch;
 use App\Models\AnnouncementGenerationBatch;
 use App\Models\AnnouncementTemplate;
 use App\Models\User;
+use App\Services\TextToSpeechProviderRegistry;
 use App\Support\AdministrativeAuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Gate;
 final class ResumeAnnouncementGenerationBatch
 {
     public function __construct(
-        private readonly TextToSpeechProvider $provider,
+        private readonly TextToSpeechProviderRegistry $provider,
         private readonly AdministrativeAuditLogger $auditLogger,
     ) {}
 
@@ -28,10 +29,14 @@ final class ResumeAnnouncementGenerationBatch
     ): AnnouncementGenerationBatch {
         Gate::forUser($actor)->authorize('manage-announcement-batches');
 
-        if (! $this->provider->health()->isConfigured()) {
+        if (! $this->provider->healthFor($batch->provider)->isConfigured()) {
             throw new AnnouncementBatchException(
-                'azure_not_configured',
-                'Azure Speech is disabled or not configured safely for batch preparation.',
+                $batch->provider === AnnouncementProvider::Azure
+                    ? 'azure_not_configured'
+                    : 'local_tts_not_configured',
+                $batch->provider === AnnouncementProvider::Azure
+                    ? 'Azure Speech is disabled or not configured safely for batch preparation.'
+                    : 'Local voice generation is disabled or not configured safely for batch preparation.',
             );
         }
 

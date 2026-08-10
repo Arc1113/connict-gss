@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AnnouncementProvider;
 use Database\Factories\AnnouncementTemplateFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'include_additional_text',
     'awards_lead_in',
     'closing_text',
+    'provider',
     'default_voice',
     'default_locale',
     'speaking_rate_percent',
@@ -40,6 +42,7 @@ class AnnouncementTemplate extends Model
     protected function casts(): array
     {
         return [
+            'provider' => AnnouncementProvider::class,
             'include_program' => 'boolean',
             'include_major' => 'boolean',
             'include_honors' => 'boolean',

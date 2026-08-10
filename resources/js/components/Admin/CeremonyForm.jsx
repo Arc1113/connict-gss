@@ -1,5 +1,5 @@
 import { Link, useForm } from '@inertiajs/react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_STAGE_THEME } from '../../lib/stageTheme';
 import { FieldError, RequiredNote, ValidationSummary } from './FormSupport';
 import StageThemePreview from './StageThemePreview';
@@ -35,6 +35,7 @@ export default function CeremonyForm({
     action,
     ceremony,
     presentationModeOptions,
+    stageDesignTemplates = [],
     statusOptions,
     submitLabel,
 }) {
@@ -53,6 +54,16 @@ export default function CeremonyForm({
     });
     const localLogoUrl = useObjectUrl(data.stage_logo);
     const localBackgroundUrl = useObjectUrl(data.stage_background);
+    const [selectedStageDesign, setSelectedStageDesign] = useState('');
+
+    function applyStageDesign() {
+        const template = stageDesignTemplates.find(
+            (item) => String(item.id) === selectedStageDesign,
+        );
+        if (!template) return;
+
+        setData('stage_theme', editableTheme(template.theme));
+    }
 
     function submit(event) {
         event.preventDefault();
@@ -170,9 +181,40 @@ export default function CeremonyForm({
             <fieldset className="admin-form-section stage-theme-editor">
                 <legend>Audience stage design</legend>
                 <p className="admin-form-note">
-                    This ceremony-scoped design is stored locally and applied to the
-                    projector display. Preview it here before ceremony day.
+                    Apply a reusable design, then adjust this ceremony’s independent
+                    copy. Later library changes will not alter a prepared display.
                 </p>
+
+                <div className="stage-template-picker">
+                    <div className="admin-field">
+                        <label htmlFor="stage_design_template">Start from a saved design</label>
+                        <select
+                            id="stage_design_template"
+                            onChange={(event) => setSelectedStageDesign(event.target.value)}
+                            value={selectedStageDesign}
+                        >
+                            <option value="">Choose a stage design</option>
+                            {stageDesignTemplates.map((template) => (
+                                <option key={template.id} value={template.id}>{template.name}</option>
+                            ))}
+                        </select>
+                        <p className="admin-field-hint">
+                            {stageDesignTemplates.find((item) => String(item.id) === selectedStageDesign)?.description
+                                ?? 'Saved designs include layout, palette, and portrait behavior.'}
+                        </p>
+                    </div>
+                    <button
+                        className="admin-button admin-button-secondary"
+                        disabled={!selectedStageDesign}
+                        onClick={applyStageDesign}
+                        type="button"
+                    >
+                        Apply design copy
+                    </button>
+                    <Link className="admin-row-action" href="/admin/stage-designs">
+                        Manage design library
+                    </Link>
+                </div>
 
                 <StageThemePreview
                     backgroundUrl={localBackgroundUrl ?? ceremony?.stage_theme?.background_url}

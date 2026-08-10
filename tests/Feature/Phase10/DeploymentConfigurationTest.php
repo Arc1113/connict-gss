@@ -22,10 +22,12 @@ class DeploymentConfigurationTest extends TestCase
         $this->assertStringContainsString('APP_URL=https://', $env);
         $this->assertStringContainsString('GSS_HTTPS_HOST=', $env);
         $this->assertStringContainsString('HTTP_FORWARD_PORT=80', $env);
-        $this->assertStringContainsString('VITE_REVERB_SCHEME=https', $env);
+        $this->assertStringContainsString('REVERB_BROWSER_SCHEME=https', $env);
         $this->assertStringContainsString('REVERB_HOST=reverb', $env);
         $this->assertStringContainsString('REVERB_FORWARD_PORT=8080', $env);
-        $this->assertStringContainsString('VITE_REVERB_HOST=', $env);
+        $this->assertStringContainsString('REVERB_BROWSER_HOST=', $env);
+        $this->assertStringContainsString('REVERB_BROWSER_PORT="${HTTPS_FORWARD_PORT}"', $env);
+        $this->assertStringNotContainsString('VITE_REVERB_', $env);
         $this->assertStringNotContainsString('APP_URL=http://localhost', $env);
         $this->assertStringNotContainsString('APP_DEBUG=true', $env);
     }
@@ -87,6 +89,17 @@ class DeploymentConfigurationTest extends TestCase
         $this->assertStringContainsString("'dropdb'", $restoreVerifier);
         $this->assertStringNotContainsString("'docker',", $restoreVerifier);
         $this->assertStringNotContainsString("'compose',", $restoreVerifier);
+    }
+
+    public function test_offline_tts_temp_mount_allows_the_bundled_espeak_fallback(): void
+    {
+        $compose = $this->readProjectFile('compose.yaml');
+        $localImage = $this->readProjectFile('docker/local-tts/Dockerfile');
+
+        $this->assertStringContainsString('espeak-ng', $localImage);
+        $this->assertStringContainsString('/tmp:size=256m,mode=1777,exec', $compose);
+        $this->assertStringContainsString('read_only: true', $compose);
+        $this->assertStringContainsString('HF_HUB_OFFLINE: "1"', $compose);
     }
 
     public function test_deployment_scripts_have_help_text_and_avoid_destructive_commands(): void

@@ -6,6 +6,7 @@ use App\Data\AnnouncementAwardInput;
 use App\Data\AnnouncementCompositionInput;
 use App\Data\AnnouncementIssue;
 use App\Data\AnnouncementPreviewResult;
+use App\Enums\AnnouncementProvider;
 use App\Models\AnnouncementTemplate;
 
 final class PreviewFictionalAnnouncement
@@ -17,8 +18,11 @@ final class PreviewFictionalAnnouncement
 
     public function preview(AnnouncementTemplate $template, ?string $voice = null): AnnouncementPreviewResult
     {
+        $provider = $template->provider ?? AnnouncementProvider::Azure;
         $selectedVoice = $voice ?? $template->default_voice;
-        $selectedLocale = (string) config("announcements.voices.{$selectedVoice}", '');
+        $selectedLocale = $provider === AnnouncementProvider::Azure
+            ? (string) config("announcements.voices.{$selectedVoice}", '')
+            : (string) config("announcements.provider_voices.{$provider->value}.{$selectedVoice}", '');
 
         if ($selectedLocale === '') {
             return new AnnouncementPreviewResult(
@@ -70,6 +74,7 @@ final class PreviewFictionalAnnouncement
                 'announcements.default_output_format',
                 'audio-24khz-48kbitrate-mono-mp3',
             ),
+            provider: $provider,
         );
         $composition = $this->composer->compose($input);
 

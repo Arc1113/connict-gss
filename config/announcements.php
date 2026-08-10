@@ -1,6 +1,18 @@
 <?php
 
 return [
+    'provider_voices' => [
+        'azure' => [
+            'en-PH-JamesNeural' => 'en-PH',
+            'en-PH-RosaNeural' => 'en-PH',
+            'fil-PH-AngeloNeural' => 'fil-PH',
+            'fil-PH-BlessicaNeural' => 'fil-PH',
+        ],
+        'kokoro' => [
+            'af_heart' => 'en-US',
+            'af_bella' => 'en-US',
+        ],
+    ],
     'voices' => [
         'en-PH-JamesNeural' => 'en-PH',
         'en-PH-RosaNeural' => 'en-PH',
@@ -48,5 +60,14 @@ return [
         'user_agent' => 'GraduationStageSystem/1.0',
         'candidate_disk' => 'local',
         'candidate_directory' => 'announcement-candidates',
+    ],
+    'kokoro' => [
+        'enabled' => (bool) env('LOCAL_TTS_ENABLED', true),
+        'base_url' => rtrim((string) env('LOCAL_TTS_URL', 'http://local-tts:8880'), '/'),
+        'connect_timeout_seconds' => (int) env('LOCAL_TTS_CONNECT_TIMEOUT', 2),
+        'request_timeout_seconds' => (int) env('LOCAL_TTS_REQUEST_TIMEOUT', 90),
+        'maximum_response_bytes' => (int) env('LOCAL_TTS_MAX_RESPONSE_BYTES', 15 * 1024 * 1024),
+        'default_voice' => 'af_heart',
+        'model_sha256' => '496dba118d1a58f5f3db2efc88dbdc216e0483fc89fe6e47ee1f2c53f18ad1e4',
     ],
 ];

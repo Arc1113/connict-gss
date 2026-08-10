@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\ReportStageAudioStatus;
+use App\Enums\StageAudioStatus;
+use App\Http\Requests\ReportStageAudioStatusRequest;
 use App\Support\ActiveCeremonyResolver;
 use App\Support\StageStatePayload;
 use App\Support\StageTheme;
@@ -42,5 +45,19 @@ class StageController extends Controller
         }
 
         return response()->json($payload->forCeremony($resolution->ceremony));
+    }
+
+    public function audioStatus(
+        ReportStageAudioStatusRequest $request,
+        ReportStageAudioStatus $report,
+    ): JsonResponse {
+        $result = $report->execute(
+            $request->integer('version'),
+            $request->integer('student_id'),
+            StageAudioStatus::from((string) $request->validated('status')),
+            $request->user(),
+        );
+
+        return response()->json($result['data'], $result['http_status']);
     }
 }

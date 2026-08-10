@@ -5,6 +5,7 @@ import PageHeader from '../../../components/Admin/PageHeader';
 
 export default function CeremonyCreate({
     presentationModeOptions,
+    stageDesignTemplates,
     statusOptions,
 }) {
     return (
@@ -18,6 +19,7 @@ export default function CeremonyCreate({
             <CeremonyForm
                 action="/admin/ceremonies"
                 presentationModeOptions={presentationModeOptions}
+                stageDesignTemplates={stageDesignTemplates}
                 statusOptions={statusOptions}
                 submitLabel="Create ceremony"
             />

@@ -35,12 +35,12 @@ export default function AdminIndex({
         readiness?.audio_needs_review > 0 && {
             label: `${readiness.audio_needs_review} announcements need review`,
             detail: 'Approve or reject pronunciation audio before stage operation.',
-            href: '/admin/students?media=audio_needs_review',
+            href: abilities.generate_announcement_candidates ? '/admin/voice-generation' : '/admin/students?media=audio_needs_review',
         },
         readiness?.audio_missing > 0 && {
             label: `${readiness.audio_missing} graduates have no announcement audio`,
             detail: 'Prepare audio or confirm the fallback procedure.',
-            href: '/admin/students?media=missing_audio',
+            href: abilities.generate_announcement_candidates ? '/admin/voice-generation' : '/admin/students?media=missing_audio',
         },
     ].filter(Boolean);
 

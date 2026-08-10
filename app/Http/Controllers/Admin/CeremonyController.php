@@ -8,6 +8,7 @@ use App\Enums\PresentationMode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SaveCeremonyRequest;
 use App\Models\Ceremony;
+use App\Models\StageDesignTemplate;
 use App\Support\StageTheme;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -83,6 +84,7 @@ class CeremonyController extends Controller
                 ),
             )),
             'presentationModeOptions' => $this->presentationModeOptions(),
+            'stageDesignTemplates' => $this->stageDesignTemplates(),
         ]);
     }
 
@@ -138,6 +140,7 @@ class CeremonyController extends Controller
             'ceremony' => $this->serialize($ceremony),
             'statusOptions' => $this->statusOptions(),
             'presentationModeOptions' => $this->presentationModeOptions(),
+            'stageDesignTemplates' => $this->stageDesignTemplates(),
         ]);
     }
 
@@ -223,5 +226,20 @@ class CeremonyController extends Controller
             ],
             PresentationMode::cases(),
         );
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function stageDesignTemplates(): array
+    {
+        return StageDesignTemplate::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'description', 'theme'])
+            ->map(static fn (StageDesignTemplate $template): array => [
+                'id' => $template->id,
+                'name' => $template->name,
+                'description' => $template->description,
+                'theme' => [...StageTheme::defaults(), ...$template->theme],
+            ])
+            ->all();
     }
 }

@@ -4,19 +4,24 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Admin\ConfirmStudentImport;
 use App\Actions\Admin\InspectStudentImport;
+use App\Actions\Admin\ReplaceStudentImportCsv;
 use App\Enums\CeremonyStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ConfirmStudentImportRequest;
 use App\Http\Requests\InspectStudentImportRequest;
+use App\Http\Requests\ReplaceStudentImportCsvRequest;
+use App\Http\Requests\ReplaceStudentImportMediaPackageRequest;
 use App\Http\Requests\SaveStudentImportMappingRequest;
 use App\Models\Ceremony;
 use App\Models\StudentImport;
 use App\Services\StudentImportPreparation;
 use App\Support\StudentImportLimits;
+use App\Support\StudentImportMediaPackage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -93,6 +98,62 @@ class StudentImportController extends Controller
             'admin.students.import.preview',
             $studentImport,
         );
+    }
+
+    public function replaceMediaPackage(
+        ReplaceStudentImportMediaPackageRequest $request,
+        StudentImport $studentImport,
+        StudentImportMediaPackage $mediaPackage,
+    ): RedirectResponse {
+        if ($redirect = $this->unavailableRedirect($studentImport)) {
+            return $redirect;
+        }
+
+        $oldPath = $studentImport->media_package_path;
+        $newPath = $mediaPackage->store(
+            $request->file('media_package'),
+            $studentImport->token.'-replacement-'.Str::uuid(),
+        );
+
+        try {
+            $studentImport->update(['media_package_path' => $newPath]);
+        } catch (\Throwable $exception) {
+            $mediaPackage->delete($newPath);
+            throw $exception;
+        }
+
+        $mediaPackage->delete($oldPath);
+
+        return back()->with(
+            'success',
+            'The media ZIP was replaced. Review the rows again before importing.',
+        );
+    }
+
+    public function replaceCsv(
+        ReplaceStudentImportCsvRequest $request,
+        StudentImport $studentImport,
+        ReplaceStudentImportCsv $replaceCsv,
+    ): RedirectResponse {
+        if ($redirect = $this->unavailableRedirect($studentImport)) {
+            return $redirect;
+        }
+
+        $studentImport = $replaceCsv->execute(
+            $studentImport,
+            $request->file('csv_file'),
+        );
+
+        $route = $studentImport->mapping === null
+            ? 'admin.students.import.mapping'
+            : 'admin.students.import.preview';
+        $message = $studentImport->mapping === null
+            ? 'The CSV was replaced. Review the column mapping before continuing.'
+            : 'The CSV was replaced. The media ZIP and column mapping were kept.';
+
+        return redirect()
+            ->route($route, $studentImport)
+            ->with('success', $message);
     }
 
     public function preview(
@@ -309,6 +370,7 @@ class StudentImportController extends Controller
                 'label' => 'Create new graduates only',
             ],
             'row_count' => $studentImport->row_count,
+            'has_media_package' => $studentImport->media_package_path !== null,
             'expires_at' => $studentImport->expires_at->toIso8601String(),
             'consumed_at' => $studentImport->consumed_at?->toIso8601String(),
             'ceremony' => $studentImport->ceremony === null ? null : [

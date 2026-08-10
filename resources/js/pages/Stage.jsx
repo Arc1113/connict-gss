@@ -10,10 +10,17 @@ const IDLE_STATE = {
     presentation: null,
 };
 
+const AUDIO_CHECK_URL = 'data:audio/wav;base64,UklGRv////9XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgATElTVBoAAABJTkZPSVNGVA4AAABMYXZmNjAuMTYuMTAwAGRhdGH/////gIGCgoKBgH9+fn5/gIGCgoKBgH9+fn5/gIGCgoKCgH9+fn5+gIGCgoKCgX9+fn5+f4GCgoKCgX9+fn5+f4CCgoKCgYB+fn5+f4CBgoKCgYB/fn5+f4CBgoKCgYB/fn5+f4CBgoKCgYB/fn5+f4CBgoKCgYB/fn5+foCBgoKCgoB/fn5+fn+BgoKCgoF/fn5+fn+BgoKCgoGAfn5+fn+AgoKCgoGAf35+fn+AgYKCgoGAf35+fn+AgYKCgoGAf35+fn+AgYKCgoGAf35+fn+AgYKCgoGAf35+fn6AgYKCgoKAf35+fn5/gYKCgoKBf35+fn5/gYKCgoKBgH5+fn5/gIKCgoKBgH9+fn5/gIGCgoKBgH9+fn5/gIGCgoKBgH9+fn5/gIGCgoKBgH9+fn5/gIGCgoKCgH9+fn5+gIGCgoKCgX9+fn5+f4GCgoKCgX9+fn5+f4CCgoKCgYB+fn5+f4CBgoKCgYB/fn5+f4CBgoKCgYB/fn5+f4CBgoKCgYB/fn5+f4CBgoKCgYB/fn5+f4CBgoKCgoB/fn5+foCBgoKCgoF/fn5+fn+BgoKCgoF/fn5+fn+AgoKCgoGAfn5+fn+AgYKCgoGAf35+fn+AgYKCgoGAf35+fn+AgYKCgoGAf35+fn+AgYKCgoGAf35+fn+AgYKCgoGAf35+fn6AgYKCgoKAf35+fn5/gYKCgoKBf35+fn5/gYKCgoKBgH5+fn5/gIKCgoKBgH9+fn5/gIGCgoKBgH9+fn5/gIGCgoKBgH9+fn5/gIGCgoKBgH9+fn5+gIGCgoKCgH9+fn5+f4GCgoKCgX9+fn5+f4GCgoKCgYB+fn5+f4CCgoKCgYB/fn5+f4CBgoKCgYB/fn5+f4CBgoKCgYB/fn5+f4CBgoKCgYB/fn5+f4CBgoKCgYB/fn5+f4CBgoKCgoB/fn5+foCBgoKCgoF/fn5+fn+BgoKCgoF/fn5+fn+AgoKCgoGAfn5+fn+AgYKCgoGAf35+fn+AgYKCgoGAf35+fn+AgYKCgoGAf35+fn+AgYKCgoGAf35+fn+AgYKCgoKAf35+fn6AgYKCgoKBf35+fn5/gYKCgoKBf35+fn5/gIKCgoKBgH5+fn5/gIGCgoKBgH9+fn5/gIGCgoKBgH9+fn5/gIGCgoKBgH9+fn5/gIGCgoKBgH9+fn5/gIGCgoKBgH9+fn5+gIGCgoKCgH9+fn5+f4GCgoKCgX9+fn5+f4GC';
+
+const VALID_AUDIO_CHECK_URL = AUDIO_CHECK_URL.includes('////')
+    ? 'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA=='
+    : AUDIO_CHECK_URL;
+
 export default function Stage({ ceremony }) {
     const [stageState, setStageState] = useState(IDLE_STATE);
     const [hasLoaded, setHasLoaded] = useState(false);
-    const [audioEnabled, setAudioEnabled] = useState(false);
+    const [audienceReady, setAudienceReady] = useState(false);
+    const [audioCheckState, setAudioCheckState] = useState('waiting');
     const [connectionState, setConnectionState] = useState('syncing');
     const [channelCeremonyId, setChannelCeremonyId] = useState(
         ceremony?.id ?? null,
@@ -29,13 +36,30 @@ export default function Stage({ ceremony }) {
     const stageStateRef = useRef(IDLE_STATE);
     const hasConnectedRef = useRef(false);
     const reconnectPendingRef = useRef(false);
+    const automaticCheckAttemptedRef = useRef(false);
 
     const stopAudio = useCallback(() => {
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
-            audioRef.current = null;
+            audioRef.current.onended = null;
+            audioRef.current.onerror = null;
         }
+    }, []);
+
+    const reportAudioStatus = useCallback((presentation, status) => {
+        if (!presentation?.student_id) {
+            return;
+        }
+
+        void requestJson('/stage/audio-status', {
+            method: 'POST',
+            body: JSON.stringify({
+                version: presentation.version,
+                student_id: presentation.student_id,
+                status,
+            }),
+        });
     }, []);
 
     const playAudio = useCallback(
@@ -46,17 +70,25 @@ export default function Stage({ ceremony }) {
                 return;
             }
 
-            const audio = new Audio(presentation.audio_url);
+            const audio = audioRef.current;
+
+            if (!audio) {
+                return;
+            }
+
+            audio.src = presentation.audio_url;
             audio.preload = 'auto';
-            audioRef.current = audio;
+            audio.onended = () => reportAudioStatus(presentation, 'stopped');
+            audio.onerror = () => reportAudioStatus(presentation, 'failed');
 
             try {
                 await audio.play();
+                reportAudioStatus(presentation, 'playing');
             } catch {
-                audioRef.current = null;
+                reportAudioStatus(presentation, 'failed');
             }
         },
-        [stopAudio],
+        [reportAudioStatus, stopAudio],
     );
 
     const preloadAudio = useCallback((url) => {
@@ -75,18 +107,35 @@ export default function Stage({ ceremony }) {
         preloadRef.current = audio;
     }, []);
 
-    const enableAudio = useCallback(() => {
-        if (audioEnabledRef.current) {
-            return;
+    const runPreflight = useCallback(async () => {
+        if (!hasLoaded || connectionState !== 'live' || !audioRef.current) {
+            return false;
         }
 
-        audioEnabledRef.current = true;
-        setAudioEnabled(true);
+        const audio = audioRef.current;
+        setAudioCheckState('checking');
+        audio.src = VALID_AUDIO_CHECK_URL;
+        audio.preload = 'auto';
+        audio.onended = null;
+        audio.onerror = null;
 
-        if (stageStateRef.current.presentation?.audio_url) {
-            void playAudio(stageStateRef.current.presentation);
+        try {
+            await audio.play();
+            await new Promise((resolve) => window.setTimeout(resolve, 180));
+            audio.pause();
+            audio.currentTime = 0;
+            audioEnabledRef.current = true;
+            setAudioCheckState('ready');
+            setAudienceReady(true);
+
+            return true;
+        } catch {
+            audioEnabledRef.current = false;
+            setAudioCheckState('blocked');
+
+            return false;
         }
-    }, [playAudio]);
+    }, [connectionState, hasLoaded]);
 
     const reconcile = useCallback(async (markLoaded = false) => {
         let nextState = stageStateRef.current;
@@ -187,6 +236,9 @@ export default function Stage({ ceremony }) {
                     setStageState((current) => ({
                         ...current,
                         version: event.version,
+                        presentation: current.presentation
+                            ? { ...current.presentation, version: event.version }
+                            : null,
                     }));
 
                     if (
@@ -194,7 +246,10 @@ export default function Stage({ ceremony }) {
                         stageStateRef.current.presentation?.student_id ===
                             event.student_id
                     ) {
-                        void playAudio(stageStateRef.current.presentation);
+                        void playAudio({
+                            ...stageStateRef.current.presentation,
+                            version: event.version,
+                        });
                     }
                 })
                 .listen('.stage.holding-changed', (event) => {
@@ -253,17 +308,23 @@ export default function Stage({ ceremony }) {
     }, [reconcile]);
 
     useEffect(() => {
-        window.addEventListener('pointerdown', enableAudio, { once: true });
-        window.addEventListener('keydown', enableAudio, { once: true });
-
-        return () => {
-            window.removeEventListener('pointerdown', enableAudio);
-            window.removeEventListener('keydown', enableAudio);
-        };
-    }, [enableAudio]);
+        if (
+            hasLoaded
+            && connectionState === 'live'
+            && !audienceReady
+            && !automaticCheckAttemptedRef.current
+        ) {
+            automaticCheckAttemptedRef.current = true;
+            void runPreflight();
+        }
+    }, [audienceReady, connectionState, hasLoaded, runPreflight]);
 
     useEffect(() => {
-        if (stageState.mode === 'graduate' && stageState.presentation) {
+        if (
+            audienceReady
+            && stageState.mode === 'graduate'
+            && stageState.presentation
+        ) {
             preloadAudio(stageState.presentation.audio_url);
             void playAudio(stageState.presentation);
         } else {
@@ -277,6 +338,7 @@ export default function Stage({ ceremony }) {
         stageState.preload_audio_url,
         stageState.presentation,
         stopAudio,
+        audienceReady,
     ]);
 
     const presentation = stageState.presentation;
@@ -285,7 +347,9 @@ export default function Stage({ ceremony }) {
     const major = presentation?.major?.trim();
     const honors = presentation?.honors?.trim();
     const hasStagePhoto = Boolean(presentation?.photo_url && theme.show_photo);
-    const stageStatus = hasLoaded
+    const stageStatus = !audienceReady
+        ? 'preflight'
+        : hasLoaded
         ? stageState.mode === 'holding'
             ? 'holding'
             : presentation
@@ -314,29 +378,46 @@ export default function Stage({ ceremony }) {
                 data-stage-status={stageStatus}
                 style={stageStyle}
             >
-                {!audioEnabled && (
-                    <div className="stage-audio-setup" role="status">
-                        <span>
-                            <strong>Audio setup required</strong>
-                            <small>One time on this display</small>
-                        </span>
+                <audio className="stage-audio-element" ref={audioRef} />
+                {!audienceReady ? (
+                    <section className="stage-preflight" aria-labelledby="stage-preflight-title">
+                        <p className="stage-preflight-kicker">Audience display setup</p>
+                        <h1 id="stage-preflight-title">Check the screen before opening the curtain</h1>
+                        <p className="stage-preflight-copy">
+                            Confirm live updates and speaker output once. Setup controls will disappear before graduates are shown.
+                        </p>
+                        <dl className="stage-preflight-checks">
+                            <div data-ready={hasLoaded ? 'true' : 'false'}>
+                                <dt>Stage state</dt>
+                                <dd>{hasLoaded ? 'Loaded' : 'Loading'}</dd>
+                            </div>
+                            <div data-ready={connectionState === 'live' ? 'true' : 'false'}>
+                                <dt>Live updates</dt>
+                                <dd>{connectionState === 'live' ? 'Connected' : 'Connecting'}</dd>
+                            </div>
+                            <div data-ready={audioCheckState === 'ready' ? 'true' : 'false'}>
+                                <dt>Speaker output</dt>
+                                <dd>
+                                    {audioCheckState === 'checking'
+                                        ? 'Playing check tone'
+                                        : audioCheckState === 'blocked'
+                                          ? 'Choose the button to allow audio'
+                                          : 'Ready to test'}
+                                </dd>
+                            </div>
+                        </dl>
                         <button
-                            className="stage-audio-enable"
-                            onClick={enableAudio}
+                            className="stage-preflight-action"
+                            disabled={!hasLoaded || connectionState !== 'live' || audioCheckState === 'checking'}
+                            onClick={() => void runPreflight()}
                             type="button"
                         >
-                            Enable audio
+                            {audioCheckState === 'checking' ? 'Checking speaker…' : 'Test audio and start display'}
                         </button>
-                    </div>
-                )}
-                <div
-                    aria-live="polite"
-                    className={`stage-connection-status stage-connection-status-${connectionState}`}
-                    role="status"
-                >
-                    <span aria-hidden="true" />
-                    {connectionState === 'live' ? 'Live' : 'Syncing'}
-                </div>
+                        <small>Use the stage-control laptop for commands and technical status.</small>
+                    </section>
+                ) : (
+                    <>
                 {theme.logo_url && (
                     <img className="stage-theme-logo" src={theme.logo_url} alt="" />
                 )}
@@ -391,6 +472,8 @@ export default function Stage({ ceremony }) {
                         <h1 id="stage-title">Welcome, graduates</h1>
                         <span>Awaiting the next graduate</span>
                     </section>
+                )}
+                    </>
                 )}
             </main>
         </>

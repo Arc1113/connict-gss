@@ -204,7 +204,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
         setReviewing(`${generation.id}:${decision}`);
         router.post(
             `/admin/students/${student.id}/announcement-candidates/${generation.id}/${decision}`,
-            { review_notes: notes },
+            { review_notes: notes, continue_review: true },
             {
                 preserveScroll: true,
                 onFinish: () => setReviewing(null),
@@ -382,6 +382,15 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                 <div className="admin-section-heading">
                     <div><h3>Generation history</h3><p>Private candidates remain separate from active ceremony audio.</p></div>
                 </div>
+                {announcement.review_queue && (
+                    <div className="announcement-review-queue-context">
+                        <div>
+                            <strong>{announcement.review_queue.remaining} generated voice{announcement.review_queue.remaining === 1 ? '' : 's'} awaiting approval</strong>
+                            <span>After each decision, you will move directly to the next graduate in ceremony order.</span>
+                        </div>
+                        <a className="admin-row-action" href={announcement.review_queue.url}>View full review queue</a>
+                    </div>
+                )}
                 {announcement.generations.length === 0 ? (
                     <p className="admin-media-missing">No candidates generated yet.</p>
                 ) : (
@@ -443,7 +452,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                                                 onClick={() => reviewCandidate(generation, 'approve')}
                                                 type="button"
                                             >
-                                                {reviewing === `${generation.id}:approve` ? 'Approving…' : 'Approve candidate'}
+                                                {reviewing === `${generation.id}:approve` ? 'Approving…' : 'Approve and review next'}
                                             </button>
                                             <button
                                                 className="admin-button admin-button-danger"
@@ -451,7 +460,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                                                 onClick={() => reviewCandidate(generation, 'reject')}
                                                 type="button"
                                             >
-                                                {reviewing === `${generation.id}:reject` ? 'Rejecting…' : 'Reject candidate'}
+                                                {reviewing === `${generation.id}:reject` ? 'Rejecting…' : 'Reject and review next'}
                                             </button>
                                         </div>
                                     </div>

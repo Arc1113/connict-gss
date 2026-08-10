@@ -91,6 +91,7 @@ final class StageControlPayload
                 'automatic_paused' => $state?->automatic_paused ?? false,
                 'display_mode' => $state?->display_mode->value
                     ?? StageDisplayMode::Idle->value,
+                'audio_status' => $state?->audio_status->value ?? 'stopped',
                 'current' => $current,
                 'waiting' => $waiting,
                 'skipped' => $skipped,

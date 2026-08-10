@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AnnouncementProvider;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,7 @@ class AnnouncementVoiceSample extends Model
     protected function casts(): array
     {
         return [
+            'provider' => AnnouncementProvider::class,
             'character_count' => 'integer',
             'expires_at' => 'immutable_datetime',
         ];

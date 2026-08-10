@@ -119,6 +119,23 @@ class BuildAnnouncementSourceFingerprintTest extends TestCase
         $this->assertStringNotContainsString('\\u00c9', $service->canonicalJson($source));
     }
 
+    public function test_local_engine_revision_is_part_of_the_canonical_source(): void
+    {
+        $service = new BuildAnnouncementSourceFingerprint;
+        $azure = $this->source();
+        $local = $this->source([
+            'provider' => AnnouncementProvider::Kokoro,
+            'voice' => 'af_heart',
+            'locale' => 'en-US',
+        ]);
+
+        $this->assertNotSame($service->handle($azure), $service->handle($local));
+        $this->assertStringContainsString(
+            '"engine_revision":'.AnnouncementSourceFingerprintData::KOKORO_ENGINE_REVISION,
+            $service->canonicalJson($local),
+        );
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

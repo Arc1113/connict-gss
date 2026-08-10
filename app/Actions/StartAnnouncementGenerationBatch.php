@@ -2,10 +2,10 @@
 
 namespace App\Actions;
 
-use App\Contracts\TextToSpeechProvider;
 use App\Data\AnnouncementBatchStartResult;
 use App\Enums\AnnouncementBatchItemStatus;
 use App\Enums\AnnouncementBatchStatus;
+use App\Enums\AnnouncementProvider;
 use App\Enums\EligibilityStatus;
 use App\Exceptions\AnnouncementBatchException;
 use App\Jobs\ProcessAnnouncementGenerationBatch;
@@ -16,6 +16,7 @@ use App\Models\Student;
 use App\Models\User;
 use App\Services\AnnouncementUsage;
 use App\Services\PreviewGraduationAnnouncement;
+use App\Services\TextToSpeechProviderRegistry;
 use App\Support\AdministrativeAuditLogger;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,7 @@ final class StartAnnouncementGenerationBatch
         private readonly PreviewGraduationAnnouncement $previewer,
         private readonly AnnouncementUsage $usage,
         private readonly AdministrativeAuditLogger $auditLogger,
-        private readonly TextToSpeechProvider $provider,
+        private readonly TextToSpeechProviderRegistry $provider,
     ) {}
 
     /** @param list<int> $studentIds */
@@ -39,13 +40,6 @@ final class StartAnnouncementGenerationBatch
         ?string $ipAddress,
     ): AnnouncementBatchStartResult {
         Gate::forUser($actor)->authorize('manage-announcement-batches');
-
-        if (! $this->provider->health()->isConfigured()) {
-            throw new AnnouncementBatchException(
-                'azure_not_configured',
-                'Azure Speech is disabled or not configured safely for batch preparation.',
-            );
-        }
 
         $maximum = max(1, (int) config('announcements.batch_generation.maximum_students', 50));
         $studentIds = array_values(array_unique(array_map('intval', $studentIds)));
@@ -66,6 +60,17 @@ final class StartAnnouncementGenerationBatch
             throw new AnnouncementBatchException(
                 'missing_active_template',
                 'Publish ceremony announcement settings before starting a batch.',
+            );
+        }
+
+        if (! $this->provider->healthFor($template->provider)->isConfigured()) {
+            throw new AnnouncementBatchException(
+                $template->provider === AnnouncementProvider::Azure
+                    ? 'azure_not_configured'
+                    : 'local_tts_not_configured',
+                $template->provider === AnnouncementProvider::Azure
+                    ? 'Azure Speech is disabled or not configured safely for batch preparation.'
+                    : 'Local voice generation is disabled or not configured safely for batch preparation.',
             );
         }
 
@@ -103,6 +108,7 @@ final class StartAnnouncementGenerationBatch
         $selectionHash = hash('sha256', json_encode([
             'ceremony_id' => $ceremony->id,
             'template_id' => $template->id,
+            'provider' => $template->provider->value,
             'voice' => $template->default_voice,
             'student_ids' => $orderedIds,
         ], JSON_THROW_ON_ERROR));
@@ -146,6 +152,7 @@ final class StartAnnouncementGenerationBatch
             $batch = AnnouncementGenerationBatch::query()->create([
                 'ceremony_id' => $lockedCeremony->id,
                 'announcement_template_id' => $template->id,
+                'provider' => $template->provider,
                 'provider_voice' => $template->default_voice,
                 'locale' => $template->default_locale,
                 'selection_hash' => $selectionHash,

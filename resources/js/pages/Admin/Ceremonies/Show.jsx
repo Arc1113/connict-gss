@@ -41,6 +41,14 @@ export default function CeremonyShow({ ceremony }) {
                         )}
                         {auth.abilities.manage_announcement_settings && (
                             <Link
+                                className="admin-button admin-button-primary"
+                                href="/admin/voice-generation"
+                            >
+                                Generate voice
+                            </Link>
+                        )}
+                        {auth.abilities.manage_announcement_settings && (
+                            <Link
                                 className="admin-button admin-button-secondary"
                                 href={`/admin/ceremonies/${ceremony.id}/announcement-settings`}
                             >

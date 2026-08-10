@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\AnnouncementProvider;
 use App\Models\AnnouncementTemplate;
 use App\Models\Ceremony;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -24,6 +25,7 @@ class AnnouncementTemplateFactory extends Factory
             'include_additional_text' => false,
             'awards_lead_in' => 'recipient of',
             'closing_text' => null,
+            'provider' => AnnouncementProvider::Azure,
             'default_voice' => 'en-PH-JamesNeural',
             'default_locale' => 'en-PH',
             'speaking_rate_percent' => -5,

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AnnouncementProvider;
 use App\Models\AnnouncementTemplate;
 use App\Models\AnnouncementVoiceSample;
 use App\Models\Ceremony;
@@ -44,7 +45,7 @@ final class CeremonyAnnouncementSettingsWorkspace
                     'generations_count' => $template->generations_count,
                     'created_at' => $template->created_at?->toIso8601String(),
                 ]),
-            'voices' => collect($this->voices->all())
+            'voices' => collect($this->voices->all($editable->provider))
                 ->map(fn (string $locale, string $voice): array => [
                     'value' => $voice,
                     'locale' => $locale,
@@ -59,7 +60,24 @@ final class CeremonyAnnouncementSettingsWorkspace
             'fictional_preview' => $this->serializer->serialize(
                 $this->previewer->preview($editable),
             ),
-            'provider' => $this->providerHealth->offline(),
+            'provider' => $this->providerHealth->offline($editable->provider),
+            'providers' => collect(AnnouncementProvider::cases())->map(function (AnnouncementProvider $provider): array {
+                return [
+                    'value' => $provider->value,
+                    'label' => $provider === AnnouncementProvider::Kokoro ? 'Local offline' : 'Azure online',
+                    'description' => $provider === AnnouncementProvider::Kokoro
+                        ? 'Works without internet after the local model is installed.'
+                        : 'Requires internet and configured Azure credentials.',
+                    'readiness' => $this->providerHealth->offline($provider),
+                    'voices' => collect($this->voices->all($provider))->map(
+                        static fn (string $locale, string $voice): array => [
+                            'value' => $voice,
+                            'locale' => $locale,
+                            'label' => $voice,
+                        ],
+                    )->values(),
+                ];
+            })->values(),
             'usage' => $this->serializeUsage(),
             'samples' => AnnouncementVoiceSample::query()
                 ->whereBelongsTo($ceremony)
@@ -71,6 +89,7 @@ final class CeremonyAnnouncementSettingsWorkspace
                 ->map(fn (AnnouncementVoiceSample $sample): array => [
                     'id' => $sample->id,
                     'voice' => $sample->provider_voice,
+                    'provider' => $sample->provider->value,
                     'locale' => $sample->locale,
                     'character_count' => $sample->character_count,
                     'template' => [
@@ -104,6 +123,7 @@ final class CeremonyAnnouncementSettingsWorkspace
             'include_additional_text' => $template->include_additional_text,
             'awards_lead_in' => $template->awards_lead_in,
             'closing_text' => $template->closing_text,
+            'provider' => $template->provider->value,
             'default_voice' => $template->default_voice,
             'default_locale' => $template->default_locale,
             'speaking_rate_percent' => $template->speaking_rate_percent,
@@ -127,6 +147,7 @@ final class CeremonyAnnouncementSettingsWorkspace
             'include_additional_text' => false,
             'awards_lead_in' => 'recipient of',
             'closing_text' => null,
+            'provider' => AnnouncementProvider::Azure,
             'default_voice' => 'en-PH-JamesNeural',
             'default_locale' => 'en-PH',
             'speaking_rate_percent' => -5,

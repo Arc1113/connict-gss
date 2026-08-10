@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\CeremonyOperationalResetController;
 use App\Http\Controllers\Admin\CeremonySummaryController;
 use App\Http\Controllers\Admin\DeviceConnectionController;
 use App\Http\Controllers\Admin\ScanLogController;
+use App\Http\Controllers\Admin\StageDesignTemplateController;
 use App\Http\Controllers\Admin\StageEventController;
 use App\Http\Controllers\Admin\StudentAnnouncementController;
 use App\Http\Controllers\Admin\StudentAwardController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\Admin\StudentQrCodeController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VoiceComparisonAudioController;
 use App\Http\Controllers\Admin\VoiceComparisonController;
+use App\Http\Controllers\Admin\VoiceGenerationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CompleteCurrentPresentationController;
 use App\Http\Controllers\LocalCertificateController;
@@ -75,6 +77,9 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/stage/state', [StageController::class, 'state'])
         ->middleware('can:operate-stage')
         ->name('stage.state');
+    Route::post('/stage/audio-status', [StageController::class, 'audioStatus'])
+        ->middleware('can:operate-stage')
+        ->name('stage.audio-status');
     Route::post('/stage/complete-current', CompleteCurrentPresentationController::class)
         ->middleware('can:operate-stage')
         ->name('stage.complete-current');
@@ -113,6 +118,8 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', AdminDashboardController::class)->name('index');
+        Route::get('/voice-generation', VoiceGenerationController::class)
+            ->name('voice-generation');
         Route::get('/device-connections', DeviceConnectionController::class)
             ->middleware('can:manage-device-connections')
             ->name('device-connections');
@@ -132,6 +139,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/backups/{backup}/verify', [BackupController::class, 'verify'])->name('backups.verify');
 
         Route::resource('ceremonies', CeremonyController::class);
+        Route::resource('stage-designs', StageDesignTemplateController::class)
+            ->parameters(['stage-designs' => 'stageDesignTemplate'])
+            ->only(['index', 'store', 'update', 'destroy']);
         Route::get(
             '/ceremonies/{ceremony}/announcement-settings',
             [CeremonyAnnouncementSettingsController::class, 'show'],
@@ -190,6 +200,14 @@ Route::middleware(['auth', 'active'])->group(function () {
                     '/{studentImport}/preview',
                     [StudentImportController::class, 'storeMapping'],
                 )->name('preview.store');
+                Route::post(
+                    '/{studentImport}/media-package',
+                    [StudentImportController::class, 'replaceMediaPackage'],
+                )->name('media-package.replace');
+                Route::post(
+                    '/{studentImport}/csv',
+                    [StudentImportController::class, 'replaceCsv'],
+                )->name('csv.replace');
                 Route::get(
                     '/{studentImport}/preview',
                     [StudentImportController::class, 'preview'],

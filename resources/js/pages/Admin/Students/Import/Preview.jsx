@@ -3,6 +3,7 @@ import AdminLayout from '../../../../components/Admin/AdminLayout';
 import { FieldError, ValidationSummary } from '../../../../components/Admin/FormSupport';
 import ImportCounts from '../../../../components/Admin/ImportCounts';
 import ImportProgress from '../../../../components/Admin/ImportProgress';
+import ImportSourceReplacements from '../../../../components/Admin/ImportSourceReplacements';
 import PageHeader from '../../../../components/Admin/PageHeader';
 import Pagination from '../../../../components/Admin/Pagination';
 
@@ -101,12 +102,14 @@ export default function StudentImportPreview({ preview, studentImport }) {
                 </dl>
             </section>
 
+            <ImportSourceReplacements studentImport={studentImport} />
+
             <ImportCounts counts={preview} />
 
             {preview.error_count > 0 && (
                 <p className="admin-blocking-message" role="alert">
-                    Import is blocked. Correct the source file or mapping, then inspect
-                    the CSV again. No graduate records have been created.
+                    Import is blocked. Correct the source file, mapping, or media ZIP,
+                    then review the rows again. No graduate records have been created.
                 </p>
             )}
             {preview.error_count === 0 && preview.warning_count > 0 && (

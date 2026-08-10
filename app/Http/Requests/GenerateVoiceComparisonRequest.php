@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\AnnouncementProvider;
+use App\Models\AnnouncementTemplate;
 use App\Models\Ceremony;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -16,6 +18,15 @@ class GenerateVoiceComparisonRequest extends FormRequest
 
     public function rules(): array
     {
+        $ceremony = $this->route('ceremony');
+        $provider = $ceremony instanceof Ceremony
+            ? AnnouncementTemplate::query()->whereBelongsTo($ceremony)->where('is_active', true)->value('provider')
+            : null;
+        $provider = $provider instanceof AnnouncementProvider ? $provider->value : ($provider ?? 'azure');
+        $voices = $provider === AnnouncementProvider::Azure->value
+            ? (array) config('announcements.voices', [])
+            : (array) config('announcements.provider_voices.'.$provider, []);
+
         return [
             'voices' => [
                 'required',
@@ -27,7 +38,7 @@ class GenerateVoiceComparisonRequest extends FormRequest
                 'required',
                 'string',
                 'distinct',
-                Rule::in(array_keys((array) config('announcements.voices', []))),
+                Rule::in(array_keys($voices)),
             ],
         ];
     }

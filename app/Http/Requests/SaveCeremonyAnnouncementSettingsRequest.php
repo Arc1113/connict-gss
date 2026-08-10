@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\AnnouncementProvider;
+use App\Models\AnnouncementTemplate;
 use App\Models\Ceremony;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -17,9 +19,14 @@ class SaveCeremonyAnnouncementSettingsRequest extends FormRequest
 
     public function rules(): array
     {
-        $voices = (array) config('announcements.voices', []);
+        $provider = AnnouncementProvider::tryFrom((string) $this->input('provider'))
+            ?? AnnouncementProvider::Azure;
+        $voices = $provider === AnnouncementProvider::Azure
+            ? (array) config('announcements.voices', [])
+            : (array) config("announcements.provider_voices.{$provider->value}", []);
 
         return [
+            'provider' => ['required', Rule::enum(AnnouncementProvider::class)],
             'name' => ['required', 'string', 'max:255', 'not_regex:/[<>]/'],
             'introduction_text' => ['required', 'string', 'max:500', 'not_regex:/[<>]/'],
             'include_program' => ['required', 'boolean'],
@@ -49,8 +56,14 @@ class SaveCeremonyAnnouncementSettingsRequest extends FormRequest
             $voice = $this->input('default_voice');
             $locale = $this->input('default_locale');
 
+            $provider = AnnouncementProvider::tryFrom((string) $this->input('provider'))
+                ?? AnnouncementProvider::Azure;
+            $voices = $provider === AnnouncementProvider::Azure
+                ? (array) config('announcements.voices', [])
+                : (array) config("announcements.provider_voices.{$provider->value}", []);
+
             if (is_string($voice) && is_string($locale)
-                && config("announcements.voices.{$voice}") !== $locale) {
+                && ($voices[$voice] ?? null) !== $locale) {
                 $validator->errors()->add(
                     'default_locale',
                     'The locale must match the selected approved voice.',
@@ -61,6 +74,19 @@ class SaveCeremonyAnnouncementSettingsRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if (! $this->has('provider')) {
+            $ceremony = $this->route('ceremony');
+            $provider = $ceremony instanceof Ceremony
+                ? AnnouncementTemplate::query()
+                    ->whereBelongsTo($ceremony)
+                    ->where('is_active', true)
+                    ->value('provider')
+                : null;
+            $this->merge(['provider' => $provider instanceof AnnouncementProvider
+                ? $provider->value
+                : ($provider ?? AnnouncementProvider::Azure->value)]);
+        }
+
         foreach (['name', 'introduction_text', 'awards_lead_in', 'closing_text'] as $field) {
             $value = $this->input($field);
 

@@ -373,6 +373,145 @@ class StudentImportPreviewAndConfirmationTest extends TestCase
         }
     }
 
+    public function test_an_incorrect_media_zip_can_be_replaced_without_uploading_the_csv_again(): void
+    {
+        Storage::fake('local');
+
+        $wrongArchivePath = tempnam(sys_get_temp_dir(), 'gss-wrong-media-');
+        $correctArchivePath = tempnam(sys_get_temp_dir(), 'gss-correct-media-');
+        $this->assertNotFalse($wrongArchivePath);
+        $this->assertNotFalse($correctArchivePath);
+
+        $wrongArchive = new ZipArchive;
+        $this->assertTrue($wrongArchive->open(
+            $wrongArchivePath,
+            ZipArchive::CREATE | ZipArchive::OVERWRITE,
+        ));
+        $wrongArchive->addFromString('photos/wrong.png', 'not-the-referenced-photo');
+        $wrongArchive->close();
+
+        $correctArchive = new ZipArchive;
+        $this->assertTrue($correctArchive->open(
+            $correctArchivePath,
+            ZipArchive::CREATE | ZipArchive::OVERWRITE,
+        ));
+        $correctArchive->addFromString(
+            'photos/graduate.png',
+            (string) base64_decode(
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+                true,
+            ),
+        );
+        $correctArchive->close();
+
+        $csv = implode("\n", [
+            'student_number,first_name,last_name,program,sequence_number,eligibility_status,photo_filename',
+            '2027-REPLACE,Ana,Cruz,BS Computer Science,89,eligible,graduate.png',
+        ]);
+
+        try {
+            $this->actingAs($this->encoder)
+                ->post('/admin/students/import/inspect', [
+                    'ceremony_id' => $this->ceremony->id,
+                    'csv_file' => UploadedFile::fake()->createWithContent(
+                        'graduates.csv',
+                        $csv,
+                    ),
+                    'media_package' => new UploadedFile(
+                        $wrongArchivePath,
+                        'wrong-media.zip',
+                        'application/zip',
+                        null,
+                        true,
+                    ),
+                ])
+                ->assertRedirect();
+
+            $studentImport = StudentImport::query()->sole();
+            $this->saveSuggestedMapping($this->encoder, $studentImport)
+                ->assertSessionHasNoErrors();
+
+            $this->actingAs($this->encoder)
+                ->get("/admin/students/import/{$studentImport->token}/preview")
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('preview.can_confirm', false)
+                    ->where('preview.error_count', 1)
+                    ->where('studentImport.has_media_package', true));
+
+            $oldPath = $studentImport->media_package_path;
+            Storage::disk('local')->assertExists($oldPath);
+
+            $this->actingAs($this->encoder)
+                ->from("/admin/students/import/{$studentImport->token}/preview")
+                ->post(
+                    "/admin/students/import/{$studentImport->token}/media-package",
+                    [
+                        'media_package' => new UploadedFile(
+                            $correctArchivePath,
+                            'correct-media.zip',
+                            'application/zip',
+                            null,
+                            true,
+                        ),
+                    ],
+                )
+                ->assertRedirect(
+                    "/admin/students/import/{$studentImport->token}/preview",
+                )
+                ->assertSessionHasNoErrors()
+                ->assertSessionHas('success');
+
+            $studentImport->refresh();
+            $this->assertNotSame($oldPath, $studentImport->media_package_path);
+            Storage::disk('local')->assertMissing($oldPath);
+            Storage::disk('local')->assertExists($studentImport->media_package_path);
+
+            $this->actingAs($this->encoder)
+                ->get("/admin/students/import/{$studentImport->token}/preview")
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('preview.can_confirm', true)
+                    ->where('preview.error_count', 0));
+
+            $correctedCsv = implode("\n", [
+                'student_number,first_name,last_name,program,sequence_number,eligibility_status,photo_filename',
+                '2027-REPLACE,Anna,Cruz,BS Computer Science,89,eligible,graduate.png',
+            ]);
+            $mediaPackagePath = $studentImport->media_package_path;
+            $mapping = $studentImport->mapping;
+
+            $this->actingAs($this->encoder)
+                ->post(
+                    "/admin/students/import/{$studentImport->token}/csv",
+                    [
+                        'csv_file' => UploadedFile::fake()->createWithContent(
+                            'corrected-graduates.csv',
+                            $correctedCsv,
+                        ),
+                    ],
+                )
+                ->assertRedirect(
+                    "/admin/students/import/{$studentImport->token}/preview",
+                )
+                ->assertSessionHasNoErrors()
+                ->assertSessionHas('success');
+
+            $studentImport->refresh();
+            $this->assertSame($mediaPackagePath, $studentImport->media_package_path);
+            $this->assertSame($mapping, $studentImport->mapping);
+            $this->assertSame('corrected-graduates.csv', $studentImport->original_filename);
+            Storage::disk('local')->assertExists($mediaPackagePath);
+
+            $this->actingAs($this->encoder)
+                ->get("/admin/students/import/{$studentImport->token}/preview")
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('preview.can_confirm', true)
+                    ->where('preview.rows.data.0.normalized.first_name', 'Anna'));
+        } finally {
+            @unlink($wrongArchivePath);
+            @unlink($correctArchivePath);
+        }
+    }
+
     public function test_confirmation_rechecks_current_conflicts_and_ceremony_status(): void
     {
         $studentImport = $this->importWithRows([

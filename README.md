@@ -478,10 +478,11 @@ downloads require internet during setup only.
 
 2. Replace all example secrets in `.env`:
 
-   - `DB_PASSWORD`
-   - `GSS_SEED_PASSWORD` with at least 12 characters
-   - `REVERB_APP_KEY`
-   - `REVERB_APP_SECRET`
+   - `DB_PASSWORD`, for example `openssl rand -base64 18`
+   - `GSS_SEED_PASSWORD` with at least 12 characters, for example
+     `openssl rand -base64 18`
+   - `REVERB_APP_KEY`, for example `openssl rand -hex 16`
+   - `REVERB_APP_SECRET`, for example `openssl rand -hex 32`
 
 3. Install the locked dependencies:
 
@@ -891,6 +892,7 @@ failover, arbitrary queue reordering, or other new application features.
 
 Phase 10 deployment documentation:
 
+- [Opening the application](docs/opening-the-application.md)
 - [Deployment runbook](docs/deployment.md)
 - [Device setup checklist](docs/device-setup.md)
 - [Local network plan](docs/network-plan.md)

@@ -112,6 +112,29 @@ class StudentImportAccessAndUploadTest extends TestCase
                 ->assertForbidden();
             $this->actingAs($otherUser)
                 ->post(
+                    "/admin/students/import/{$studentImport->token}/media-package",
+                    [
+                        'media_package' => UploadedFile::fake()->create(
+                            'replacement.zip',
+                            1,
+                            'application/zip',
+                        ),
+                    ],
+                )
+                ->assertForbidden();
+            $this->actingAs($otherUser)
+                ->post(
+                    "/admin/students/import/{$studentImport->token}/csv",
+                    [
+                        'csv_file' => UploadedFile::fake()->createWithContent(
+                            'replacement.csv',
+                            'student_number',
+                        ),
+                    ],
+                )
+                ->assertForbidden();
+            $this->actingAs($otherUser)
+                ->post(
                     "/admin/students/import/{$studentImport->token}/confirm",
                     ['confirmed' => '1'],
                 )

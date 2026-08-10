@@ -49,7 +49,10 @@ final class InvalidateAnnouncementCandidates
                 $generation->update(['status' => AnnouncementGenerationStatus::Outdated]);
                 $invalidated++;
 
-                if ($student->audio_source_type === GraduateAudioSourceType::AzureTts
+                if (in_array($student->audio_source_type, [
+                    GraduateAudioSourceType::AzureTts,
+                    GraduateAudioSourceType::LocalTts,
+                ], true)
                     && (int) $student->audio_generation_id === (int) $generation->id) {
                     Student::query()->whereKey($student->id)->update([
                         'audio_readiness_status' => AudioReadinessStatus::NeedsReview->value,
@@ -162,7 +165,10 @@ final class InvalidateAnnouncementCandidates
     {
         Student::query()
             ->whereKey($generation->student_id)
-            ->where('audio_source_type', GraduateAudioSourceType::AzureTts->value)
+            ->whereIn('audio_source_type', [
+                GraduateAudioSourceType::AzureTts->value,
+                GraduateAudioSourceType::LocalTts->value,
+            ])
             ->where('audio_generation_id', $generation->id)
             ->update([
                 'audio_readiness_status' => AudioReadinessStatus::NeedsReview->value,

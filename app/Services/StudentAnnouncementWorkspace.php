@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\CandidateAudioStore;
 use App\Enums\AnnouncementGenerationStatus;
+use App\Enums\AnnouncementProvider;
 use App\Models\AnnouncementGeneration;
 use App\Models\AnnouncementTemplate;
 use App\Models\Student;
@@ -71,14 +72,16 @@ final class StudentAnnouncementWorkspace
                     'name' => $template->name,
                     'version' => $template->version,
                     'is_active' => $template->is_active,
+                    'provider' => $template->provider->value,
                     'default_voice' => $template->default_voice,
                     'default_locale' => $template->default_locale,
                 ]),
             'selected' => [
                 'template_id' => $activeTemplate?->id,
                 'voice' => $activeTemplate?->default_voice,
+                'provider' => $activeTemplate?->provider->value,
             ],
-            'voices' => collect($this->voices->all())->map(
+            'voices' => collect($this->voices->all($activeTemplate?->provider ?? AnnouncementProvider::Azure))->map(
                 static fn (string $locale, string $voice): array => [
                     'value' => $voice,
                     'locale' => $locale,
@@ -86,9 +89,18 @@ final class StudentAnnouncementWorkspace
                 ],
             )->values(),
             'preview' => $this->previewSerializer->serialize($preview),
-            'provider' => $canGenerate ? $this->providerHealth->offline() : null,
+            'provider' => $canGenerate && $activeTemplate !== null
+                ? $this->providerHealth->offline($activeTemplate->provider)
+                : null,
             'usage' => $canViewUsage ? $this->serializeUsage() : null,
             'generations' => $this->history($student),
+            'review_queue' => $canReview ? [
+                'remaining' => AnnouncementGeneration::query()
+                    ->where('ceremony_id', $student->ceremony_id)
+                    ->where('status', AnnouncementGenerationStatus::NeedsReview->value)
+                    ->count(),
+                'url' => route('admin.voice-generation').'#review-queue',
+            ] : null,
         ];
     }
 
@@ -114,6 +126,7 @@ final class StudentAnnouncementWorkspace
                     'plain_text' => $generation->plain_text,
                     'character_count' => $generation->character_count,
                     'voice' => $generation->provider_voice,
+                    'provider' => $generation->provider->value,
                     'locale' => $generation->locale,
                     'template' => $generation->template === null ? null : [
                         'name' => $generation->template->name,

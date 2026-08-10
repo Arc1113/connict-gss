@@ -8,6 +8,7 @@ const EMPTY_CONTROL = {
     version: 0,
     automatic_paused: false,
     display_mode: 'idle',
+    audio_status: 'stopped',
     current: null,
     waiting: [],
     skipped: [],
@@ -146,6 +147,9 @@ export default function StageControl({ ceremony }) {
                         return;
                     }
 
+                    void reconcile();
+                })
+                .listen('.stage.audio-status', () => {
                     void reconcile();
                 })
                 .subscribed(() => {
@@ -357,7 +361,13 @@ export default function StageControl({ ceremony }) {
                     </p>
                     <p>
                         <strong>Announcement</strong>
-                        <span>{current?.student.audio_status?.stage_label ?? 'No current graduate'}</span>
+                        <span>
+                            {control.audio_status === 'failed'
+                                ? 'Playback failed — replay or use the live announcer'
+                                : control.audio_status === 'playing'
+                                  ? 'Playing on audience display'
+                                  : current?.student.audio_status?.stage_label ?? 'No current graduate'}
+                        </span>
                     </p>
                     {automatic && (
                         <p className="stage-control-automatic-command">

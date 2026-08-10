@@ -107,21 +107,18 @@ export function getEcho() {
         return echoInstance;
     }
 
-    const key = import.meta.env.VITE_REVERB_APP_KEY;
+    const meta = (name) =>
+        document.querySelector(`meta[name="${name}"]`)?.getAttribute('content')?.trim();
+    const key = meta('gss-reverb-key');
 
     if (!key) {
         return null;
     }
 
-    const scheme =
-        import.meta.env.VITE_REVERB_SCHEME ||
-        (window.location.protocol === 'https:' ? 'https' : 'http');
-    const host =
-        import.meta.env.VITE_REVERB_HOST?.trim() || window.location.hostname;
-    const configuredPort = Number.parseInt(
-        import.meta.env.VITE_REVERB_PORT,
-        10,
-    );
+    const scheme = meta('gss-reverb-scheme')
+        || (window.location.protocol === 'https:' ? 'https' : 'http');
+    const host = meta('gss-reverb-host') || window.location.hostname;
+    const configuredPort = Number.parseInt(meta('gss-reverb-port'), 10);
     const port = Number.isNaN(configuredPort)
         ? scheme === 'https'
             ? 443

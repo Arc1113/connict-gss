@@ -76,6 +76,8 @@ services:
         depends_on:
             database:
                 condition: service_healthy
+            local-tts:
+                condition: service_healthy
         environment:
             DB_HOST: database
             DB_PORT: 5432
@@ -85,6 +87,34 @@ services:
         volumes:
             - .:/app
         working_dir: /app
+
+    local-tts:
+        build:
+            context: .
+            dockerfile: docker/local-tts/Dockerfile
+        environment:
+            HF_HUB_OFFLINE: "1"
+            TRANSFORMERS_OFFLINE: "1"
+            TRANSFORMERS_CACHE: /tmp/transformers
+        healthcheck:
+            test:
+                - CMD
+                - python
+                - -c
+                - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8880/health', timeout=2)"
+            interval: 10s
+            timeout: 3s
+            retries: 12
+            start_period: 90s
+        mem_limit: 3g
+        pids_limit: 256
+        read_only: true
+        restart: unless-stopped
+        tmpfs:
+            # The offline English phonemizer copies libespeak-ng into its
+            # isolated temp directory before loading it. Without `exec`,
+            # unfamiliar names and Latin honors are silently omitted.
+            - /tmp:size=256m,mode=1777,exec
 
     database:
         image: postgres:16-alpine

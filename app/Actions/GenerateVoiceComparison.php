@@ -2,7 +2,6 @@
 
 namespace App\Actions;
 
-use App\Contracts\TextToSpeechProvider;
 use App\Data\AnnouncementSynthesisRequest;
 use App\Enums\AnnouncementProvider;
 use App\Exceptions\CandidateAudioStorageException;
@@ -15,6 +14,7 @@ use App\Models\User;
 use App\Services\PreviewFictionalAnnouncement;
 use App\Services\PruneVoiceComparisonSamples;
 use App\Services\TemporaryVoiceSampleStore;
+use App\Services\TextToSpeechProviderRegistry;
 use App\Support\AdministrativeAuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -24,7 +24,7 @@ final class GenerateVoiceComparison
 {
     public function __construct(
         private readonly PreviewFictionalAnnouncement $previewer,
-        private readonly TextToSpeechProvider $provider,
+        private readonly TextToSpeechProviderRegistry $provider,
         private readonly TemporaryVoiceSampleStore $store,
         private readonly PruneVoiceComparisonSamples $pruner,
         private readonly AdministrativeAuditLogger $auditLogger,
@@ -59,13 +59,6 @@ final class GenerateVoiceComparison
             );
         }
 
-        if (! $this->provider->health()->isConfigured()) {
-            throw new VoiceComparisonException(
-                'azure_not_configured',
-                'Azure Speech is disabled or not configured safely for voice comparison.',
-            );
-        }
-
         $template = AnnouncementTemplate::query()
             ->whereBelongsTo($ceremony)
             ->where('is_active', true)
@@ -75,6 +68,17 @@ final class GenerateVoiceComparison
             throw new VoiceComparisonException(
                 'missing_active_template',
                 'Publish ceremony announcement settings before comparing voices.',
+            );
+        }
+
+        if (! $this->provider->healthFor($template->provider)->isConfigured()) {
+            throw new VoiceComparisonException(
+                $template->provider === AnnouncementProvider::Azure
+                    ? 'azure_not_configured'
+                    : 'local_tts_not_configured',
+                $template->provider === AnnouncementProvider::Azure
+                    ? 'Azure Speech is disabled or not configured safely for voice comparison.'
+                    : 'Local voice generation is disabled or not configured safely for voice comparison.',
             );
         }
 
@@ -101,6 +105,14 @@ final class GenerateVoiceComparison
                     locale: $composition->locale,
                     outputFormat: $composition->input->outputFormat,
                     sourceHash: $composition->sourceHash,
+                    provider: $composition->input->provider,
+                    speakingRatePercent: $composition->input->speakingRatePercent,
+                    pauseAfterNameMs: $composition->input->pauseAfterNameMs,
+                    pauseBetweenSectionsMs: $composition->input->pauseBetweenSectionsMs,
+                    sections: array_map(
+                        static fn ($section): array => ['code' => $section->code, 'text' => $section->spokenText],
+                        $composition->sections,
+                    ),
                 ));
                 $stored = $this->store->store($speech);
                 $prepared[] = compact('composition', 'stored');
@@ -155,7 +167,7 @@ final class GenerateVoiceComparison
                     $samples[] = AnnouncementVoiceSample::query()->create([
                         'ceremony_id' => $ceremony->id,
                         'announcement_template_id' => $template->id,
-                        'provider' => AnnouncementProvider::Azure->value,
+                        'provider' => $composition->input->provider->value,
                         'provider_voice' => $composition->voice,
                         'locale' => $composition->locale,
                         'character_count' => $composition->characterCount,

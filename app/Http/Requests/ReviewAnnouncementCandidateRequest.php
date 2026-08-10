@@ -15,6 +15,7 @@ class ReviewAnnouncementCandidateRequest extends FormRequest
     {
         return [
             'review_notes' => [$this->routeIs('admin.students.announcement-candidates.reject') ? 'required' : 'nullable', 'string', 'max:1000'],
+            'continue_review' => ['sometimes', 'boolean'],
         ];
     }
 }

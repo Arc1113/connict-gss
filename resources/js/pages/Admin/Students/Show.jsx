@@ -63,6 +63,11 @@ export default function StudentShow({ announcement, student }) {
             <PageHeader
                 actions={
                     <>
+                        {auth.abilities.generate_announcement_candidates && (
+                            <a className="admin-button admin-button-primary" href="#voice-generation">
+                                Generate voice
+                            </a>
+                        )}
                         {auth.abilities.prepare_qr_codes && (
                             <Link
                                 className="admin-button admin-button-secondary"
@@ -354,7 +359,9 @@ export default function StudentShow({ announcement, student }) {
                 </dl>
             </section>
 
-            <AnnouncementWorkspace announcement={announcement} student={student} />
+            <div id="voice-generation">
+                <AnnouncementWorkspace announcement={announcement} student={student} />
+            </div>
 
             <section className="admin-detail-section">
                 <h2>Record protection</h2>

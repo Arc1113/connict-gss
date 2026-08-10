@@ -8,6 +8,7 @@ use App\Enums\EligibilityStatus;
 use App\Enums\StageQueueStatus;
 use App\Enums\UserRole;
 use App\Events\AudioReplayRequested;
+use App\Events\StageAudioStatusChanged;
 use App\Models\Ceremony;
 use App\Models\StageQueueItem;
 use App\Models\StageState;
@@ -144,6 +145,58 @@ class StageAudioPlaybackPolicyTest extends TestCase
             'id' => $next->id,
             'status' => StageQueueStatus::Waiting->value,
         ]);
+    }
+
+    public function test_audience_display_reports_audio_status_for_the_current_version(): void
+    {
+        Event::fake();
+        $item = $this->presentingItem($this->student(
+            'PLAYBACK-STATUS',
+            AudioReadinessStatus::Approved,
+        ));
+        $version = $this->state->refresh()->version;
+
+        $this->actingAs($this->operator)
+            ->postJson('/stage/audio-status', [
+                'version' => $version,
+                'student_id' => $item->student_id,
+                'status' => 'playing',
+            ])
+            ->assertOk()
+            ->assertJsonPath('status', 'recorded')
+            ->assertJsonPath('audio_status', 'playing');
+
+        $this->assertDatabaseHas('stage_states', [
+            'id' => $this->state->id,
+            'version' => $version,
+            'audio_status' => 'playing',
+        ]);
+        Event::assertDispatched(StageAudioStatusChanged::class);
+    }
+
+    public function test_stale_audio_status_reports_cannot_change_the_current_presentation(): void
+    {
+        Event::fake();
+        $item = $this->presentingItem($this->student(
+            'STALE-PLAYBACK-STATUS',
+            AudioReadinessStatus::Approved,
+        ));
+        $version = $this->state->refresh()->version;
+
+        $this->actingAs($this->operator)
+            ->postJson('/stage/audio-status', [
+                'version' => $version - 1,
+                'student_id' => $item->student_id,
+                'status' => 'failed',
+            ])
+            ->assertConflict()
+            ->assertJsonPath('status', 'stale_presentation');
+
+        $this->assertDatabaseHas('stage_states', [
+            'id' => $this->state->id,
+            'audio_status' => 'stopped',
+        ]);
+        Event::assertNotDispatched(StageAudioStatusChanged::class);
     }
 
     private function student(

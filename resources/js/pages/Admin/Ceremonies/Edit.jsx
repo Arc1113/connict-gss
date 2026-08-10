@@ -6,6 +6,7 @@ import PageHeader from '../../../components/Admin/PageHeader';
 export default function CeremonyEdit({
     ceremony,
     presentationModeOptions,
+    stageDesignTemplates,
     statusOptions,
 }) {
     const formCeremony = {
@@ -26,6 +27,7 @@ export default function CeremonyEdit({
                 action={`/admin/ceremonies/${ceremony.id}`}
                 ceremony={formCeremony}
                 presentationModeOptions={presentationModeOptions}
+                stageDesignTemplates={stageDesignTemplates}
                 statusOptions={statusOptions}
                 submitLabel="Save ceremony"
             />

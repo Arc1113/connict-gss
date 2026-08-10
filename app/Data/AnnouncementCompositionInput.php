@@ -36,6 +36,7 @@ final readonly class AnnouncementCompositionInput
         public int $recommendedCharacterLimit,
         public int $maximumCharacterLimit,
         public string $outputFormat,
+        public AnnouncementProvider $provider = AnnouncementProvider::Azure,
     ) {}
 
     public function fingerprintData(): AnnouncementSourceFingerprintData
@@ -67,7 +68,7 @@ final readonly class AnnouncementCompositionInput
             includeAdditionalText: $this->includeAdditionalText,
             awardsLeadIn: $this->awardsLeadIn,
             closingText: $this->closingText,
-            provider: AnnouncementProvider::Azure,
+            provider: $this->provider,
             voice: $this->voice,
             locale: $this->locale,
             speakingRatePercent: $this->speakingRatePercent,

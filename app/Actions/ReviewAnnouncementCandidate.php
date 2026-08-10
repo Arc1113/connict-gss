@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Contracts\CandidateAudioStore;
 use App\Data\AnnouncementCandidateReviewResult;
 use App\Enums\AnnouncementGenerationStatus;
+use App\Enums\AnnouncementProvider;
 use App\Enums\AudioReadinessStatus;
 use App\Enums\GraduateAudioSourceType;
 use App\Exceptions\CandidateAudioStorageException;
@@ -100,7 +101,9 @@ final class ReviewAnnouncementCandidate
                 ]);
                 $lockedStudent->update([
                     'audio_path' => $promotedPath,
-                    'audio_source_type' => GraduateAudioSourceType::AzureTts,
+                    'audio_source_type' => $locked->provider === AnnouncementProvider::Kokoro
+                        ? GraduateAudioSourceType::LocalTts
+                        : GraduateAudioSourceType::AzureTts,
                     'audio_generation_id' => $locked->id,
                     'audio_source_hash' => $locked->source_hash,
                     'audio_readiness_status' => AudioReadinessStatus::Approved,

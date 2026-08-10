@@ -3,15 +3,18 @@
 namespace App\Services;
 
 use App\Data\AnnouncementIssue;
+use App\Enums\AnnouncementProvider;
 
 final class ApprovedAnnouncementVoices
 {
     /**
      * @return array<string, string>
      */
-    public function all(): array
+    public function all(AnnouncementProvider $provider = AnnouncementProvider::Azure): array
     {
-        $voices = config('announcements.voices', []);
+        $voices = $provider === AnnouncementProvider::Azure
+            ? config('announcements.voices', [])
+            : config('announcements.provider_voices.'.$provider->value, []);
 
         return is_array($voices) ? $voices : [];
     }
@@ -19,9 +22,12 @@ final class ApprovedAnnouncementVoices
     /**
      * @return list<AnnouncementIssue>
      */
-    public function validationIssues(string $voice, string $locale): array
-    {
-        $voices = $this->all();
+    public function validationIssues(
+        string $voice,
+        string $locale,
+        AnnouncementProvider $provider = AnnouncementProvider::Azure,
+    ): array {
+        $voices = $this->all($provider);
 
         if (! array_key_exists($voice, $voices)) {
             return [new AnnouncementIssue(

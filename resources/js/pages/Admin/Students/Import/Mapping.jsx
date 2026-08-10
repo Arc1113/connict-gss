@@ -2,6 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import AdminLayout from '../../../../components/Admin/AdminLayout';
 import { FieldError, ValidationSummary } from '../../../../components/Admin/FormSupport';
 import ImportProgress from '../../../../components/Admin/ImportProgress';
+import ImportSourceReplacements from '../../../../components/Admin/ImportSourceReplacements';
 import PageHeader from '../../../../components/Admin/PageHeader';
 
 export default function StudentImportMapping({
@@ -63,6 +64,8 @@ export default function StudentImportMapping({
                     </div>
                 </dl>
             </section>
+
+            <ImportSourceReplacements studentImport={studentImport} />
 
             <form className="admin-import-mapping-form" onSubmit={submit}>
                 <ValidationSummary errors={form.errors} />

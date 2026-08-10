@@ -55,6 +55,12 @@ export function buildNavigation(abilities, currentUrl) {
                     label: 'Ceremonies',
                     active: currentUrl.startsWith('/admin/ceremonies'),
                 },
+                abilities.manage_stage_designs && {
+                    href: '/admin/stage-designs',
+                    icon: 'audience',
+                    label: 'Stage designs',
+                    active: currentUrl.startsWith('/admin/stage-designs'),
+                },
                 abilities.import_students && {
                     href: '/admin/students/import',
                     icon: 'import',
@@ -74,6 +80,12 @@ export function buildNavigation(abilities, currentUrl) {
         {
             label: 'Operations',
             items: [
+                abilities.generate_announcement_candidates && {
+                    href: '/admin/voice-generation',
+                    icon: 'audio',
+                    label: 'Voice generation',
+                    active: currentUrl.startsWith('/admin/voice-generation'),
+                },
                 abilities.view_students && {
                     href: '/admin/students?media=audio_needs_review',
                     icon: 'audio',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\ReviewAnnouncementCandidate;
+use App\Enums\AnnouncementGenerationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ReviewAnnouncementCandidateRequest;
 use App\Models\AnnouncementGeneration;
@@ -34,6 +35,13 @@ class AnnouncementCandidateReviewController extends Controller
             ]);
         }
 
+        if ($request->boolean('continue_review')) {
+            return $this->continueReviewing(
+                $student,
+                'Candidate approved. The next voice is ready for review.',
+            );
+        }
+
         return back()->with('success', 'Candidate approved and promoted to active stage audio.');
     }
 
@@ -52,6 +60,36 @@ class AnnouncementCandidateReviewController extends Controller
             $request->ip(),
         );
 
+        if ($request->boolean('continue_review')) {
+            return $this->continueReviewing(
+                $student,
+                'Candidate rejected. The next voice is ready for review.',
+            );
+        }
+
         return back()->with('success', 'Candidate rejected. Active audio was not changed.');
+    }
+
+    private function continueReviewing(Student $student, string $message): RedirectResponse
+    {
+        $next = AnnouncementGeneration::query()
+            ->where('announcement_generations.ceremony_id', $student->ceremony_id)
+            ->where('announcement_generations.status', AnnouncementGenerationStatus::NeedsReview->value)
+            ->join('students', 'students.id', '=', 'announcement_generations.student_id')
+            ->orderBy('students.sequence_number')
+            ->orderBy('students.id')
+            ->orderBy('announcement_generations.id')
+            ->select('announcement_generations.*')
+            ->first();
+
+        if ($next === null) {
+            return redirect()
+                ->to(route('admin.voice-generation').'#review-queue')
+                ->with('success', 'Review queue complete. No generated voices are awaiting approval.');
+        }
+
+        return redirect()
+            ->to(route('admin.students.show', $next->student_id).'#announcement-candidate-'.$next->id)
+            ->with('success', $message);
     }
 }

@@ -20,7 +20,7 @@ use App\Policies\CeremonyPolicy;
 use App\Policies\StudentImportPolicy;
 use App\Policies\StudentPolicy;
 use App\Services\AtomicPrivateCandidateAudioStore;
-use App\Services\AzureSpeechProvider;
+use App\Services\TextToSpeechProviderRegistry;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(TextToSpeechProvider::class, AzureSpeechProvider::class);
+        $this->app->bind(TextToSpeechProvider::class, TextToSpeechProviderRegistry::class);
         $this->app->bind(CandidateAudioStore::class, AtomicPrivateCandidateAudioStore::class);
     }
 
@@ -140,6 +140,10 @@ class AppServiceProvider extends ServiceProvider
         );
         Gate::define(
             'manage-announcement-settings',
+            fn (User $user): bool => $user->hasRole(UserRole::Administrator),
+        );
+        Gate::define(
+            'manage-stage-designs',
             fn (User $user): bool => $user->hasRole(UserRole::Administrator),
         );
         Gate::define(

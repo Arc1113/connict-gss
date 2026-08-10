@@ -3,7 +3,6 @@
 namespace App\Actions;
 
 use App\Contracts\CandidateAudioStore;
-use App\Contracts\TextToSpeechProvider;
 use App\Data\AnnouncementCandidateGenerationResult;
 use App\Data\AnnouncementSynthesisRequest;
 use App\Enums\AnnouncementGenerationStatus;
@@ -16,6 +15,7 @@ use App\Models\AnnouncementTemplate;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\PreviewGraduationAnnouncement;
+use App\Services\TextToSpeechProviderRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
@@ -24,7 +24,7 @@ final class GenerateAnnouncementCandidate
 {
     public function __construct(
         private readonly PreviewGraduationAnnouncement $previewer,
-        private readonly TextToSpeechProvider $provider,
+        private readonly TextToSpeechProviderRegistry $provider,
         private readonly CandidateAudioStore $candidateStore,
     ) {}
 
@@ -39,13 +39,6 @@ final class GenerateAnnouncementCandidate
 
         if ($force) {
             Gate::forUser($actor)->authorize('manage-announcement-settings');
-        }
-
-        if (! $this->provider->health()->isConfigured()) {
-            throw new AnnouncementCandidateGenerationException(
-                'azure_not_configured',
-                'Azure Speech is disabled or not configured safely for preparation use.',
-            );
         }
 
         /** @var array{result?: AnnouncementCandidateGenerationResult, generation?: AnnouncementGeneration, request?: AnnouncementSynthesisRequest} $prepared */
@@ -75,10 +68,21 @@ final class GenerateAnnouncementCandidate
             $composition = $preview->composition;
             $input = $composition->input;
 
+            if (! $this->provider->healthFor($input->provider)->isConfigured()) {
+                throw new AnnouncementCandidateGenerationException(
+                    $input->provider === AnnouncementProvider::Azure
+                        ? 'azure_not_configured'
+                        : 'local_tts_not_configured',
+                    $input->provider === AnnouncementProvider::Azure
+                        ? 'Azure Speech is disabled or not configured safely for preparation use.'
+                        : 'Local voice generation is disabled or not configured safely for preparation use.',
+                );
+            }
+
             if (! $force) {
                 $existing = AnnouncementGeneration::query()
                     ->whereBelongsTo($lockedStudent)
-                    ->where('provider', AnnouncementProvider::Azure->value)
+                    ->where('provider', $input->provider->value)
                     ->where('provider_voice', $composition->voice)
                     ->where('locale', $composition->locale)
                     ->where('output_format', $input->outputFormat)
@@ -95,7 +99,7 @@ final class GenerateAnnouncementCandidate
 
                 $inProgress = AnnouncementGeneration::query()
                     ->whereBelongsTo($lockedStudent)
-                    ->where('provider', AnnouncementProvider::Azure->value)
+                    ->where('provider', $input->provider->value)
                     ->where('provider_voice', $composition->voice)
                     ->where('locale', $composition->locale)
                     ->where('output_format', $input->outputFormat)
@@ -118,7 +122,7 @@ final class GenerateAnnouncementCandidate
                 'student_id' => $lockedStudent->getKey(),
                 'ceremony_id' => $lockedStudent->ceremony_id,
                 'announcement_template_id' => $input->templateIdentifier,
-                'provider' => AnnouncementProvider::Azure,
+                'provider' => $input->provider,
                 'provider_voice' => $composition->voice,
                 'locale' => $composition->locale,
                 'plain_text' => $composition->plainText,
@@ -142,6 +146,14 @@ final class GenerateAnnouncementCandidate
                     locale: $composition->locale,
                     outputFormat: $input->outputFormat,
                     sourceHash: $composition->sourceHash,
+                    provider: $input->provider,
+                    speakingRatePercent: $input->speakingRatePercent,
+                    pauseAfterNameMs: $input->pauseAfterNameMs,
+                    pauseBetweenSectionsMs: $input->pauseBetweenSectionsMs,
+                    sections: array_map(
+                        static fn ($section): array => ['code' => $section->code, 'text' => $section->spokenText],
+                        $composition->sections,
+                    ),
                 ),
             ];
         }, 3);

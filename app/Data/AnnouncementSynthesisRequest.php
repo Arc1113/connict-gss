@@ -2,6 +2,8 @@
 
 namespace App\Data;
 
+use App\Enums\AnnouncementProvider;
+
 final readonly class AnnouncementSynthesisRequest
 {
     public function __construct(
@@ -12,5 +14,11 @@ final readonly class AnnouncementSynthesisRequest
         public string $locale,
         public string $outputFormat,
         public string $sourceHash,
+        public AnnouncementProvider $provider = AnnouncementProvider::Azure,
+        public int $speakingRatePercent = 0,
+        public int $pauseAfterNameMs = 0,
+        public int $pauseBetweenSectionsMs = 0,
+        /** @var list<array{code: string, text: string}> */
+        public array $sections = [],
     ) {}
 }

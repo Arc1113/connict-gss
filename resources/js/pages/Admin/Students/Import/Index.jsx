@@ -102,6 +102,7 @@ export default function StudentImportIndex({ ceremonies, limits, templateUrl }) 
                                     ZIP up to {limits.max_media_package_megabytes} MiB.
                                     Put portraits in <code>photos/</code> and announcements
                                     in <code>audio/</code>, then reference each filename in
+                                    the CSV. You may add or replace this ZIP after inspecting
                                     the CSV.
                                 </p>
                                 <FieldError
@@ -131,7 +132,8 @@ export default function StudentImportIndex({ ceremonies, limits, templateUrl }) 
                                 <p className="admin-field-hint" id="csv_file-hint">
                                     UTF-8 CSV, up to {limits.max_file_megabytes} MiB and{' '}
                                     {limits.max_rows.toLocaleString()} data rows. Comma,
-                                    semicolon, and tab delimiters are accepted.
+                                    semicolon, and tab delimiters are accepted. This file
+                                    supplies the paths used to match media in the ZIP.
                                 </p>
                                 <FieldError
                                     id="csv_file-error"

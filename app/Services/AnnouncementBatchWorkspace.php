@@ -42,10 +42,11 @@ final class AnnouncementBatchWorkspace
                 'id' => $template->id,
                 'name' => $template->name,
                 'version' => $template->version,
+                'provider' => $template->provider->value,
                 'voice' => $template->default_voice,
                 'locale' => $template->default_locale,
             ],
-            'provider' => $this->providerHealth->offline(),
+            'provider' => $template === null ? null : $this->providerHealth->offline($template->provider),
             'limits' => [
                 'maximum_students' => max(1, (int) config(
                     'announcements.batch_generation.maximum_students',
@@ -113,6 +114,7 @@ final class AnnouncementBatchWorkspace
             'approved_count' => $approvedCount,
             'estimated_character_count' => $batch->estimated_character_count,
             'voice' => $batch->provider_voice,
+            'provider' => $batch->provider->value,
             'locale' => $batch->locale,
             'template' => [
                 'name' => $batch->template->name,

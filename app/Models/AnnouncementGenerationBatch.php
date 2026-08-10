@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AnnouncementBatchStatus;
+use App\Enums\AnnouncementProvider;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'ceremony_id',
     'announcement_template_id',
+    'provider',
     'provider_voice',
     'locale',
     'selection_hash',
@@ -36,6 +38,7 @@ class AnnouncementGenerationBatch extends Model
     protected function casts(): array
     {
         return [
+            'provider' => AnnouncementProvider::class,
             'status' => AnnouncementBatchStatus::class,
             'selected_count' => 'integer',
             'processed_count' => 'integer',

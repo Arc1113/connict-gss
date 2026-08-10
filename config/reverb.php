@@ -2,6 +2,18 @@
 
 return [
 
+    'browser' => [
+        'host' => env('REVERB_BROWSER_HOST'),
+        'port' => env(
+            'REVERB_BROWSER_PORT',
+            env('REVERB_FORWARD_PORT', 8080),
+        ),
+        'scheme' => env(
+            'REVERB_BROWSER_SCHEME',
+            'http',
+        ),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Default Reverb Server

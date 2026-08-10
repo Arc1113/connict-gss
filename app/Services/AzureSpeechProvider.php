@@ -7,6 +7,7 @@ use App\Data\AnnouncementSynthesisRequest;
 use App\Data\AzureSpeechSettings;
 use App\Data\GeneratedSpeechResult;
 use App\Data\ProviderHealthResult;
+use App\Enums\AnnouncementProvider;
 use App\Exceptions\SpeechSynthesisException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -129,10 +130,12 @@ final class AzureSpeechProvider implements TextToSpeechProvider
         $voiceIssues = $this->approvedVoices->validationIssues(
             $request->voice,
             $request->locale,
+            AnnouncementProvider::Azure,
         );
         $outputFormat = (string) config('announcements.default_output_format');
 
-        if ($voiceIssues !== []
+        if ($request->provider !== AnnouncementProvider::Azure
+            || $voiceIssues !== []
             || $request->outputFormat !== $outputFormat
             || $request->ssml === ''
             || $request->plainText === ''

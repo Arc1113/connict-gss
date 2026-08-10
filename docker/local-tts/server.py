@@ -1,0 +1,82 @@
+import os
+import subprocess
+import tempfile
+from threading import Lock
+
+import numpy as np
+import soundfile as sf
+from fastapi import FastAPI, HTTPException, Response
+from pydantic import BaseModel, Field
+from kokoro import KPipeline
+
+ALLOWED_VOICES = {"af_heart", "af_bella"}
+SAMPLE_RATE = 24000
+MODEL_REVISION = "f3ff3571791e39611d31c381e3a41a3af07b4987"
+
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+pipeline = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
+synthesis_lock = Lock()
+
+
+class Section(BaseModel):
+    code: str = Field(max_length=64)
+    text: str = Field(min_length=1, max_length=5000)
+
+
+class SynthesisRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=5000)
+    sections: list[Section] = Field(default_factory=list, max_length=16)
+    voice: str
+    speed: float = Field(ge=0.5, le=2.0)
+    pause_after_name_ms: int = Field(ge=0, le=1500)
+    pause_between_sections_ms: int = Field(ge=0, le=1500)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ready", "model_revision": MODEL_REVISION}
+
+
+def render_text(text: str, voice: str, speed: float) -> np.ndarray:
+    chunks = [audio for _, _, audio in pipeline(text, voice=voice, speed=speed)]
+    if not chunks:
+        raise ValueError("Kokoro returned no audio")
+    return np.concatenate(chunks).astype(np.float32, copy=False)
+
+
+def pause(milliseconds: int) -> np.ndarray:
+    return np.zeros(int(SAMPLE_RATE * milliseconds / 1000), dtype=np.float32)
+
+
+@app.post("/v1/synthesize")
+def synthesize(request: SynthesisRequest):
+    if request.voice not in ALLOWED_VOICES:
+        raise HTTPException(status_code=422, detail="Unsupported local voice")
+    if not synthesis_lock.acquire(blocking=False):
+        raise HTTPException(status_code=503, detail="Local synthesis is busy")
+
+    try:
+        sections = request.sections or [Section(code="announcement", text=request.text)]
+        output = []
+        for index, section in enumerate(sections):
+            output.append(render_text(section.text, request.voice, request.speed))
+            if index < len(sections) - 1:
+                duration = request.pause_after_name_ms if section.code == "name" else request.pause_between_sections_ms
+                if duration:
+                    output.append(pause(duration))
+        audio = np.concatenate(output)
+
+        with tempfile.TemporaryDirectory(prefix="kokoro-") as directory:
+            wav_path = os.path.join(directory, "announcement.wav")
+            mp3_path = os.path.join(directory, "announcement.mp3")
+            sf.write(wav_path, audio, SAMPLE_RATE, subtype="PCM_16")
+            subprocess.run([
+                "lame", "--silent", "-m", "m", "-b", "48", "--resample", "24",
+                wav_path, mp3_path,
+            ], check=True, timeout=30)
+            with open(mp3_path, "rb") as generated:
+                return Response(generated.read(), media_type="audio/mpeg")
+    except (ValueError, subprocess.SubprocessError, OSError) as error:
+        raise HTTPException(status_code=500, detail="Local synthesis failed") from error
+    finally:
+        synthesis_lock.release()

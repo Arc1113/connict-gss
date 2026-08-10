@@ -6,6 +6,7 @@ use App\Data\AnnouncementAwardInput;
 use App\Data\AnnouncementCompositionInput;
 use App\Data\AnnouncementIssue;
 use App\Data\AnnouncementPreviewResult;
+use App\Enums\AnnouncementProvider;
 use App\Models\AnnouncementTemplate;
 use App\Models\Student;
 
@@ -45,10 +46,13 @@ final class PreviewGraduationAnnouncement
             ),
         )->all();
 
+        $provider = $template->provider ?? AnnouncementProvider::Azure;
         $selectedVoice = $voice ?? $template->default_voice;
         $selectedLocale = $voice === null
             ? $template->default_locale
-            : (string) config("announcements.voices.{$voice}", '');
+            : ($provider === AnnouncementProvider::Azure
+                ? (string) config("announcements.voices.{$voice}", '')
+                : (string) config("announcements.provider_voices.{$provider->value}.{$voice}", ''));
 
         $input = new AnnouncementCompositionInput(
             studentIdentifier: $student->getKey(),
@@ -80,6 +84,7 @@ final class PreviewGraduationAnnouncement
                 'announcements.default_output_format',
                 'audio-24khz-48kbitrate-mono-mp3',
             ),
+            provider: $provider,
         );
         $composition = $this->composer->compose($input);
         $ssml = $this->ssmlBuilder->build($composition);

@@ -103,6 +103,37 @@ class AnnouncementCandidateReviewTest extends AnnouncementTestCase
         Storage::disk('public')->assertExists('graduates/audio/existing.mp3');
     }
 
+    public function test_review_flow_redirects_to_the_next_generated_voice_in_ceremony_order(): void
+    {
+        [$firstStudent, $template] = $this->fixture();
+        $firstStudent->update(['sequence_number' => 10]);
+        $secondStudent = Student::factory()->for($firstStudent->ceremony)->create([
+            'sequence_number' => 20,
+        ]);
+        $firstCandidate = $this->candidate($firstStudent, $template);
+        $secondCandidate = $this->candidate($secondStudent, $template);
+        $administrator = User::factory()->role(UserRole::Administrator)->create();
+
+        $this->actingAs($administrator)
+            ->post(route(
+                'admin.students.announcement-candidates.approve',
+                [$firstStudent, $firstCandidate],
+            ), [
+                'review_notes' => 'Name and pacing verified.',
+                'continue_review' => true,
+            ])
+            ->assertRedirect(
+                route('admin.students.show', $secondStudent)
+                .'#announcement-candidate-'.$secondCandidate->id,
+            )
+            ->assertSessionHas('success');
+
+        $this->assertSame(
+            AnnouncementGenerationStatus::NeedsReview,
+            $secondCandidate->refresh()->status,
+        );
+    }
+
     public function test_stale_candidate_cannot_be_approved_and_audit_is_sanitized(): void
     {
         [$student, $template] = $this->fixture();

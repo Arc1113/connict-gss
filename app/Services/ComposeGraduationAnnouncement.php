@@ -168,7 +168,11 @@ final class ComposeGraduationAnnouncement
      */
     private function validateSettings(AnnouncementCompositionInput $input): array
     {
-        $issues = $this->approvedVoices->validationIssues($input->voice, $input->locale);
+        $issues = $this->approvedVoices->validationIssues(
+            $input->voice,
+            $input->locale,
+            $input->provider,
+        );
 
         if ($input->speakingRatePercent < $this->approvedVoices->minimumSpeakingRatePercent()
             || $input->speakingRatePercent > $this->approvedVoices->maximumSpeakingRatePercent()) {
@@ -303,6 +307,7 @@ final class ComposeGraduationAnnouncement
             recommendedCharacterLimit: $input->recommendedCharacterLimit,
             maximumCharacterLimit: $input->maximumCharacterLimit,
             outputFormat: $this->normalizer->normalize($input->outputFormat) ?? '',
+            provider: $input->provider,
         );
     }
 

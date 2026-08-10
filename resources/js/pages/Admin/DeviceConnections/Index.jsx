@@ -24,7 +24,7 @@ function CopyButton({ label, value }) {
     );
 }
 
-export default function DeviceConnectionsIndex({ connection }) {
+export default function DeviceConnectionsIndex({ connection, realtime }) {
     return (
         <AdminLayout>
             <Head title="Connect devices" />
@@ -166,6 +166,40 @@ export default function DeviceConnectionsIndex({ connection }) {
                         <code>{connection.certificate_fingerprint}</code>
                     </details>
                 )}
+            </section>
+
+            <section
+                aria-labelledby="realtime-diagnostics-heading"
+                className="device-connection-recovery"
+            >
+                <div className="admin-section-heading">
+                    <div>
+                        <h2 id="realtime-diagnostics-heading">Live update diagnostics</h2>
+                        <p>{realtime.guidance}</p>
+                    </div>
+                    <StatusText
+                        label={realtime.configured && realtime.service_reachable ? 'Ready' : 'Review required'}
+                        value={realtime.configured && realtime.service_reachable ? 'active' : 'warning'}
+                    />
+                </div>
+                <dl>
+                    <div>
+                        <dt>Browser endpoint</dt>
+                        <dd><code>{realtime.endpoint}</code></dd>
+                    </div>
+                    <div>
+                        <dt>Endpoint host</dt>
+                        <dd>{realtime.host_source}</dd>
+                    </div>
+                    <div>
+                        <dt>Page origin</dt>
+                        <dd>{realtime.origin_allowed ? `${realtime.origin} is allowed` : `${realtime.origin} is not allowed`}</dd>
+                    </div>
+                    <div>
+                        <dt>Reverb service</dt>
+                        <dd>{realtime.service_reachable ? 'Reachable from Laravel' : 'Not reachable from Laravel'}</dd>
+                    </div>
+                </dl>
             </section>
 
             <section

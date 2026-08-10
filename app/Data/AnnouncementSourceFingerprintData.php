@@ -8,6 +8,8 @@ final readonly class AnnouncementSourceFingerprintData
 {
     public const COMPOSITION_SCHEMA_VERSION = 1;
 
+    public const KOKORO_ENGINE_REVISION = 2;
+
     /**
      * @param  list<array{
      *     display_order: int,
@@ -86,6 +88,9 @@ final readonly class AnnouncementSourceFingerprintData
             ],
             'synthesis' => [
                 'provider' => $this->provider->value,
+                'engine_revision' => $this->provider === AnnouncementProvider::Kokoro
+                    ? self::KOKORO_ENGINE_REVISION
+                    : 1,
                 'voice' => $this->voice,
                 'locale' => $this->locale,
                 'speaking_rate_percent' => $this->speakingRatePercent,
