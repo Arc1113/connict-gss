@@ -8,6 +8,8 @@ export default function UserCreate({ roleOptions }) {
         <AdminLayout>
             <Head title="Add operator account" />
             <PageHeader
+                backHref="/admin/users"
+                backLabel="Operator accounts"
                 description="Create one local account and assign only the role needed for ceremony duties."
                 eyebrow="Operator accounts"
                 title="Add operator account"

@@ -101,7 +101,7 @@ final class StudentAnnouncementWorkspace
                     ->where('ceremony_id', $student->ceremony_id)
                     ->where('status', AnnouncementGenerationStatus::NeedsReview->value)
                     ->count(),
-                'url' => route('admin.voice-generation').'#review-queue',
+                'url' => route('admin.ceremonies.announcements', $student->ceremony).'#review-queue',
             ] : null,
         ];
     }

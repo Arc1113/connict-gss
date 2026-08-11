@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import ConfirmDialog from '../../../components/ConfirmDialog';
 import AdminLayout from '../../../components/Admin/AdminLayout';
 import { FieldError, ValidationSummary } from '../../../components/Admin/FormSupport';
 import PageHeader from '../../../components/Admin/PageHeader';
@@ -18,6 +19,7 @@ export default function StageDesignTemplateIndex({ templates }) {
     const [selectedId, setSelectedId] = useState(null);
     const form = useForm(blankDesign());
     const editing = selectedId !== null;
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
     function selectTemplate(template) {
         setSelectedId(template.id);
@@ -52,7 +54,7 @@ export default function StageDesignTemplateIndex({ templates }) {
     }
 
     function remove() {
-        if (!editing || !window.confirm(`Delete “${form.data.name}” from the design library? Ceremonies that already used it will keep their saved copy.`)) return;
+        if (!editing) return;
         form.delete(`/admin/stage-designs/${selectedId}`, {
             preserveScroll: true,
             onSuccess: () => startNew(),
@@ -61,6 +63,7 @@ export default function StageDesignTemplateIndex({ templates }) {
 
     return (
         <AdminLayout>
+            <ConfirmDialog busy={form.processing} confirmLabel="Delete design" description={`This removes “${form.data.name}” from the reusable library. Ceremonies that already used it keep their saved copy.`} onCancel={() => setConfirmDelete(false)} onConfirm={() => { setConfirmDelete(false); remove(); }} open={confirmDelete} title={`Delete ${form.data.name}?`} tone="danger" />
             <Head title="Stage designs" />
             <PageHeader
                 actions={<Link className="admin-button admin-button-secondary" href="/admin/ceremonies">Open ceremonies</Link>}
@@ -123,7 +126,7 @@ export default function StageDesignTemplateIndex({ templates }) {
                         </div>
                         <div className="admin-form-actions">
                             <button className="admin-button admin-button-primary" disabled={form.processing} type="submit">{form.processing ? 'Saving…' : editing ? 'Save design changes' : 'Save reusable design'}</button>
-                            {editing && <button className="admin-button admin-button-danger" disabled={form.processing} onClick={remove} type="button">Delete design</button>}
+                            {editing && <button className="admin-button admin-button-danger" disabled={form.processing} onClick={() => setConfirmDelete(true)} type="button">Delete design</button>}
                         </div>
                     </form>
                 </main>

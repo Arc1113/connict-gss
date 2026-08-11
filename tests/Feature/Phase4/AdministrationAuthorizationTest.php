@@ -42,12 +42,14 @@ class AdministrationAuthorizationTest extends TestCase
         $ceremony = Ceremony::factory()->create();
         $student = Student::factory()->create(['ceremony_id' => $ceremony->id]);
 
+        $this->actingAs($administrator)->get('/admin')->assertRedirect('/dashboard');
+
         foreach ([
-            '/admin',
             '/admin/ceremonies',
             '/admin/ceremonies/create',
             "/admin/ceremonies/{$ceremony->id}",
-            "/admin/ceremonies/{$ceremony->id}/edit",
+            "/admin/ceremonies/{$ceremony->id}/setup",
+            "/admin/ceremonies/{$ceremony->id}/announcements",
             '/admin/students',
             '/admin/students/create',
             "/admin/students/{$student->id}",
@@ -56,6 +58,10 @@ class AdministrationAuthorizationTest extends TestCase
         ] as $uri) {
             $this->actingAs($administrator)->get($uri)->assertOk();
         }
+
+        $this->actingAs($administrator)
+            ->get("/admin/ceremonies/{$ceremony->id}/edit")
+            ->assertRedirect("/admin/ceremonies/{$ceremony->id}/setup");
     }
 
     public function test_data_encoders_can_prepare_graduates_but_not_manage_ceremonies_or_delete(): void
@@ -64,10 +70,12 @@ class AdministrationAuthorizationTest extends TestCase
         $ceremony = Ceremony::factory()->create();
         $student = Student::factory()->create(['ceremony_id' => $ceremony->id]);
 
+        $this->actingAs($encoder)->get('/admin')->assertRedirect('/dashboard');
+
         foreach ([
-            '/admin',
             '/admin/ceremonies',
             "/admin/ceremonies/{$ceremony->id}",
+            "/admin/ceremonies/{$ceremony->id}/announcements",
             '/admin/students',
             '/admin/students/create',
             "/admin/students/{$student->id}",
@@ -78,6 +86,7 @@ class AdministrationAuthorizationTest extends TestCase
 
         foreach ([
             '/admin/ceremonies/create',
+            "/admin/ceremonies/{$ceremony->id}/setup",
             "/admin/ceremonies/{$ceremony->id}/edit",
             '/admin/audit-logs',
         ] as $uri) {

@@ -13,6 +13,7 @@ function formatDateTime(value) {
 export default function StudentImportSummary({
     graduateListUrl,
     summary,
+    workspace,
 }) {
     const modeLabel =
         summary.mode === 'create_only'
@@ -23,6 +24,8 @@ export default function StudentImportSummary({
         <AdminLayout>
             <Head title="Graduate import complete" />
             <PageHeader
+                backHref={graduateListUrl}
+                backLabel="Graduates"
                 description="The reviewed rows were committed together to PostgreSQL."
                 eyebrow="Graduate import"
                 title="Import complete"
@@ -105,7 +108,7 @@ export default function StudentImportSummary({
                     </Link>
                     <Link
                         className="admin-button admin-button-secondary"
-                        href="/admin/students/import"
+                        href={workspace?.urls.import ?? '/admin/students/import'}
                     >
                         Import another CSV
                     </Link>

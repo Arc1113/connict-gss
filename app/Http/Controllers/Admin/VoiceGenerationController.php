@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\AnnouncementGenerationStatus;
 use App\Enums\AudioReadinessStatus;
-use App\Enums\CeremonyStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AnnouncementGeneration;
 use App\Models\Ceremony;
 use App\Models\Student;
 use App\Services\TextToSpeechProviderHealth;
+use App\Support\WorkingCeremonyResolver;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -17,16 +18,37 @@ use Inertia\Response;
 
 final class VoiceGenerationController extends Controller
 {
-    public function __invoke(Request $request, TextToSpeechProviderHealth $health): Response
-    {
+    public function __construct(
+        private readonly WorkingCeremonyResolver $workingCeremonies,
+    ) {}
+
+    public function __invoke(
+        Request $request,
+        TextToSpeechProviderHealth $health,
+    ): Response|RedirectResponse {
         Gate::authorize('generate-announcement-candidates');
 
-        $activeCeremonies = Ceremony::query()
-            ->where('status', CeremonyStatus::Active)
-            ->with('activeAnnouncementTemplate')
-            ->limit(2)
-            ->get();
-        $ceremony = $activeCeremonies->count() === 1 ? $activeCeremonies->first() : null;
+        $routeCeremonyId = $request->route('ceremony');
+
+        if ($routeCeremonyId === null) {
+            $workingCeremony = $this->workingCeremonies->resolve($request);
+
+            if ($workingCeremony !== null) {
+                return redirect()->route('admin.ceremonies.announcements', $workingCeremony);
+            }
+        }
+
+        $ceremony = $routeCeremonyId === null
+            ? null
+            : Ceremony::query()->findOrFail($routeCeremonyId);
+
+        if ($ceremony !== null) {
+            Gate::authorize('view', $ceremony);
+            if ($this->workingCeremonies->canSwitch($request->user())) {
+                $this->workingCeremonies->store($request, $ceremony);
+            }
+            $ceremony->load('activeAnnouncementTemplate');
+        }
 
         $studentQuery = Student::query()->when(
             $ceremony,
@@ -57,6 +79,7 @@ final class VoiceGenerationController extends Controller
                 'ceremony' => $ceremony === null ? null : [
                     'id' => $ceremony->id,
                     'name' => $ceremony->name,
+                    'academic_year' => $ceremony->academic_year,
                     'template' => $ceremony->activeAnnouncementTemplate === null ? null : [
                         'version' => $ceremony->activeAnnouncementTemplate->version,
                         'provider' => $ceremony->activeAnnouncementTemplate->provider->value,
@@ -83,13 +106,20 @@ final class VoiceGenerationController extends Controller
                         'version' => $generation->template->version,
                     ],
                     'generated_at' => $generation->generated_at?->toIso8601String(),
-                    'review_url' => route('admin.students.show', $generation->student_id)
+                    'review_url' => route('admin.ceremonies.students.show', [$ceremony, $generation->student_id]).'?section=announcement'
                         .'#announcement-candidate-'.$generation->id,
                 ])->values(),
                 'permissions' => [
                     'settings' => $request->user()->can('manage-announcement-settings'),
                     'batches' => $request->user()->can('manage-announcement-batches'),
                     'review' => $request->user()->can('review-announcement-candidates'),
+                ],
+                'urls' => $ceremony === null ? null : [
+                    'overview' => route('admin.ceremonies.show', $ceremony),
+                    'graduates' => route('admin.ceremonies.students.index', $ceremony),
+                    'settings' => route('admin.ceremonies.announcement-settings.show', $ceremony),
+                    'batches' => route('admin.ceremonies.announcement-batches.index', $ceremony),
+                    'announcements' => route('admin.ceremonies.announcements', $ceremony),
                 ],
             ],
         ]);

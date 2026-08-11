@@ -32,7 +32,7 @@ class AuthenticationTest extends TestCase
             'password' => 'correct-password',
         ]);
 
-        $response->assertRedirect('/admin/students');
+        $response->assertRedirect('/dashboard');
         $this->assertAuthenticatedAs($user);
     }
 
@@ -55,11 +55,11 @@ class AuthenticationTest extends TestCase
     public static function roleHomeProvider(): array
     {
         return [
-            'administrator' => [UserRole::Administrator, '/admin'],
-            'data encoder' => [UserRole::DataEncoder, '/admin/students'],
-            'scanner operator' => [UserRole::ScannerOperator, '/scanner'],
-            'stage operator' => [UserRole::StageOperator, '/stage-control'],
-            'technical operator' => [UserRole::TechnicalOperator, '/admin/scan-logs'],
+            'administrator' => [UserRole::Administrator, '/dashboard'],
+            'data encoder' => [UserRole::DataEncoder, '/dashboard'],
+            'scanner operator' => [UserRole::ScannerOperator, '/dashboard'],
+            'stage operator' => [UserRole::StageOperator, '/dashboard'],
+            'technical operator' => [UserRole::TechnicalOperator, '/dashboard'],
         ];
     }
 

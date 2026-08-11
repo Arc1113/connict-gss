@@ -46,7 +46,7 @@ class AnnouncementWorkspaceTest extends AnnouncementTestCase
                 'candidate_audio_path' => 'announcement-candidates/private/candidate.mp3',
             ]);
 
-        $response = $this->actingAs($actor)->get(route('admin.students.show', $student));
+        $response = $this->actingAs($actor)->get(route('admin.students.show', $student).'?section=announcement');
 
         $response->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Admin/Students/Show')

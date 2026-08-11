@@ -17,20 +17,24 @@ use App\Models\StudentImport;
 use App\Services\StudentImportPreparation;
 use App\Support\StudentImportLimits;
 use App\Support\StudentImportMediaPackage;
+use App\Support\WorkingCeremonyResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StudentImportController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         Gate::authorize('create', StudentImport::class);
+
+        $workspaceCeremony = $this->resolveWorkspaceCeremony($request);
 
         StudentImport::query()
             ->where('expires_at', '<=', now()->utc())
@@ -38,9 +42,13 @@ class StudentImportController extends Controller
             ->each->delete();
 
         return Inertia::render('Admin/Students/Import/Index', [
-            'ceremonies' => $this->ceremonyOptions(),
+            'ceremonies' => $this->ceremonyOptions($workspaceCeremony),
             'limits' => StudentImportLimits::forBrowser(),
             'templateUrl' => route('admin.students.import.template'),
+            'workspace' => $this->workspaceContext(
+                $request,
+                $workspaceCeremony,
+            ),
         ]);
     }
 
@@ -48,34 +56,84 @@ class StudentImportController extends Controller
         InspectStudentImportRequest $request,
         InspectStudentImport $inspect,
     ): RedirectResponse {
+        $workspaceCeremony = $this->resolveWorkspaceCeremony($request);
+        $ceremonyId = $request->integer('ceremony_id')
+            ?: $workspaceCeremony?->id;
+
+        if ($ceremonyId === null) {
+            throw ValidationException::withMessages([
+                'ceremony_id' => 'Select an available destination ceremony.',
+            ]);
+        }
+
         $studentImport = $inspect->execute(
             $request->file('csv_file'),
             $request->file('media_package'),
-            $request->integer('ceremony_id'),
+            $ceremonyId,
             $request->user(),
         );
 
-        return redirect()->route(
-            'admin.students.import.mapping',
-            $studentImport,
+        return redirect()->to(
+            $this->importRoute(
+                $request,
+                $studentImport->ceremony,
+                'mapping',
+                $studentImport,
+            ),
         );
     }
 
     public function mapping(
+        Request $request,
         StudentImport $studentImport,
         StudentImportPreparation $preparation,
     ): Response|RedirectResponse {
         Gate::authorize('view', $studentImport);
 
-        if ($redirect = $this->unavailableRedirect($studentImport)) {
+        if ($redirect = $this->unavailableRedirect($request, $studentImport)) {
             return $redirect;
         }
+
+        $workspace = $this->workspaceContext($request, $studentImport->ceremony);
 
         return Inertia::render('Admin/Students/Import/Mapping', [
             'studentImport' => $this->serializeImport($studentImport),
             'mappingRows' => $preparation->mappingRows($studentImport),
             'targetOptions' => $preparation->targetOptions(),
+            'workspace' => [
+                ...($workspace ?? []),
+                'urls' => [
+                    ...(isset($workspace['urls']) ? $workspace['urls'] : []),
+                    'previewStore' => $this->importRoute(
+                        $request,
+                        $studentImport->ceremony,
+                        'preview.store',
+                        $studentImport,
+                    ),
+                    'csvReplace' => $this->importRoute(
+                        $request,
+                        $studentImport->ceremony,
+                        'csv.replace',
+                        $studentImport,
+                    ),
+                    'mediaPackageReplace' => $this->importRoute(
+                        $request,
+                        $studentImport->ceremony,
+                        'media-package.replace',
+                        $studentImport,
+                    ),
+                ],
+            ],
         ]);
+    }
+
+    public function mappingInCeremony(
+        Request $request,
+        $ceremony,
+        StudentImport $studentImport,
+        StudentImportPreparation $preparation,
+    ): Response|RedirectResponse {
+        return $this->mapping($request, $studentImport, $preparation);
     }
 
     public function storeMapping(
@@ -83,7 +141,7 @@ class StudentImportController extends Controller
         StudentImport $studentImport,
         StudentImportPreparation $preparation,
     ): RedirectResponse {
-        if ($redirect = $this->unavailableRedirect($studentImport)) {
+        if ($redirect = $this->unavailableRedirect($request, $studentImport)) {
             return $redirect;
         }
 
@@ -94,10 +152,23 @@ class StudentImportController extends Controller
 
         $studentImport->update(['mapping' => $mapping]);
 
-        return redirect()->route(
-            'admin.students.import.preview',
-            $studentImport,
+        return redirect()->to(
+            $this->importRoute(
+                $request,
+                $studentImport->ceremony,
+                'preview',
+                $studentImport,
+            ),
         );
+    }
+
+    public function storeMappingInCeremony(
+        SaveStudentImportMappingRequest $request,
+        $ceremony,
+        StudentImport $studentImport,
+        StudentImportPreparation $preparation,
+    ): RedirectResponse {
+        return $this->storeMapping($request, $studentImport, $preparation);
     }
 
     public function replaceMediaPackage(
@@ -105,7 +176,7 @@ class StudentImportController extends Controller
         StudentImport $studentImport,
         StudentImportMediaPackage $mediaPackage,
     ): RedirectResponse {
-        if ($redirect = $this->unavailableRedirect($studentImport)) {
+        if ($redirect = $this->unavailableRedirect($request, $studentImport)) {
             return $redirect;
         }
 
@@ -130,12 +201,21 @@ class StudentImportController extends Controller
         );
     }
 
+    public function replaceMediaPackageInCeremony(
+        ReplaceStudentImportMediaPackageRequest $request,
+        $ceremony,
+        StudentImport $studentImport,
+        StudentImportMediaPackage $mediaPackage,
+    ): RedirectResponse {
+        return $this->replaceMediaPackage($request, $studentImport, $mediaPackage);
+    }
+
     public function replaceCsv(
         ReplaceStudentImportCsvRequest $request,
         StudentImport $studentImport,
         ReplaceStudentImportCsv $replaceCsv,
     ): RedirectResponse {
-        if ($redirect = $this->unavailableRedirect($studentImport)) {
+        if ($redirect = $this->unavailableRedirect($request, $studentImport)) {
             return $redirect;
         }
 
@@ -144,16 +224,29 @@ class StudentImportController extends Controller
             $request->file('csv_file'),
         );
 
-        $route = $studentImport->mapping === null
-            ? 'admin.students.import.mapping'
-            : 'admin.students.import.preview';
         $message = $studentImport->mapping === null
             ? 'The CSV was replaced. Review the column mapping before continuing.'
             : 'The CSV was replaced. The media ZIP and column mapping were kept.';
 
         return redirect()
-            ->route($route, $studentImport)
+            ->to(
+                $this->importRoute(
+                    $request,
+                    $studentImport->ceremony,
+                    $studentImport->mapping === null ? 'mapping' : 'preview',
+                    $studentImport,
+                ),
+            )
             ->with('success', $message);
+    }
+
+    public function replaceCsvInCeremony(
+        ReplaceStudentImportCsvRequest $request,
+        $ceremony,
+        StudentImport $studentImport,
+        ReplaceStudentImportCsv $replaceCsv,
+    ): RedirectResponse {
+        return $this->replaceCsv($request, $studentImport, $replaceCsv);
     }
 
     public function preview(
@@ -163,13 +256,13 @@ class StudentImportController extends Controller
     ): Response|RedirectResponse {
         Gate::authorize('view', $studentImport);
 
-        if ($redirect = $this->unavailableRedirect($studentImport)) {
+        if ($redirect = $this->unavailableRedirect($request, $studentImport)) {
             return $redirect;
         }
 
         if ($studentImport->mapping === null) {
             return redirect()
-                ->route('admin.students.import.mapping', $studentImport)
+                ->to($this->importRoute($request, $studentImport->ceremony, 'mapping', $studentImport))
                 ->with('warning', 'Review the column mapping before previewing rows.');
         }
 
@@ -186,13 +279,20 @@ class StudentImportController extends Controller
             currentPage: $page,
             options: [
                 'path' => route(
-                    'admin.students.import.preview',
-                    $studentImport,
+                    $request->route('ceremony') instanceof Ceremony
+                        ? 'admin.ceremonies.students.import.preview'
+                        : 'admin.students.import.preview',
+                    array_filter([
+                        'ceremony' => $request->route('ceremony'),
+                        'studentImport' => $studentImport,
+                    ]),
                 ),
                 'pageName' => 'page',
             ],
         );
         unset($preview['rows']);
+
+        $workspace = $this->workspaceContext($request, $studentImport->ceremony);
 
         return Inertia::render('Admin/Students/Import/Preview', [
             'studentImport' => $this->serializeImport($studentImport),
@@ -200,7 +300,46 @@ class StudentImportController extends Controller
                 ...$preview,
                 'rows' => $rows,
             ],
+            'workspace' => [
+                ...($workspace ?? []),
+                'urls' => [
+                    ...(isset($workspace['urls']) ? $workspace['urls'] : []),
+                    'mapping' => $this->importRoute(
+                        $request,
+                        $studentImport->ceremony,
+                        'mapping',
+                        $studentImport,
+                    ),
+                    'confirm' => $this->importRoute(
+                        $request,
+                        $studentImport->ceremony,
+                        'confirm',
+                        $studentImport,
+                    ),
+                    'csvReplace' => $this->importRoute(
+                        $request,
+                        $studentImport->ceremony,
+                        'csv.replace',
+                        $studentImport,
+                    ),
+                    'mediaPackageReplace' => $this->importRoute(
+                        $request,
+                        $studentImport->ceremony,
+                        'media-package.replace',
+                        $studentImport,
+                    ),
+                ],
+            ],
         ]);
+    }
+
+    public function previewInCeremony(
+        Request $request,
+        $ceremony,
+        StudentImport $studentImport,
+        StudentImportPreparation $preparation,
+    ): Response|RedirectResponse {
+        return $this->preview($request, $studentImport, $preparation);
     }
 
     public function confirm(
@@ -214,13 +353,27 @@ class StudentImportController extends Controller
             $request->ip(),
         );
 
-        return redirect()->route(
-            'admin.students.import.summary',
-            $confirmedImport,
+        return redirect()->to(
+            $this->importRoute(
+                $request,
+                $confirmedImport->ceremony,
+                'summary',
+                $confirmedImport,
+            ),
         );
     }
 
+    public function confirmInCeremony(
+        ConfirmStudentImportRequest $request,
+        $ceremony,
+        StudentImport $studentImport,
+        ConfirmStudentImport $confirm,
+    ): RedirectResponse {
+        return $this->confirm($request, $studentImport, $confirm);
+    }
+
     public function summary(
+        Request $request,
         StudentImport $studentImport,
     ): Response|RedirectResponse {
         Gate::authorize('view', $studentImport);
@@ -229,23 +382,30 @@ class StudentImportController extends Controller
             $studentImport->delete();
 
             return redirect()
-                ->route('admin.students.import.index')
+                ->to($this->importIndexUrl($request, $studentImport->ceremony))
                 ->with('warning', 'The import summary expired. Start a new import when needed.');
         }
 
         if (! $studentImport->isConsumed() || $studentImport->summary === null) {
             return redirect()
-                ->route('admin.students.import.preview', $studentImport)
+                ->to($this->importRoute($request, $studentImport->ceremony, 'preview', $studentImport))
                 ->with('warning', 'Confirm the reviewed import before opening its summary.');
         }
 
         return Inertia::render('Admin/Students/Import/Summary', [
             'studentImport' => $this->serializeImport($studentImport),
             'summary' => $studentImport->summary,
-            'graduateListUrl' => route('admin.students.index', [
-                'ceremony_id' => $studentImport->ceremony_id,
-            ]),
+            'graduateListUrl' => route('admin.ceremonies.students.index', $studentImport->ceremony),
+            'workspace' => $this->workspaceContext($request, $studentImport->ceremony),
         ]);
+    }
+
+    public function summaryInCeremony(
+        Request $request,
+        $ceremony,
+        StudentImport $studentImport,
+    ): Response|RedirectResponse {
+        return $this->summary($request, $studentImport);
     }
 
     public function template(): StreamedResponse
@@ -333,16 +493,22 @@ class StudentImportController extends Controller
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function ceremonyOptions(): array
+    private function ceremonyOptions(?Ceremony $lockedCeremony = null): array
     {
-        return Ceremony::query()
+        $ceremonies = Ceremony::query()
             ->whereNotIn('status', [
                 CeremonyStatus::Completed,
                 CeremonyStatus::Archived,
             ])
             ->orderByDesc('event_date')
             ->orderBy('name')
-            ->get(['id', 'name', 'academic_year', 'status'])
+            ->get(['id', 'name', 'academic_year', 'status']);
+
+        if ($lockedCeremony !== null) {
+            $ceremonies = $ceremonies->where('id', $lockedCeremony->id)->values();
+        }
+
+        return $ceremonies
             ->map(fn (Ceremony $ceremony): array => [
                 'id' => $ceremony->id,
                 'name' => $ceremony->name,
@@ -386,21 +552,94 @@ class StudentImportController extends Controller
     }
 
     private function unavailableRedirect(
+        Request $request,
         StudentImport $studentImport,
     ): ?RedirectResponse {
         if ($studentImport->isExpired()) {
             $studentImport->delete();
 
             return redirect()
-                ->route('admin.students.import.index')
+                ->to($this->importIndexUrl($request, $studentImport->ceremony))
                 ->with('warning', 'The import preview expired. Upload the CSV again.');
         }
 
         return $studentImport->isConsumed()
-            ? redirect()->route(
-                'admin.students.import.summary',
+            ? redirect()->to($this->importRoute(
+                $request,
+                $studentImport->ceremony,
+                'summary',
                 $studentImport,
-            )
+            ))
             : null;
+    }
+
+    private function resolveWorkspaceCeremony(Request $request): ?Ceremony
+    {
+        $routeCeremonyId = $request->route('ceremony');
+
+        if ($routeCeremonyId !== null) {
+            $routeCeremony = Ceremony::query()->findOrFail($routeCeremonyId);
+            Gate::authorize('view', $routeCeremony);
+            $workingCeremonies = app(WorkingCeremonyResolver::class);
+
+            if ($workingCeremonies->canSwitch($request->user())) {
+                $workingCeremonies->store($request, $routeCeremony);
+            }
+
+            return $routeCeremony;
+        }
+
+        return app(WorkingCeremonyResolver::class)->resolve($request);
+    }
+
+    private function importIndexUrl(Request $request, ?Ceremony $ceremony): string
+    {
+        if ($request->route('ceremony') !== null && $ceremony !== null) {
+            return route('admin.ceremonies.students.import.index', $ceremony);
+        }
+
+        return route('admin.students.import.index');
+    }
+
+    private function importRoute(
+        Request $request,
+        ?Ceremony $ceremony,
+        string $route,
+        StudentImport $studentImport,
+    ): string {
+        if ($request->route('ceremony') !== null && $ceremony !== null) {
+            return route("admin.ceremonies.students.import.{$route}", [
+                'ceremony' => $ceremony,
+                'studentImport' => $studentImport,
+            ]);
+        }
+
+        return route("admin.students.import.{$route}", $studentImport);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function workspaceContext(Request $request, ?Ceremony $ceremony): ?array
+    {
+        if ($ceremony === null) {
+            return null;
+        }
+
+        return [
+            'locked' => $this->resolveWorkspaceCeremony($request)?->is($ceremony) ?? false,
+            'ceremony' => [
+                'id' => $ceremony->id,
+                'name' => $ceremony->name,
+                'academic_year' => $ceremony->academic_year,
+                'status' => $ceremony->status->label(),
+            ],
+            'urls' => [
+                'graduates' => route('admin.ceremonies.students.index', $ceremony),
+                'import' => route('admin.ceremonies.students.import.index', $ceremony),
+                'inspect' => route('admin.ceremonies.students.import.inspect', $ceremony),
+                'overview' => route('admin.ceremonies.show', $ceremony),
+            ],
+        ];
     }
 }

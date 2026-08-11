@@ -5,16 +5,17 @@ import { buildNavigation } from './appNavigation';
 import CommandPalette from './CommandPalette';
 
 export default function OperationCommandMenu() {
-    const { auth } = usePage().props;
+    const { auth, workingCeremonyContext } = usePage().props;
     const currentUrl = usePage().url;
     const [open, setOpen] = useState(false);
     const [mode, setMode] = useState('commands');
+    const workingCeremony = workingCeremonyContext?.ceremony;
     const commands = useMemo(
         () =>
-            buildNavigation(auth.abilities, currentUrl).flatMap((group) =>
+            buildNavigation(auth.abilities, currentUrl, { workingCeremony }).flatMap((group) =>
                 group.items.map((item) => ({ ...item, group: group.label })),
             ),
-        [auth.abilities, currentUrl],
+        [auth.abilities, currentUrl, workingCeremony],
     );
 
     useEffect(() => {

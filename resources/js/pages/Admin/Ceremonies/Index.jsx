@@ -28,7 +28,7 @@ export default function CeremonyIndex({
                         </Link>
                     )
                 }
-                description="Review ceremony identity, schedule, status, and presentation mode."
+                description="Open a ceremony workspace, review lifecycle status, and manage preparation context."
                 eyebrow="Administration"
                 title="Ceremonies"
             />
@@ -134,7 +134,11 @@ export default function CeremonyIndex({
                             <tbody>
                                 {ceremonies.data.map((ceremony) => (
                                     <tr key={ceremony.id}>
-                                        <th scope="row">{ceremony.name}</th>
+                                        <th scope="row">
+                                            <Link href={`/admin/ceremonies/${ceremony.id}`}>
+                                                {ceremony.name}
+                                            </Link>
+                                        </th>
                                         <td>{ceremony.academic_year || 'Not set'}</td>
                                         <td>
                                             <span className="admin-cell-primary">
@@ -155,14 +159,14 @@ export default function CeremonyIndex({
                                                 className="admin-row-action"
                                                 href={`/admin/ceremonies/${ceremony.id}`}
                                             >
-                                                View
+                                                Open workspace
                                             </Link>
                                             {auth.abilities.manage_ceremonies && (
                                                 <Link
                                                     className="admin-row-action"
-                                                    href={`/admin/ceremonies/${ceremony.id}/edit`}
+                                                    href={`/admin/ceremonies/${ceremony.id}/setup`}
                                                 >
-                                                    Edit
+                                                    Setup
                                                 </Link>
                                             )}
                                         </td>

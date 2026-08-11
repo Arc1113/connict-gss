@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\VoiceComparisonController;
 use App\Http\Controllers\Admin\VoiceGenerationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CompleteCurrentPresentationController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LocalCertificateController;
 use App\Http\Controllers\OnboardingProgressController;
 use App\Http\Controllers\PhoneOnboardingController;
@@ -34,9 +35,9 @@ use App\Http\Controllers\ScannerController;
 use App\Http\Controllers\ScannerLookupController;
 use App\Http\Controllers\StageControlController;
 use App\Http\Controllers\StageController;
+use App\Http\Controllers\WorkspaceCeremonyController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/connect-phone', PhoneOnboardingController::class)
     ->name('phone-onboarding');
@@ -64,9 +65,9 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/onboarding/{tourKey}/reset', [OnboardingProgressController::class, 'reset'])
         ->where('tourKey', '[a-z0-9-]+')
         ->name('onboarding.reset');
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::post('/workspace/ceremony', WorkspaceCeremonyController::class)
+        ->name('workspace.ceremony');
 
     Route::get('/scanner', ScannerController::class)
         ->middleware('can:operate-scanner')
@@ -154,6 +155,101 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/backups', [BackupController::class, 'store'])->name('backups.store');
         Route::post('/backups/{backup}/verify', [BackupController::class, 'verify'])->name('backups.verify');
 
+        Route::get(
+            '/ceremonies/{ceremony}/setup',
+            [CeremonyController::class, 'setup'],
+        )->name('ceremonies.setup');
+        Route::get(
+            '/ceremonies/{ceremony}/graduates',
+            [StudentController::class, 'index'],
+        )->name('ceremonies.students.index');
+        Route::get(
+            '/ceremonies/{ceremony}/graduates/create',
+            [StudentController::class, 'create'],
+        )->name('ceremonies.students.create');
+        Route::get(
+            '/ceremonies/{ceremony}/graduates/{student}',
+            [StudentController::class, 'showInCeremony'],
+        )->name('ceremonies.students.show');
+        Route::get(
+            '/ceremonies/{ceremony}/graduates/{student}/edit',
+            [StudentController::class, 'editInCeremony'],
+        )->name('ceremonies.students.edit');
+        Route::put(
+            '/ceremonies/{ceremony}/graduates/{student}',
+            [StudentController::class, 'updateInCeremony'],
+        )->name('ceremonies.students.update');
+        Route::prefix('ceremonies/{ceremony}/import')
+            ->name('ceremonies.students.import.')
+            ->group(function (): void {
+                Route::get('/', [StudentImportController::class, 'index'])
+                    ->name('index');
+                Route::post('/inspect', [StudentImportController::class, 'inspect'])
+                    ->name('inspect');
+                Route::get(
+                    '/{studentImport}/mapping',
+                    [StudentImportController::class, 'mappingInCeremony'],
+                )->name('mapping');
+                Route::post(
+                    '/{studentImport}/preview',
+                    [StudentImportController::class, 'storeMappingInCeremony'],
+                )->name('preview.store');
+                Route::post(
+                    '/{studentImport}/media-package',
+                    [StudentImportController::class, 'replaceMediaPackageInCeremony'],
+                )->name('media-package.replace');
+                Route::post(
+                    '/{studentImport}/csv',
+                    [StudentImportController::class, 'replaceCsvInCeremony'],
+                )->name('csv.replace');
+                Route::get(
+                    '/{studentImport}/preview',
+                    [StudentImportController::class, 'previewInCeremony'],
+                )->name('preview');
+                Route::post(
+                    '/{studentImport}/confirm',
+                    [StudentImportController::class, 'confirmInCeremony'],
+                )->name('confirm');
+                Route::get(
+                    '/{studentImport}/summary',
+                    [StudentImportController::class, 'summaryInCeremony'],
+                )->name('summary');
+            });
+        Route::get(
+            '/ceremonies/{ceremony}/qr',
+            [StudentQrCodeController::class, 'index'],
+        )->name('ceremonies.students.qr.index');
+        Route::post(
+            '/ceremonies/{ceremony}/qr/batch',
+            [StudentQrCodeController::class, 'batch'],
+        )->name('ceremonies.students.qr.batch');
+        Route::get(
+            '/ceremonies/{ceremony}/qr/{student}',
+            [StudentQrCodeController::class, 'showInCeremony'],
+        )->name('ceremonies.students.qr.show');
+        Route::get(
+            '/ceremonies/{ceremony}/qr/{student}/print',
+            [StudentQrCodeController::class, 'printInCeremony'],
+        )->name('ceremonies.students.qr.print');
+        Route::post(
+            '/ceremonies/{ceremony}/qr/{student}/regenerate',
+            [StudentQrCodeController::class, 'regenerateInCeremony'],
+        )->name('ceremonies.students.qr.regenerate');
+        Route::get(
+            '/ceremonies/{ceremony}/announcements',
+            VoiceGenerationController::class,
+        )->name('ceremonies.announcements');
+        Route::get(
+            '/ceremonies/{ceremony}/{section}',
+            [CeremonyController::class, 'section'],
+        )->whereIn('section', [
+            'graduates',
+            'import',
+            'qr',
+            'announcements',
+            'stage-design',
+            'readiness',
+        ])->name('ceremonies.section');
         Route::resource('ceremonies', CeremonyController::class);
         Route::resource('stage-designs', StageDesignTemplateController::class)
             ->parameters(['stage-designs' => 'stageDesignTemplate'])

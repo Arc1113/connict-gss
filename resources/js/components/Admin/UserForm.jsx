@@ -1,4 +1,6 @@
 import { Link, useForm } from '@inertiajs/react';
+import { useState } from 'react';
+import ConfirmDialog from '../ConfirmDialog';
 import { FieldError, RequiredNote, ValidationSummary } from './FormSupport';
 
 const ROLE_GUIDANCE = {
@@ -30,6 +32,15 @@ export default function UserForm({
         password: '',
         password_confirmation: '',
     });
+    const [confirmAccessChange, setConfirmAccessChange] = useState(false);
+
+    function persist() {
+        if (editing) {
+            put(action, { preserveScroll: true });
+            return;
+        }
+        post(action, { preserveScroll: true });
+    }
 
     function submit(event) {
         event.preventDefault();
@@ -37,24 +48,12 @@ export default function UserForm({
         const roleChanged = editing && data.role !== managedUser.role.value;
         const statusChanged = editing && data.is_active !== managedUser.is_active;
 
-        if (
-            (roleChanged || statusChanged) &&
-            !window.confirm(
-                `Save access changes for ${data.name || 'this operator'}? The new role or account status applies at the next authorization check.`,
-            )
-        ) {
-            return;
-        }
-
-        if (editing) {
-            put(action, { preserveScroll: true });
-            return;
-        }
-
-        post(action, { preserveScroll: true });
+        if (roleChanged || statusChanged) return setConfirmAccessChange(true);
+        persist();
     }
 
     return (
+        <><ConfirmDialog busy={processing} confirmLabel={data.is_active ? 'Save access changes' : 'Deactivate account'} description={`${data.name || 'This operator'}’s new role or account status applies at the next authorization check. Historical records are preserved.`} onCancel={() => setConfirmAccessChange(false)} onConfirm={() => { setConfirmAccessChange(false); persist(); }} open={confirmAccessChange} title={data.is_active ? `Save access changes for ${data.name || 'this operator'}?` : `Deactivate ${data.name || 'this operator'}?`} tone={data.is_active ? 'warning' : 'danger'} />
         <form className="admin-form" onSubmit={submit}>
             <ValidationSummary errors={errors} />
             <RequiredNote />
@@ -248,6 +247,6 @@ export default function UserForm({
                     Cancel
                 </Link>
             </div>
-        </form>
+        </form></>
     );
 }

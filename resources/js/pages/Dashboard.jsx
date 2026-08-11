@@ -1,96 +1,26 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import AppIcon from '../components/AppIcon';
 import AppShell from '../components/AppShell';
 
-const ROLE_DEFAULTS = {
-    administrator: '/admin',
-    data_encoder: '/admin/students',
-    scanner_operator: '/scanner',
-    stage_operator: '/stage-control',
-    technical_operator: '/admin/scan-logs',
-};
+function ceremonyMeta(ceremony) {
+    return [ceremony.academic_year, ceremony.event_date, ceremony.status]
+        .filter(Boolean)
+        .join(' · ');
+}
 
 export default function Dashboard() {
-    const { auth, ceremonyContext } = usePage().props;
-    const { abilities, user } = auth;
-    const operations = [];
-
-    if (abilities.view_ceremonies || abilities.view_students) {
-        operations.push({
-            href: '/admin',
-            icon: 'overview',
-            title: 'Ceremony readiness',
-            copy: 'Review blockers, counts, and the active ceremony.',
-        });
-    } else if (abilities.view_operational_logs) {
-        operations.push({
-            href: '/admin/scan-logs',
-            icon: 'scanLog',
-            title: 'Technical operations',
-            copy: 'Review scanner and stage evidence during live operations.',
-        });
-    }
-
-    if (abilities.operate_scanner) {
-        operations.push({
-            href: '/scanner',
-            icon: 'scanner',
-            title: 'Arrival scanner',
-            copy: 'Process graduate QR codes and controlled manual lookups.',
-        });
-    }
-
-    if (abilities.operate_stage) {
-        operations.push({
-            href: '/stage-control',
-            icon: 'stage',
-            title: 'Stage control',
-            copy: 'Advance the live queue and recover presentation state.',
-        });
-        operations.push({
-            href: '/stage',
-            icon: 'audience',
-            title: 'Audience stage',
-            copy: 'Open the committed presentation view on the projector.',
-            external: true,
-        });
-    }
-
-    if (abilities.view_backups) {
-        operations.push({
-            href: '/admin/backups',
-            icon: 'backup',
-            title: 'Backups',
-            copy: 'Create and verify local recovery copies.',
-        });
-    }
-
-    const defaultPath = ROLE_DEFAULTS[user.role.value] ?? operations[0]?.href;
-    const primary =
-        operations.find((operation) => operation.href === defaultPath) ??
-        operations[0];
-    const status = {
-        ready: {
-            label: 'Ready for ceremony work',
-            detail: ceremonyContext.active?.name,
-            tone: 'ready',
-        },
-        none: {
-            label: 'Preparation required',
-            detail: 'No active ceremony is available for live operations.',
-            tone: 'warning',
-        },
-        conflict: {
-            label: 'Activation conflict',
-            detail: 'More than one ceremony is active.',
-            tone: 'danger',
-        },
-        unavailable: {
-            label: 'Status unavailable',
-            detail: 'The local database could not confirm ceremony readiness.',
-            tone: 'danger',
-        },
-    }[ceremonyContext.state];
+    const { auth, overview } = usePage().props;
+    const workingCeremony = overview.working_ceremony;
+    const live = overview.live_ceremony;
+    const liveCeremony = live.ceremony;
+    const primary = overview.primary_action;
+    const attention = overview.attention ?? [];
+    const actions = overview.relevant_actions ?? [];
+    const liveCopy = {
+        ready: ['Active', ceremonyMeta(liveCeremony)],
+        none: ['No live ceremony', 'Scanner and stage operations are unavailable until a ceremony is active.'],
+        conflict: ['Live ceremony conflict', 'More than one ceremony is active. Scanner and stage operations remain safely blocked.'],
+        unavailable: ['Live ceremony unavailable', 'The local database could not confirm live ceremony state.'],
+    }[live.state];
 
     return (
         <AppShell>
@@ -105,71 +35,98 @@ export default function Dashboard() {
                 <div>
                     <p>Overview</p>
                     <h1>Operations overview</h1>
-                    <span>{user.role.label} workspace · choose the next authorized task.</span>
+                    <span>{auth.user.role.label} workspace · state and priority for your authorized work.</span>
                 </div>
             </header>
 
-            <section
-                className={`overview-readiness app-status-${status.tone}`}
-                aria-label="Operational readiness"
-            >
-                <span className="app-status-symbol" aria-hidden="true" />
-                <div>
-                    <strong>{status.label}</strong>
-                    <span>{status.detail}</span>
-                </div>
-                {abilities.view_ceremonies && (
-                    <Link href="/admin/ceremonies">View ceremonies</Link>
-                )}
-            </section>
+            {workingCeremony ? (
+                <section className="overview-ceremony-panel" aria-labelledby="working-ceremony">
+                    <div>
+                        <p>Preparation context</p>
+                        <h2 id="working-ceremony">Working ceremony</h2>
+                    </div>
+                    <div className="overview-ceremony-panel-detail">
+                        <strong>{workingCeremony.name}</strong>
+                        <span>{ceremonyMeta(workingCeremony)}</span>
+                    </div>
+                    <Link href={`/admin/ceremonies/${workingCeremony.id}`}>
+                        Continue preparation
+                    </Link>
+                </section>
+            ) : overview.working_ceremony === null ? (
+                <section className="overview-ceremony-panel overview-empty-state" aria-labelledby="working-ceremony">
+                    <div>
+                        <p>Preparation context</p>
+                        <h2 id="working-ceremony">No working ceremony selected</h2>
+                        <span>Choose a ceremony to begin preparation.</span>
+                    </div>
+                    <Link href="/admin/ceremonies">Choose ceremony</Link>
+                </section>
+            ) : null}
+
+            {attention.length > 0 && (
+                <section className="overview-attention" aria-labelledby="needs-attention">
+                    <header>
+                        <div>
+                            <h2 id="needs-attention">Needs attention</h2>
+                            <p>These blockers apply to the Working Ceremony only.</p>
+                        </div>
+                    </header>
+                    <ol>
+                        {attention.map((item) => (
+                            <li key={item.label}>
+                                <span>
+                                    <strong>{item.label}</strong>
+                                    <small>{item.detail}</small>
+                                </span>
+                                <Link href={item.href}>Review</Link>
+                            </li>
+                        ))}
+                    </ol>
+                </section>
+            )}
 
             {primary && (
                 <section className="overview-next-action" aria-labelledby="next-action">
-                    <AppIcon name={primary.icon} size={22} />
                     <div>
-                        <span>Primary workspace</span>
-                        <h2 id="next-action">{primary.title}</h2>
-                        <p>{primary.copy}</p>
+                        <span>{overview.next_action ? 'Next action' : 'Primary workspace'}</span>
+                        <h2 id="next-action">{primary.title || primary.label}</h2>
+                        <p>{primary.detail}</p>
                     </div>
                     <Link
                         className="primary-action"
                         href={primary.href}
-                        rel={primary.external ? 'noreferrer' : undefined}
-                        target={primary.external ? '_blank' : undefined}
                     >
-                        Open {primary.title.toLowerCase()}
+                        {primary.label}
                     </Link>
                 </section>
             )}
 
-            <section className="overview-tools" aria-labelledby="available-tools">
-                <header>
-                    <h2 id="available-tools">Available workspaces</h2>
-                    <span>{operations.length} authorized</span>
-                </header>
-                <ul>
-                    {operations.map((operation) => (
-                        <li key={`${operation.href}-${operation.title}`}>
-                            <Link
-                                href={operation.href}
-                                rel={operation.external ? 'noreferrer' : undefined}
-                                target={operation.external ? '_blank' : undefined}
-                            >
-                                <AppIcon name={operation.icon} />
-                                <span>
-                                    <strong>{operation.title}</strong>
-                                    <small>{operation.copy}</small>
-                                </span>
-                                {operation.external ? (
-                                    <AppIcon name="external" size={15} />
-                                ) : (
-                                    <AppIcon name="chevron" size={15} />
-                                )}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
+            <section className="overview-ceremony-panel overview-live-ceremony" aria-labelledby="live-ceremony">
+                <div>
+                    <p>Live operations context</p>
+                    <h2 id="live-ceremony">Live ceremony</h2>
+                </div>
+                <div className="overview-ceremony-panel-detail">
+                    <strong>{liveCeremony?.name || liveCopy[0]}</strong>
+                    <span>{liveCeremony ? ceremonyMeta(liveCeremony) : liveCopy[1]}</span>
+                </div>
             </section>
+
+            {actions.length > 0 && (
+                <nav className="overview-relevant-actions" aria-label="Relevant actions">
+                    {actions.map((action) => (
+                        <Link
+                            href={action.href}
+                            key={action.href}
+                            rel={action.external ? 'noreferrer' : undefined}
+                            target={action.external ? '_blank' : undefined}
+                        >
+                            {action.label}
+                        </Link>
+                    ))}
+                </nav>
+            )}
         </AppShell>
     );
 }

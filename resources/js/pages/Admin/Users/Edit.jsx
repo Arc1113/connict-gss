@@ -8,6 +8,8 @@ export default function UserEdit({ managedUser, roleOptions }) {
         <AdminLayout>
             <Head title={`Edit ${managedUser.name}`} />
             <PageHeader
+                backHref="/admin/users"
+                backLabel="Operator accounts"
                 description="Change role, account status, or replace the local password. Every saved change is audited."
                 eyebrow="Operator accounts"
                 title={`Edit ${managedUser.name}`}

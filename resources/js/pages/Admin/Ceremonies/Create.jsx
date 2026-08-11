@@ -12,6 +12,8 @@ export default function CeremonyCreate({
         <AdminLayout>
             <Head title="Add ceremony" />
             <PageHeader
+                backHref="/admin/ceremonies"
+                backLabel="Ceremonies"
                 description="Create the ceremony record and choose its initial operational state."
                 eyebrow="Ceremonies"
                 title="Add ceremony"

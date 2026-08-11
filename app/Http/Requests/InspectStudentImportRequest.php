@@ -23,7 +23,7 @@ class InspectStudentImportRequest extends FormRequest
     {
         return [
             'ceremony_id' => [
-                'required',
+                'nullable',
                 'integer',
                 Rule::exists('ceremonies', 'id')
                     ->whereNotIn('status', [

@@ -4,9 +4,14 @@ import { FieldError, ValidationSummary } from '../../../../components/Admin/Form
 import ImportProgress from '../../../../components/Admin/ImportProgress';
 import PageHeader from '../../../../components/Admin/PageHeader';
 
-export default function StudentImportIndex({ ceremonies, limits, templateUrl }) {
+export default function StudentImportIndex({
+    ceremonies,
+    limits,
+    templateUrl,
+    workspace,
+}) {
     const form = useForm({
-        ceremony_id: ceremonies[0]?.id ?? '',
+        ceremony_id: workspace?.ceremony?.id ?? ceremonies[0]?.id ?? '',
         csv_file: null,
         media_package: null,
     });
@@ -14,7 +19,7 @@ export default function StudentImportIndex({ ceremonies, limits, templateUrl }) 
 
     function submit(event) {
         event.preventDefault();
-        form.post('/admin/students/import/inspect', {
+        form.post(workspace?.urls.inspect ?? '/admin/students/import/inspect', {
             forceFormData: true,
         });
     }
@@ -26,13 +31,13 @@ export default function StudentImportIndex({ ceremonies, limits, templateUrl }) 
                 actions={
                     <Link
                         className="admin-button admin-button-secondary"
-                        href="/admin/students"
+                        href={workspace?.urls.graduates ?? '/admin/students'}
                     >
                         Return to graduate records
                     </Link>
                 }
                 description="Inspect graduate data and optional local media before any records are created."
-                eyebrow="Graduate data preparation"
+                eyebrow={workspace ? 'Ceremony workspace' : 'Graduate data preparation'}
                 title="Import graduate records"
             />
             <ImportProgress currentStep={1} />
@@ -47,38 +52,59 @@ export default function StudentImportIndex({ ceremonies, limits, templateUrl }) 
                     <fieldset className="admin-form-section">
                         <legend>Destination and source file</legend>
                         <div className="admin-form-grid">
-                            <div className="admin-field admin-field-wide">
-                                <label htmlFor="ceremony_id">
-                                    Destination ceremony <span aria-hidden="true">*</span>
-                                </label>
-                                <select
-                                    aria-describedby="ceremony_id-hint ceremony_id-error"
-                                    aria-invalid={Boolean(form.errors.ceremony_id)}
-                                    disabled={!hasCeremonies || form.processing}
-                                    id="ceremony_id"
-                                    onChange={(event) =>
-                                        form.setData('ceremony_id', event.target.value)
-                                    }
-                                    value={form.data.ceremony_id}
-                                >
-                                    {!hasCeremonies && (
-                                        <option value="">No available ceremonies</option>
-                                    )}
-                                    {ceremonies.map((ceremony) => (
-                                        <option key={ceremony.id} value={ceremony.id}>
-                                            {ceremony.name} — {ceremony.academic_year} (
-                                            {ceremony.status.label})
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="admin-field-hint" id="ceremony_id-hint">
-                                    The import creates new graduates in this ceremony only.
-                                </p>
-                                <FieldError
-                                    id="ceremony_id-error"
-                                    message={form.errors.ceremony_id}
-                                />
-                            </div>
+                            {workspace?.locked ? (
+                                <div className="admin-field admin-field-wide">
+                                    <label>Destination</label>
+                                    <div className="admin-readonly-field">
+                                        <strong>{workspace.ceremony.name}</strong>
+                                        <span>
+                                            {workspace.ceremony.academic_year} ·{' '}
+                                            {workspace.ceremony.status}
+                                        </span>
+                                    </div>
+                                    <input
+                                        name="ceremony_id"
+                                        type="hidden"
+                                        value={form.data.ceremony_id}
+                                    />
+                                    <p className="admin-field-hint">
+                                        The import creates new graduates in this ceremony only.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="admin-field admin-field-wide">
+                                    <label htmlFor="ceremony_id">
+                                        Destination ceremony <span aria-hidden="true">*</span>
+                                    </label>
+                                    <select
+                                        aria-describedby="ceremony_id-hint ceremony_id-error"
+                                        aria-invalid={Boolean(form.errors.ceremony_id)}
+                                        disabled={!hasCeremonies || form.processing}
+                                        id="ceremony_id"
+                                        onChange={(event) =>
+                                            form.setData('ceremony_id', event.target.value)
+                                        }
+                                        value={form.data.ceremony_id}
+                                    >
+                                        {!hasCeremonies && (
+                                            <option value="">No available ceremonies</option>
+                                        )}
+                                        {ceremonies.map((ceremony) => (
+                                            <option key={ceremony.id} value={ceremony.id}>
+                                                {ceremony.name} — {ceremony.academic_year} (
+                                                {ceremony.status.label})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="admin-field-hint" id="ceremony_id-hint">
+                                        The import creates new graduates in this ceremony only.
+                                    </p>
+                                    <FieldError
+                                        id="ceremony_id-error"
+                                        message={form.errors.ceremony_id}
+                                    />
+                                </div>
+                            )}
 
                             <div className="admin-field admin-field-wide">
                                 <label htmlFor="media_package">

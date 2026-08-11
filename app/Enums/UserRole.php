@@ -23,12 +23,6 @@ enum UserRole: string
 
     public function homePath(): string
     {
-        return match ($this) {
-            self::Administrator => '/admin',
-            self::DataEncoder => '/admin/students',
-            self::ScannerOperator => '/scanner',
-            self::StageOperator => '/stage-control',
-            self::TechnicalOperator => '/admin/scan-logs',
-        };
+        return '/dashboard';
     }
 }

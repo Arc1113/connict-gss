@@ -11,35 +11,48 @@ import OnboardingGuide from './OnboardingGuide';
 function ceremonyCopy(ceremonyContext) {
     return {
         ready: {
-            detail: ceremonyContext.active?.academic_year || 'Active ceremony',
-            label: ceremonyContext.active?.name || 'Active ceremony',
+            detail: ceremonyContext.ceremony?.academic_year || 'Active ceremony',
+            label: ceremonyContext.ceremony?.name || 'Active ceremony',
             shortLabel: 'active',
             tone: 'ready',
+            title: 'Live ceremony',
         },
         none: {
             detail: 'Live operations blocked',
             label: 'No active ceremony',
             shortLabel: 'not active',
             tone: 'warning',
+            title: 'Live ceremony',
         },
         conflict: {
             detail: 'Correct ceremony statuses',
             label: 'Activation conflict',
             shortLabel: 'conflict',
             tone: 'danger',
+            title: 'Live ceremony',
         },
         unavailable: {
             detail: 'Check the local database',
             label: 'Ceremony unavailable',
             shortLabel: 'unavailable',
             tone: 'danger',
+            title: 'Live ceremony',
         },
     }[ceremonyContext.state];
 }
 
 export default function AppShell({ children }) {
-    const { application, auth, ceremonyContext, onboarding } = usePage().props;
+    const {
+        application,
+        auth,
+        ceremonyContext,
+        liveCeremonyContext,
+        onboarding,
+        workingCeremonyContext,
+    } = usePage().props;
     const currentUrl = usePage().url;
+    const [pendingWorkingCeremony, setPendingWorkingCeremony] = useState(null);
+    const [isSwitchingWorkingCeremony, setIsSwitchingWorkingCeremony] = useState(false);
     const [collapsed, setCollapsed] = useState(() => {
         try {
             return window.localStorage.getItem('gss-sidebar-collapsed') === 'true';
@@ -52,9 +65,10 @@ export default function AppShell({ children }) {
     const [paletteMode, setPaletteMode] = useState('commands');
     const [online, setOnline] = useState(() => navigator.onLine);
     const [echoState, setEchoState] = useState('connecting');
+    const workingCeremony = workingCeremonyContext?.ceremony;
     const navigation = useMemo(
-        () => buildNavigation(auth.abilities, currentUrl),
-        [auth.abilities, currentUrl],
+        () => buildNavigation(auth.abilities, currentUrl, { workingCeremony }),
+        [auth.abilities, currentUrl, workingCeremony],
     );
     const commands = useMemo(
         () =>
@@ -67,7 +81,19 @@ export default function AppShell({ children }) {
         currentUrl === '/admin'
             ? 'Ceremony readiness'
             : commands.find((command) => command.active)?.label ?? 'Workspace';
-    const ceremony = ceremonyCopy(ceremonyContext);
+    const liveCeremony = ceremonyCopy(liveCeremonyContext ?? ceremonyContext);
+    const canSwitchWorkingCeremony = Boolean(workingCeremonyContext?.can_switch);
+    const availableWorkingCeremonies = workingCeremonyContext?.available ?? [];
+    const selectedWorkingCeremony =
+        pendingWorkingCeremony ?? String(workingCeremony?.id ?? '');
+    const workingCeremonyMeta = [
+        workingCeremony?.academic_year,
+        workingCeremony?.status?.label,
+    ]
+        .filter(Boolean)
+        .join(' · ');
+    const isWorkingSelectionUnchanged =
+        selectedWorkingCeremony === String(workingCeremony?.id ?? '');
 
     useEffect(() => {
         const handleOnline = () => setOnline(true);
@@ -177,6 +203,31 @@ export default function AppShell({ children }) {
             ? { label: 'Connecting', shortLabel: 'connecting', tone: 'warning' }
             : { label: 'Live disconnected', shortLabel: 'disconnected', tone: 'danger' };
 
+    const submitWorkingCeremony = (event) => {
+        event.preventDefault();
+
+        if (!selectedWorkingCeremony || isWorkingSelectionUnchanged) {
+            return;
+        }
+
+        setIsSwitchingWorkingCeremony(true);
+        router.post(
+            '/workspace/ceremony',
+            { ceremony_id: Number(selectedWorkingCeremony) },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setIsSwitchingWorkingCeremony(false);
+                    setPendingWorkingCeremony(null);
+                },
+            },
+        );
+    };
+
+    const ceremonyManagementLink = auth.abilities.view_ceremonies ? (
+        <Link href="/admin/ceremonies">Manage ceremonies</Link>
+    ) : null;
+
     return (
         <div
             className="app-shell"
@@ -259,16 +310,74 @@ export default function AppShell({ children }) {
                         </span>
                     </div>
 
-                    <div className={`app-toolbar-ceremony app-status-${ceremony.tone}`}>
+                    <div className={`app-toolbar-ceremony app-status-${liveCeremony.tone}`}>
                         <span className="app-status-symbol" aria-hidden="true" />
                         <span>
-                            <strong>{ceremony.label}</strong>
-                            <small>{ceremony.detail}</small>
+                            <small>{liveCeremony.title}</small>
+                            <strong>{liveCeremony.label}</strong>
+                            <small>{liveCeremony.detail}</small>
                         </span>
                     </div>
 
                     <div className="app-toolbar-actions">
-                        <div className={`app-connection app-status-${connection.tone}`} data-tour="application-connection">
+                        {canSwitchWorkingCeremony && (
+                            <form
+                                className="app-working-ceremony-switcher"
+                                onSubmit={submitWorkingCeremony}
+                            >
+                                <label htmlFor="working-ceremony-select">
+                                    Working ceremony
+                                </label>
+                                {availableWorkingCeremonies.length > 0 ? (
+                                    <>
+                                        <div className="app-working-ceremony-switcher-controls">
+                                            <select
+                                                disabled={isSwitchingWorkingCeremony}
+                                                id="working-ceremony-select"
+                                                onChange={(event) =>
+                                                    setPendingWorkingCeremony(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                value={selectedWorkingCeremony}
+                                            >
+                                                {availableWorkingCeremonies.map((ceremony) => (
+                                                    <option
+                                                        key={ceremony.id}
+                                                        value={String(ceremony.id)}
+                                                    >
+                                                        {ceremony.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                disabled={
+                                                    isSwitchingWorkingCeremony
+                                                    || isWorkingSelectionUnchanged
+                                                }
+                                                type="submit"
+                                            >
+                                                {isSwitchingWorkingCeremony ? 'Switching' : 'Switch'}
+                                            </button>
+                                        </div>
+                                        <small>
+                                            {workingCeremonyMeta || 'Choose a ceremony to prepare.'}
+                                        </small>
+                                        {ceremonyManagementLink}
+                                    </>
+                                ) : (
+                                    <span className="app-working-ceremony-empty">
+                                        <strong>No working ceremony selected</strong>
+                                        <small>Choose a ceremony to begin preparation.</small>
+                                        {ceremonyManagementLink}
+                                    </span>
+                                )}
+                            </form>
+                        )}
+                        <div
+                            className={`app-connection app-status-${connection.tone}`}
+                            data-tour="application-connection"
+                        >
                             <span className="app-status-symbol" aria-hidden="true" />
                             <span>{connection.label}</span>
                         </div>
@@ -305,7 +414,7 @@ export default function AppShell({ children }) {
                     {children}
                 </main>
                 <SystemStatusBar
-                    ceremony={ceremony}
+                    ceremony={liveCeremony}
                     connection={connection}
                     online={online}
                     version={application?.version}

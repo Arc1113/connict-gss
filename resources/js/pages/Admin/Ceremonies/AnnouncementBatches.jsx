@@ -4,6 +4,7 @@ import AdminLayout from '../../../components/Admin/AdminLayout';
 import { ValidationSummary } from '../../../components/Admin/FormSupport';
 import PageHeader from '../../../components/Admin/PageHeader';
 import StatusText from '../../../components/Admin/StatusText';
+import ConfirmDialog from '../../../components/ConfirmDialog';
 import { getEcho } from '../../../lib/echo';
 
 const ACTIVE_STATUSES = new Set(['queued', 'running', 'paused']);
@@ -26,30 +27,38 @@ function statusLabel(batch) {
 
 function BatchCard({ batch, ceremonyId, providerReady }) {
     const [pendingAction, setPendingAction] = useState(null);
+    const [confirmation, setConfirmation] = useState(null);
     const percentage = batch.selected_count === 0
         ? 0
         : Math.round((batch.processed_count / batch.selected_count) * 100);
 
     function cancel() {
-        if (!window.confirm('Cancel all queued items? An in-flight provider request will finish safely.')) return;
+        setConfirmation('cancel');
+    }
+
+    function confirmCancel() {
         setPendingAction('cancel');
         router.post(`/admin/ceremonies/${ceremonyId}/announcement-batches/${batch.id}/cancel`, {}, {
             preserveScroll: true,
-            onFinish: () => setPendingAction(null),
+            onFinish: () => { setPendingAction(null); setConfirmation(null); },
         });
     }
 
     function resume() {
-        if (!window.confirm('Resume this batch on the sequential preparation worker?')) return;
+        setConfirmation('resume');
+    }
+
+    function confirmResume() {
         setPendingAction('resume');
         router.post(`/admin/ceremonies/${ceremonyId}/announcement-batches/${batch.id}/resume`, {}, {
             preserveScroll: true,
-            onFinish: () => setPendingAction(null),
+            onFinish: () => { setPendingAction(null); setConfirmation(null); },
         });
     }
 
     return (
         <article className="announcement-batch-card">
+            <ConfirmDialog busy={pendingAction !== null} confirmLabel={confirmation === 'cancel' ? 'Cancel queued items' : 'Resume batch'} description={confirmation === 'cancel' ? 'Queued items will be cancelled. An in-flight provider request will finish safely.' : 'This paused batch will resume on the sequential preparation worker.'} onCancel={() => setConfirmation(null)} onConfirm={confirmation === 'cancel' ? confirmCancel : confirmResume} open={Boolean(confirmation)} title={confirmation === 'cancel' ? 'Cancel announcement batch?' : 'Resume announcement batch?'} tone={confirmation === 'cancel' ? 'danger' : 'warning'} />
             <header>
                 <div>
                     <p className="announcement-kicker">Batch #{batch.id} · template v{batch.template.version}</p>
@@ -121,6 +130,7 @@ export default function AnnouncementBatches({ workspace }) {
     const { ceremony, limits, provider, template, usage } = workspace;
     const form = useForm({ student_ids: [], budget_acknowledged: false });
     const [refreshing, setRefreshing] = useState(false);
+    const [confirmStart, setConfirmStart] = useState(false);
     const refreshLock = useRef(false);
     const selected = new Set(form.data.student_ids);
     const selectedStudents = workspace.students.filter((student) => selected.has(student.id));
@@ -209,21 +219,27 @@ export default function AnnouncementBatches({ workspace }) {
 
     function submit(event) {
         event.preventDefault();
-        if (!window.confirm(`Queue ${selectedStudents.length} graduates in ceremony sequence order? Candidates will still require individual review and approval.`)) return;
+        setConfirmStart(true);
+    }
+
+    function confirmStartBatch() {
         form.post(`/admin/ceremonies/${ceremony.id}/announcement-batches`, {
             preserveScroll: true,
             onSuccess: () => form.reset(),
+            onFinish: () => setConfirmStart(false),
         });
     }
 
     return (
         <AdminLayout>
+            <ConfirmDialog busy={form.processing} confirmLabel="Start announcement generation" description={`${selectedStudents.length} graduates will be queued in ceremony sequence order. Candidates still require individual review and approval.`} onCancel={() => setConfirmStart(false)} onConfirm={confirmStartBatch} open={confirmStart} title="Start announcement generation?" tone="warning" />
             <Head title={`Announcement batches · ${ceremony.name}`} />
             <PageHeader
+                backHref={`/admin/ceremonies/${ceremony.id}/announcements`}
+                backLabel="Announcements"
                 actions={(
                     <>
                         <Link className="admin-button admin-button-secondary" href={`/admin/ceremonies/${ceremony.id}/announcement-settings`}>Announcement settings</Link>
-                        <Link className="admin-button admin-button-secondary" href={`/admin/ceremonies/${ceremony.id}`}>Back to ceremony</Link>
                     </>
                 )}
                 description="Queue a bounded, deterministic set of private candidates on the preparation-only worker."

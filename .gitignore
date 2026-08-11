@@ -38,6 +38,8 @@ Thumbs.db
 /docs/evidence/**/*.webm
 /playwright-report/
 /test-results/
+/.browser-e2e-storage/
+/.browser-e2e-results/
 
 # Windows release payloads and installer binaries are generated from signed
 # runtime inputs in CI. Never commit proprietary runtime binaries or releases.

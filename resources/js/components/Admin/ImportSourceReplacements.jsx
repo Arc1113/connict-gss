@@ -1,7 +1,7 @@
 import CsvReplacement from './CsvReplacement';
 import MediaPackageReplacement from './MediaPackageReplacement';
 
-export default function ImportSourceReplacements({ studentImport }) {
+export default function ImportSourceReplacements({ studentImport, workspace }) {
     return (
         <section aria-labelledby="replace-import-source-title">
             <div className="admin-section-heading">
@@ -11,8 +11,14 @@ export default function ImportSourceReplacements({ studentImport }) {
                 </div>
             </div>
             <div className="admin-source-replacements">
-                <CsvReplacement studentImport={studentImport} />
-                <MediaPackageReplacement studentImport={studentImport} />
+                <CsvReplacement
+                    studentImport={studentImport}
+                    workspace={workspace}
+                />
+                <MediaPackageReplacement
+                    studentImport={studentImport}
+                    workspace={workspace}
+                />
             </div>
         </section>
     );

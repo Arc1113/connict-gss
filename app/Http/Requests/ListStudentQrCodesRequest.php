@@ -27,6 +27,16 @@ class ListStudentQrCodesRequest extends FormRequest
                 'nullable',
                 Rule::enum(EligibilityStatus::class),
             ],
+            'media' => [
+                'nullable',
+                Rule::in([
+                    'ready',
+                    'missing_photo',
+                    'missing_audio',
+                    'audio_needs_review',
+                    'audio_rejected',
+                ]),
+            ],
             'qr_readiness' => [
                 'nullable',
                 Rule::in(['ready', 'regenerated']),
@@ -56,6 +66,7 @@ class ListStudentQrCodesRequest extends FormRequest
             'college',
             'program',
             'eligibility_status',
+            'media',
             'qr_readiness',
             'sequence_from',
             'sequence_to',

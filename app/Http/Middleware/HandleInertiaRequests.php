@@ -9,6 +9,8 @@ use App\Models\Student;
 use App\Models\StudentImport;
 use App\Models\User;
 use App\Services\OnboardingWorkspace;
+use App\Support\ActiveCeremonyResolver;
+use App\Support\WorkingCeremonyResolver;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Throwable;
@@ -44,6 +46,8 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $liveCeremonyContext = $this->liveCeremonyContext($request);
+        $workingCeremonyContext = $this->workingCeremonyContext($request);
 
         return [
             ...parent::share($request),
@@ -97,50 +101,54 @@ class HandleInertiaRequests extends Middleware
                 'version' => config('connict.version'),
                 'commit' => config('connict.commit'),
             ],
-            'ceremonyContext' => fn (): array => $this->ceremonyContext($user),
+            'liveCeremonyContext' => $liveCeremonyContext,
+            'workingCeremonyContext' => $workingCeremonyContext,
+            'ceremonyContext' => [
+                'state' => $liveCeremonyContext['state'],
+                'active' => $liveCeremonyContext['ceremony'],
+            ],
             'onboarding' => fn (): ?array => $this->onboarding($request, $user),
         ];
     }
 
     /**
-     * @return array{state: string, active: array<string, mixed>|null}
+     * @return array{state: string, ceremony: array<string, mixed>|null}
      */
-    private function ceremonyContext(?User $user): array
+    private function liveCeremonyContext(Request $request): array
     {
-        if ($user === null) {
+        if ($request->user() === null) {
             return [
                 'state' => 'none',
-                'active' => null,
+                'ceremony' => null,
             ];
         }
 
         try {
-            $activeCeremonies = Ceremony::query()
-                ->where('status', CeremonyStatus::Active)
-                ->orderBy('id')
-                ->limit(2)
-                ->get(['id', 'name', 'academic_year', 'event_date']);
-            $activeCeremony = $activeCeremonies->count() === 1
-                ? $activeCeremonies->first()
-                : null;
+            $resolution = app(ActiveCeremonyResolver::class)->resolve();
+            $activeCeremony = $resolution->ceremony;
 
             return [
-                'state' => match ($activeCeremonies->count()) {
-                    0 => 'none',
-                    1 => 'ready',
-                    default => 'conflict',
+                'state' => match ($resolution->status) {
+                    'ready' => 'ready',
+                    'no_active_ceremony' => 'none',
+                    'multiple_active_ceremonies' => 'conflict',
+                    default => 'unavailable',
                 },
-                'active' => $activeCeremony === null ? null : [
+                'ceremony' => $activeCeremony === null ? null : [
                     'id' => $activeCeremony->id,
                     'name' => $activeCeremony->name,
                     'academic_year' => $activeCeremony->academic_year,
                     'event_date' => $activeCeremony->event_date?->format('Y-m-d'),
+                    'status' => [
+                        'value' => CeremonyStatus::Active->value,
+                        'label' => CeremonyStatus::Active->label(),
+                    ],
                 ],
             ];
         } catch (Throwable) {
             return [
                 'state' => 'unavailable',
-                'active' => null,
+                'ceremony' => null,
             ];
         }
     }
@@ -155,5 +163,43 @@ class HandleInertiaRequests extends Middleware
         $active = Ceremony::query()->where('status', CeremonyStatus::Active)->exists();
 
         return app(OnboardingWorkspace::class)->forUser($user, $active);
+    }
+
+    /**
+     * @return array{
+     *     can_switch: bool,
+     *     ceremony: array<string, mixed>|null,
+     *     available: list<array<string, mixed>>
+     * }
+     */
+    private function workingCeremonyContext(Request $request): array
+    {
+        $resolver = app(WorkingCeremonyResolver::class);
+        $ceremony = $resolver->resolve($request);
+        $available = $resolver->availableFor($request->user());
+
+        return [
+            'can_switch' => $resolver->canSwitch($request->user()),
+            'ceremony' => $ceremony === null ? null : [
+                'id' => $ceremony->id,
+                'name' => $ceremony->name,
+                'academic_year' => $ceremony->academic_year,
+                'event_date' => $ceremony->event_date?->format('Y-m-d'),
+                'status' => [
+                    'value' => $ceremony->status->value,
+                    'label' => $ceremony->status->label(),
+                ],
+            ],
+            'available' => $available->map(static fn (Ceremony $availableCeremony): array => [
+                'id' => $availableCeremony->id,
+                'name' => $availableCeremony->name,
+                'academic_year' => $availableCeremony->academic_year,
+                'event_date' => $availableCeremony->event_date?->format('Y-m-d'),
+                'status' => [
+                    'value' => $availableCeremony->status->value,
+                    'label' => $availableCeremony->status->label(),
+                ],
+            ])->values()->all(),
+        ];
     }
 }

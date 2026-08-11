@@ -4,23 +4,23 @@ import PageHeader from '../../../components/Admin/PageHeader';
 
 export default function VoiceGeneration({ workspace }) {
     const { ceremony, counts, permissions, providers, review_queue: reviewQueue } = workspace;
-    const settingsUrl = ceremony ? `/admin/ceremonies/${ceremony.id}/announcement-settings` : '/admin/ceremonies';
-    const batchUrl = ceremony ? `/admin/ceremonies/${ceremony.id}/announcement-batches` : '/admin/ceremonies';
+    const settingsUrl = workspace.urls?.settings ?? '/admin/ceremonies';
+    const batchUrl = workspace.urls?.batches ?? '/admin/ceremonies';
 
     return (
         <AdminLayout>
-            <Head title="Voice generation" />
+            <Head title="Announcements" />
             <PageHeader
                 description="Choose a provider, verify pronunciation, generate candidates, and approve every announcement before ceremony day."
-                eyebrow="Preparation workspace"
-                title="Voice generation"
+                eyebrow={ceremony ? 'Ceremony workspace' : 'Preparation workspace'}
+                title="Announcements"
             />
 
-            {!ceremony && <div className="admin-empty-state"><h2>No active ceremony</h2><p>Activate one ceremony before preparing announcement audio.</p><Link className="admin-button admin-button-primary" href="/admin/ceremonies">Open ceremonies</Link></div>}
+            {!ceremony && <div className="admin-empty-state"><h2>No working ceremony selected</h2><p>Choose a ceremony workspace before preparing announcement audio.</p><Link className="admin-button admin-button-primary" href="/admin/ceremonies">Open ceremonies</Link></div>}
 
             {ceremony && <>
                 <section className="voice-workspace-summary">
-                    <div><span>Active ceremony</span><strong>{ceremony.name}</strong></div>
+                    <div><span>Working ceremony</span><strong>{ceremony.name}</strong></div>
                     <div><span>Awaiting generation</span><strong>{counts.missing}</strong></div>
                     <div><span>Awaiting review</span><strong>{counts.needs_review}</strong></div>
                     <div><span>Approved</span><strong>{counts.approved}</strong></div>
@@ -60,7 +60,7 @@ export default function VoiceGeneration({ workspace }) {
                 <ol className="voice-workflow">
                     <li><span>1</span><div><h2>Select Local or Azure</h2><p>The provider is saved on a new immutable ceremony template version.</p>{permissions.settings && <Link href={settingsUrl}>Open provider settings</Link>}</div></li>
                     <li><span>2</span><div><h2>Compare curated voices</h2><p>Generate temporary samples using a realistic fictional graduation announcement.</p>{permissions.settings && <Link href={`${settingsUrl}#voice-comparison`}>Compare voices</Link>}</div></li>
-                    <li><span>3</span><div><h2>Preview wording and pronunciation</h2><p>Open a graduate to confirm their spoken name, awards, and announcement text.</p><Link href="/admin/students">Open graduates</Link></div></li>
+                    <li><span>3</span><div><h2>Preview wording and pronunciation</h2><p>Open a graduate to confirm their spoken name, awards, and announcement text.</p><Link href={workspace.urls.graduates}>Open graduates</Link></div></li>
                     <li><span>4</span><div><h2>Generate selected or batch audio</h2><p>Create private candidates without approving or publishing them automatically.</p>{permissions.batches && <Link href={batchUrl}>Start batch generation</Link>}</div></li>
                     <li><span>5</span><div><h2>Review and approve</h2><p>{counts.needs_review} candidate{counts.needs_review === 1 ? '' : 's'} currently need a human listening check.</p>{permissions.review && <a href="#review-queue">Open review queue</a>}</div></li>
                 </ol>

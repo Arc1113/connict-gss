@@ -1,6 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_STAGE_THEME } from '../../lib/stageTheme';
+import ConfirmDialog from '../ConfirmDialog';
 import { FieldError, RequiredNote, ValidationSummary } from './FormSupport';
 import StageThemePreview from './StageThemePreview';
 
@@ -55,6 +56,7 @@ export default function CeremonyForm({
     const localLogoUrl = useObjectUrl(data.stage_logo);
     const localBackgroundUrl = useObjectUrl(data.stage_background);
     const [selectedStageDesign, setSelectedStageDesign] = useState('');
+    const [confirmLiveChange, setConfirmLiveChange] = useState(false);
 
     function applyStageDesign() {
         const template = stageDesignTemplates.find(
@@ -73,21 +75,13 @@ export default function CeremonyForm({
             statusChanged &&
             (data.status === 'active' || ceremony.status === 'active');
 
-        if (
-            changesLiveContext &&
-            !window.confirm(
-                data.status === 'active'
-                    ? `Activate ${data.name || 'this ceremony'} as the live ceremony used by Scanner and Stage Control?`
-                    : `Remove ${data.name || 'this ceremony'} from the live Scanner and Stage Control context?`,
-            )
-        ) {
-            return;
-        }
+        if (changesLiveContext) return setConfirmLiveChange(true);
 
         post(action, { forceFormData: true, preserveScroll: true });
     }
 
     return (
+        <><ConfirmDialog busy={processing} confirmLabel={data.status === 'active' ? 'Activate ceremony' : 'Deactivate ceremony'} description={data.status === 'active' ? `Scanner, Stage Control, and Stage Display will use ${data.name || 'this ceremony'} as the Live Ceremony. Your Working Ceremony selection remains separate.` : `${data.name || 'This ceremony'} will no longer be the Live Ceremony used by Scanner, Stage Control, and Stage Display.`} onCancel={() => setConfirmLiveChange(false)} onConfirm={() => { setConfirmLiveChange(false); post(action, { forceFormData: true, preserveScroll: true }); }} open={confirmLiveChange} title={data.status === 'active' ? `Make ${data.name || 'this ceremony'} live?` : `Deactivate ${data.name || 'this ceremony'}?`} tone="warning" />
         <form className="admin-form" onSubmit={submit}>
             <ValidationSummary errors={errors} />
             <RequiredNote />
@@ -421,6 +415,6 @@ export default function CeremonyForm({
                     Cancel
                 </Link>
             </div>
-        </form>
+        </form></>
     );
 }

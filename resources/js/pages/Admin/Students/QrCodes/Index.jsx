@@ -16,6 +16,7 @@ export default function StudentQrCodeIndex({
     filters,
     maximumBatchSize,
     students,
+    workspace,
 }) {
     const [selectedIds, setSelectedIds] = useState([]);
     const selectableIds = useMemo(
@@ -59,14 +60,14 @@ export default function StudentQrCodeIndex({
                 actions={
                     <Link
                         className="admin-button admin-button-secondary"
-                        href="/admin/students"
+                        href={workspace?.urls.graduates ?? '/admin/students'}
                     >
                         Graduate records
                     </Link>
                 }
                 description="Review readiness, inspect individual cards, and prepare controlled print batches without exposing encoded tokens."
-                eyebrow="Graduate data preparation"
-                title="QR preparation"
+                eyebrow={workspace ? 'Ceremony workspace' : 'Graduate data preparation'}
+                title={workspace ? 'QR & Media' : 'QR preparation'}
             />
 
             <section className="admin-qr-instructions" aria-labelledby="qr-workflow">
@@ -80,31 +81,47 @@ export default function StudentQrCodeIndex({
             </section>
 
             <form
-                action="/admin/students/qr-codes"
+                action={workspace?.urls.qr ?? '/admin/students/qr-codes'}
                 className="admin-filters admin-qr-filters"
                 method="get"
             >
-                <div className="admin-filter-search-wide">
-                    <label htmlFor="ceremony_id">Ceremony</label>
-                    <select
-                        defaultValue={filterValue(filters.ceremony_id)}
-                        id="ceremony_id"
-                        name="ceremony_id"
-                    >
-                        {filterOptions.ceremonies.length === 0 && (
-                            <option value="">No ceremonies available</option>
-                        )}
-                        {filterOptions.ceremonies.map((ceremony) => (
-                            <option key={ceremony.id} value={ceremony.id}>
-                                {ceremony.name}
-                                {ceremony.academic_year
-                                    ? ` — ${ceremony.academic_year}`
-                                    : ''}{' '}
-                                ({ceremony.status})
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                {!workspace?.locked && (
+                    <div className="admin-filter-search-wide">
+                        <label htmlFor="ceremony_id">Ceremony</label>
+                        <select
+                            defaultValue={filterValue(filters.ceremony_id)}
+                            id="ceremony_id"
+                            name="ceremony_id"
+                        >
+                            {filterOptions.ceremonies.length === 0 && (
+                                <option value="">No ceremonies available</option>
+                            )}
+                            {filterOptions.ceremonies.map((ceremony) => (
+                                <option key={ceremony.id} value={ceremony.id}>
+                                    {ceremony.name}
+                                    {ceremony.academic_year
+                                        ? ` — ${ceremony.academic_year}`
+                                        : ''}{' '}
+                                    ({ceremony.status})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+                {workspace?.locked && (
+                    <div className="admin-filter-search-wide">
+                        <label>Working ceremony</label>
+                        <div className="admin-readonly-field">
+                            <strong>{workspace.ceremony.name}</strong>
+                            <span>{workspace.ceremony.status}</span>
+                        </div>
+                        <input
+                            name="ceremony_id"
+                            type="hidden"
+                            value={filterValue(filters.ceremony_id)}
+                        />
+                    </div>
+                )}
                 <div>
                     <label htmlFor="college">College</label>
                     <select
@@ -149,6 +166,21 @@ export default function StudentQrCodeIndex({
                     </select>
                 </div>
                 <div>
+                    <label htmlFor="media">Media readiness</label>
+                    <select
+                        defaultValue={filterValue(filters.media)}
+                        id="media"
+                        name="media"
+                    >
+                        <option value="">All</option>
+                        <option value="ready">Ready</option>
+                        <option value="missing_photo">Missing photo</option>
+                        <option value="missing_audio">Missing audio</option>
+                        <option value="audio_needs_review">Needs audio review</option>
+                        <option value="audio_rejected">Rejected audio</option>
+                    </select>
+                </div>
+                <div>
                     <label htmlFor="qr_readiness">Token state</label>
                     <select
                         defaultValue={filterValue(filters.qr_readiness)}
@@ -186,7 +218,7 @@ export default function StudentQrCodeIndex({
                     </button>
                     <Link
                         className="admin-button admin-button-secondary"
-                        href="/admin/students/qr-codes"
+                        href={workspace?.urls.qr ?? '/admin/students/qr-codes'}
                     >
                         Reset
                     </Link>
@@ -200,7 +232,7 @@ export default function StudentQrCodeIndex({
                 </EmptyState>
             ) : (
                 <form
-                    action="/admin/students/qr-codes/batch"
+                    action={workspace?.urls.batch ?? '/admin/students/qr-codes/batch'}
                     className="admin-qr-batch"
                     method="post"
                     target="_blank"
@@ -215,6 +247,7 @@ export default function StudentQrCodeIndex({
                         'college',
                         'program',
                         'eligibility_status',
+                        'media',
                         'qr_readiness',
                         'sequence_from',
                         'sequence_to',
@@ -326,7 +359,11 @@ export default function StudentQrCodeIndex({
                                         <td>
                                             <Link
                                                 className="admin-row-action"
-                                                href={`/admin/students/${student.id}/qr-code`}
+                                                href={
+                                                    workspace
+                                                        ? `${workspace.urls.qr}/${student.id}`
+                                                        : `/admin/students/${student.id}/qr-code`
+                                                }
                                             >
                                                 Review card
                                             </Link>

@@ -5,6 +5,7 @@ import AudioPreview from '../../../components/Admin/AudioPreview';
 import { FieldError, ValidationSummary } from '../../../components/Admin/FormSupport';
 import PageHeader from '../../../components/Admin/PageHeader';
 import StatusText from '../../../components/Admin/StatusText';
+import ConfirmDialog from '../../../components/ConfirmDialog';
 import { requestJson } from '../../../lib/http';
 
 function formatDateTime(value) {
@@ -68,6 +69,7 @@ export default function AnnouncementSettings({ announcement }) {
     const [preview, setPreview] = useState(announcement.fictional_preview);
     const [previewing, setPreviewing] = useState(false);
     const [previewError, setPreviewError] = useState(null);
+    const [confirmPublish, setConfirmPublish] = useState(false);
     const form = useForm({
         provider: settings.provider,
         name: settings.name,
@@ -154,8 +156,7 @@ export default function AnnouncementSettings({ announcement }) {
 
     function publish(event) {
         event.preventDefault();
-        if (!window.confirm(`Publish version ${announcement.next_version} and make it the ceremony default? Existing generated candidates may become outdated.`)) return;
-        form.post(`/admin/ceremonies/${ceremony.id}/announcement-settings`, { preserveScroll: true });
+        setConfirmPublish(true);
     }
 
     function generateComparison(event) {
@@ -171,9 +172,12 @@ export default function AnnouncementSettings({ announcement }) {
 
     return (
         <AdminLayout>
+            <ConfirmDialog busy={form.processing} confirmLabel={`Publish version ${announcement.next_version}`} description="This becomes the ceremony default. Existing generated candidates may become outdated and still require review." onCancel={() => setConfirmPublish(false)} onConfirm={() => { setConfirmPublish(false); form.post(`/admin/ceremonies/${ceremony.id}/announcement-settings`, { preserveScroll: true }); }} open={confirmPublish} title={`Publish version ${announcement.next_version}?`} tone="warning" />
             <Head title={`Announcement settings · ${ceremony.name}`} />
             <PageHeader
-                actions={<><Link className="admin-button admin-button-secondary" href={`/admin/ceremonies/${ceremony.id}/announcement-batches`}>Batch generation</Link><Link className="admin-button admin-button-secondary" href={`/admin/ceremonies/${ceremony.id}`}>Back to ceremony</Link></>}
+                backHref={`/admin/ceremonies/${ceremony.id}/announcements`}
+                backLabel="Announcements"
+                actions={<Link className="admin-button admin-button-secondary" href={`/admin/ceremonies/${ceremony.id}/announcement-batches`}>Batch generation</Link>}
                 description="Publish reviewed wording, voice, and pacing as a new immutable version."
                 eyebrow="Ceremony announcements"
                 title={ceremony.name}

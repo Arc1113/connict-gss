@@ -9,6 +9,7 @@ export default function StudentImportMapping({
     mappingRows,
     studentImport,
     targetOptions,
+    workspace,
 }) {
     const form = useForm({
         mapping: mappingRows.map((row) => row.selected_target ?? ''),
@@ -22,17 +23,22 @@ export default function StudentImportMapping({
 
     function submit(event) {
         event.preventDefault();
-        form.post(`/admin/students/import/${studentImport.token}/preview`);
+        form.post(
+            workspace?.urls.previewStore
+                ?? `/admin/students/import/${studentImport.token}/preview`,
+        );
     }
 
     return (
         <AdminLayout>
             <Head title="Map CSV columns" />
             <PageHeader
+                backHref={workspace?.urls.import ?? '/admin/students/import'}
+                backLabel="Import source"
                 actions={
                     <Link
                         className="admin-button admin-button-secondary"
-                        href="/admin/students/import"
+                        href={workspace?.urls.import ?? '/admin/students/import'}
                     >
                         Start over
                     </Link>
@@ -65,7 +71,10 @@ export default function StudentImportMapping({
                 </dl>
             </section>
 
-            <ImportSourceReplacements studentImport={studentImport} />
+            <ImportSourceReplacements
+                studentImport={studentImport}
+                workspace={workspace}
+            />
 
             <form className="admin-import-mapping-form" onSubmit={submit}>
                 <ValidationSummary errors={form.errors} />

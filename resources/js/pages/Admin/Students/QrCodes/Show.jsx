@@ -3,6 +3,8 @@ import AdminLayout from '../../../../components/Admin/AdminLayout';
 import { ValidationSummary } from '../../../../components/Admin/FormSupport';
 import PageHeader from '../../../../components/Admin/PageHeader';
 import StatusText from '../../../../components/Admin/StatusText';
+import ConfirmDialog from '../../../../components/ConfirmDialog';
+import { useState } from 'react';
 
 function formatDateTime(value) {
     if (!value) {
@@ -18,46 +20,53 @@ function formatDateTime(value) {
 export default function StudentQrCodeShow({
     regenerationHistory,
     student,
+    workspace,
 }) {
     const { auth, errors } = usePage().props;
     const regeneration = useForm({
         confirmed: false,
         expected_version: student.regeneration_version,
     });
+    const [confirmRegeneration, setConfirmRegeneration] = useState(false);
 
     function regenerateToken(event) {
         event.preventDefault();
 
-        if (
-            !window.confirm(
-                'Replace this secure token? Every previously printed QR card for this graduate will stop working immediately.',
-            )
-        ) {
-            return;
-        }
+        setConfirmRegeneration(true);
+    }
 
+    function confirmRegenerateToken() {
         regeneration.post(
-            `/admin/students/${student.id}/qr-code/regenerate`,
+            workspace
+                ? `${workspace.urls.qr}/${student.id}/regenerate`
+                : `/admin/students/${student.id}/qr-code/regenerate`,
             { preserveScroll: true },
         );
     }
 
     return (
         <AdminLayout>
+            <ConfirmDialog busy={regeneration.processing} confirmLabel="Regenerate QR" description={`Every previously printed QR card for ${student.display_name} will stop working immediately. The replacement token is never displayed here.`} onCancel={() => setConfirmRegeneration(false)} onConfirm={confirmRegenerateToken} open={confirmRegeneration} title={`Regenerate QR code for ${student.display_name}?`} tone="warning" />
             <Head title={`QR card — ${student.display_name}`} />
             <PageHeader
+                backHref={workspace ? `${workspace.urls.graduates}/${student.id}` : `/admin/students/${student.id}`}
+                backLabel="Graduate"
                 actions={
                     <>
                         <Link
                             className="admin-button admin-button-secondary"
-                            href="/admin/students/qr-codes"
+                            href={workspace?.urls.qr ?? '/admin/students/qr-codes'}
                         >
                             QR preparation
                         </Link>
                         {student.qr.printable && (
                             <a
                                 className="admin-button admin-button-primary"
-                                href={`/admin/students/${student.id}/qr-code/print`}
+                                href={
+                                    workspace
+                                        ? `${workspace.urls.qr}/${student.id}/print`
+                                        : `/admin/students/${student.id}/qr-code/print`
+                                }
                                 rel="noreferrer"
                                 target="_blank"
                             >

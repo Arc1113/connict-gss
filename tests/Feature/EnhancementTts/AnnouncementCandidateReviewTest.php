@@ -123,8 +123,8 @@ class AnnouncementCandidateReviewTest extends AnnouncementTestCase
                 'continue_review' => true,
             ])
             ->assertRedirect(
-                route('admin.students.show', $secondStudent)
-                .'#announcement-candidate-'.$secondCandidate->id,
+                route('admin.ceremonies.students.show', [$firstStudent->ceremony, $secondStudent])
+                .'?section=announcement#announcement-candidate-'.$secondCandidate->id,
             )
             ->assertSessionHas('success');
 

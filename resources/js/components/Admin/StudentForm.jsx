@@ -1,5 +1,6 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import ConfirmDialog from '../ConfirmDialog';
 import AudioPreview from './AudioPreview';
 import AnnouncementRecorder from './AnnouncementRecorder';
 import { FieldError, RequiredNote, ValidationSummary } from './FormSupport';
@@ -45,9 +46,11 @@ export default function StudentForm({
     formOptions,
     student,
     submitLabel,
+    workspace,
 }) {
     const editing = Boolean(student?.id);
     const [isRecording, setIsRecording] = useState(false);
+    const [mediaToRemove, setMediaToRemove] = useState(null);
     const { data, errors, processing, setData, post } = useForm({
         _method: editing ? 'put' : undefined,
         ceremony_id: student?.ceremony_id ?? '',
@@ -83,20 +86,18 @@ export default function StudentForm({
     }
 
     function removeMedia(type) {
-        const label = type === 'photo' ? 'graduate photo' : 'announcement audio';
+        setMediaToRemove(type);
+    }
 
-        if (
-            window.confirm(
-                `Remove the current ${label}? Save any other form changes first.`,
-            )
-        ) {
-            router.delete(`/admin/students/${student.id}/${type}`, {
-                preserveScroll: true,
-            });
-        }
+    function confirmRemoveMedia() {
+        router.delete(`/admin/students/${student.id}/${mediaToRemove}`, {
+            preserveScroll: true,
+            onFinish: () => setMediaToRemove(null),
+        });
     }
 
     return (
+        <><ConfirmDialog busy={false} confirmLabel={`Remove ${mediaToRemove === 'photo' ? 'photo' : 'audio'}`} description={`The current ${mediaToRemove === 'photo' ? 'graduate photo' : 'announcement audio'} will be removed. Save any other form changes first.`} onCancel={() => setMediaToRemove(null)} onConfirm={confirmRemoveMedia} open={Boolean(mediaToRemove)} title={`Remove current ${mediaToRemove === 'photo' ? 'graduate photo' : 'announcement audio'}?`} tone="danger" />
         <form className="admin-form" onSubmit={submit}>
             <ValidationSummary errors={errors} />
             <RequiredNote />
@@ -108,31 +109,41 @@ export default function StudentForm({
                         <label htmlFor="ceremony_id">
                             Ceremony <span aria-hidden="true">*</span>
                         </label>
-                        <select
-                            aria-describedby={describedBy(
-                                'ceremony_id',
-                                errors.ceremony_id,
-                            )}
-                            aria-invalid={Boolean(errors.ceremony_id)}
-                            autoFocus
-                            id="ceremony_id"
-                            onChange={(event) =>
-                                setData('ceremony_id', event.target.value)
-                            }
-                            required
-                            value={data.ceremony_id}
-                        >
-                            <option value="">Select a ceremony</option>
-                            {formOptions.ceremonies.map((ceremony) => (
-                                <option key={ceremony.id} value={ceremony.id}>
-                                    {ceremony.name}
-                                    {ceremony.academic_year
-                                        ? ` — ${ceremony.academic_year}`
-                                        : ''}{' '}
-                                    ({ceremony.status})
-                                </option>
-                            ))}
-                        </select>
+                        {workspace?.locked ? (
+                            <>
+                                <div className="admin-readonly-field">
+                                    <strong>{workspace.ceremony.name}</strong>
+                                    <span>{workspace.ceremony.status}</span>
+                                </div>
+                                <input name="ceremony_id" type="hidden" value={data.ceremony_id} />
+                            </>
+                        ) : (
+                            <select
+                                aria-describedby={describedBy(
+                                    'ceremony_id',
+                                    errors.ceremony_id,
+                                )}
+                                aria-invalid={Boolean(errors.ceremony_id)}
+                                autoFocus
+                                id="ceremony_id"
+                                onChange={(event) =>
+                                    setData('ceremony_id', event.target.value)
+                                }
+                                required
+                                value={data.ceremony_id}
+                            >
+                                <option value="">Select a ceremony</option>
+                                {formOptions.ceremonies.map((ceremony) => (
+                                    <option key={ceremony.id} value={ceremony.id}>
+                                        {ceremony.name}
+                                        {ceremony.academic_year
+                                            ? ` — ${ceremony.academic_year}`
+                                            : ''}{' '}
+                                        ({ceremony.status})
+                                    </option>
+                                ))}
+                            </select>
+                        )}
                         <FieldError
                             id="ceremony_id-error"
                             message={errors.ceremony_id}
@@ -481,11 +492,15 @@ export default function StudentForm({
                 </button>
                 <Link
                     className="admin-button admin-button-secondary"
-                    href={editing ? `/admin/students/${student.id}` : '/admin/students'}
+                    href={
+                        editing
+                            ? `/admin/students/${student.id}`
+                            : (workspace?.urls.graduates ?? '/admin/students')
+                    }
                 >
                     Cancel
                 </Link>
             </div>
-        </form>
+        </form></>
     );
 }

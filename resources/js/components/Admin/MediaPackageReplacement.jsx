@@ -2,14 +2,15 @@ import { useForm } from '@inertiajs/react';
 import { useRef } from 'react';
 import { FieldError, ValidationSummary } from './FormSupport';
 
-export default function MediaPackageReplacement({ studentImport }) {
+export default function MediaPackageReplacement({ studentImport, workspace }) {
     const inputRef = useRef(null);
     const form = useForm({ media_package: null });
 
     function submit(event) {
         event.preventDefault();
         form.post(
-            `/admin/students/import/${studentImport.token}/media-package`,
+            workspace?.urls.mediaPackageReplace
+                ?? `/admin/students/import/${studentImport.token}/media-package`,
             {
                 forceFormData: true,
                 onSuccess: () => {

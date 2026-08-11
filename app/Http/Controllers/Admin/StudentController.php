@@ -12,6 +12,7 @@ use App\Models\Ceremony;
 use App\Models\Student;
 use App\Services\StudentAnnouncementWorkspace;
 use App\Support\AnnouncementAudio;
+use App\Support\WorkingCeremonyResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,9 +31,11 @@ class StudentController extends Controller
     {
         Gate::authorize('viewAny', Student::class);
 
+        $workspaceCeremony = $this->resolveWorkspaceCeremony($request);
+
         $filters = [
             'search' => trim($request->string('search')->toString()),
-            'ceremony_id' => $request->string('ceremony_id')->toString(),
+            'ceremony_id' => $this->resolvedCeremonyFilter($request, $workspaceCeremony),
             'college' => $request->string('college')->toString(),
             'program' => $request->string('program')->toString(),
             'eligibility_status' => $request->string('eligibility_status')->toString(),
@@ -110,15 +113,25 @@ class StudentController extends Controller
             'students' => $students,
             'filters' => $filters,
             'filterOptions' => $this->filterOptions(),
+            'workspace' => $this->workspaceContext(
+                $workspaceCeremony,
+                $request->route('ceremony') !== null,
+            ),
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         Gate::authorize('create', Student::class);
 
+        $workspaceCeremony = $this->resolveWorkspaceCeremony($request);
+
         return Inertia::render('Admin/Students/Create', [
-            'formOptions' => $this->formOptions(),
+            'formOptions' => $this->formOptions($workspaceCeremony),
+            'workspace' => $this->workspaceContext(
+                $workspaceCeremony,
+                $request->route('ceremony') !== null,
+            ),
         ]);
     }
 
@@ -141,7 +154,27 @@ class StudentController extends Controller
 
     public function show(Request $request, Student $student): Response
     {
+        return $this->detail($request, $student);
+    }
+
+    public function showInCeremony(
+        Request $request,
+        Ceremony $ceremony,
+        Student $student,
+    ): Response {
+        $this->ensureStudentBelongsToCeremony($student, $ceremony);
+
+        return $this->detail($request, $student);
+    }
+
+    private function detail(Request $request, Student $student): Response
+    {
         Gate::authorize('view', $student);
+
+        $section = $request->string('section', 'overview')->toString();
+        abort_unless(in_array($section, [
+            'overview', 'academic', 'media', 'announcement', 'history',
+        ], true), 404);
 
         $student->load([
             'ceremony:id,name,academic_year',
@@ -154,18 +187,42 @@ class StudentController extends Controller
                 'stage_queue_items.presented_at',
                 'stage_queue_items.completed_at',
             ]),
-        ])->loadCount(['queueItems', 'scanLogs']);
+        ]);
+
+        if (in_array($section, ['overview', 'history'], true)) {
+            $student->loadCount(['queueItems', 'scanLogs']);
+        }
+
+        if ($section === 'history') {
+            $student->load([
+                'queueItems' => fn ($query) => $query->latest('id')->limit(20),
+                'scanLogs' => fn ($query) => $query->latest('scanned_at')->limit(20),
+            ]);
+        }
 
         return Inertia::render('Admin/Students/Show', [
-            'student' => $this->serializeDetail($student),
-            'announcement' => $this->announcementWorkspace->forStudent(
-                $student,
-                $request->user(),
-            ),
+            'section' => $section,
+            'student' => $this->serializeDetail($student, $section),
+            'workspace' => $this->workspaceContextForStudent($request, $student),
+            ...($section === 'announcement' ? [
+                'announcement' => $this->announcementWorkspace->forStudent($student, $request->user()),
+            ] : []),
         ]);
     }
 
-    public function edit(Student $student): Response
+    public function edit(Request $request, Student $student): Response
+    {
+        return $this->editDetail($request, $student);
+    }
+
+    public function editInCeremony(Request $request, Ceremony $ceremony, Student $student): Response
+    {
+        $this->ensureStudentBelongsToCeremony($student, $ceremony);
+
+        return $this->editDetail($request, $student);
+    }
+
+    private function editDetail(Request $request, Student $student): Response
     {
         Gate::authorize('update', $student);
 
@@ -173,7 +230,8 @@ class StudentController extends Controller
 
         return Inertia::render('Admin/Students/Edit', [
             'student' => $this->serializeForm($student),
-            'formOptions' => $this->formOptions(),
+            'formOptions' => $this->formOptions($student->ceremony),
+            'workspace' => $this->workspaceContextForStudent($request, $student),
         ]);
     }
 
@@ -181,6 +239,26 @@ class StudentController extends Controller
         SaveStudentRequest $request,
         Student $student,
         StudentAdministration $administration,
+    ): RedirectResponse {
+        return $this->saveStudent($request, $student, $administration);
+    }
+
+    public function updateInCeremony(
+        SaveStudentRequest $request,
+        Ceremony $ceremony,
+        Student $student,
+        StudentAdministration $administration,
+    ): RedirectResponse {
+        $this->ensureStudentBelongsToCeremony($student, $ceremony);
+
+        return $this->saveStudent($request, $student, $administration, $ceremony);
+    }
+
+    private function saveStudent(
+        SaveStudentRequest $request,
+        Student $student,
+        StudentAdministration $administration,
+        ?Ceremony $ceremony = null,
     ): RedirectResponse {
         $student = $administration->update(
             $student,
@@ -191,8 +269,11 @@ class StudentController extends Controller
             $request->ip(),
         );
 
-        return redirect()
-            ->route('admin.students.show', $student)
+        return redirect()->to(
+            $ceremony === null
+                ? route('admin.students.show', $student)
+                : route('admin.ceremonies.students.show', [$ceremony, $student]).'?section=academic',
+        )
             ->with('success', 'Graduate changes saved.');
     }
 
@@ -404,7 +485,7 @@ class StudentController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function serializeDetail(Student $student): array
+    private function serializeDetail(Student $student, string $section): array
     {
         return [
             ...$this->serializeForm($student),
@@ -436,11 +517,40 @@ class StudentController extends Controller
                 'audio_file_size' => $student->audio_file_size,
             ],
             'stage_status' => $this->stageStatus($student),
-            'queue_items_count' => $student->queue_items_count,
-            'scan_logs_count' => $student->scan_logs_count,
-            'created_at' => $student->created_at?->toIso8601String(),
-            'updated_at' => $student->updated_at?->toIso8601String(),
+            'queue_items_count' => $student->queue_items_count ?? null,
+            'scan_logs_count' => $student->scan_logs_count ?? null,
+            'created_at' => $section === 'history' ? $student->created_at?->toIso8601String() : null,
+            'updated_at' => $section === 'history' ? $student->updated_at?->toIso8601String() : null,
+            'awards' => $section === 'academic' ? $student->awards()->get()->map(fn ($award) => [
+                'id' => $award->id,
+                'award_name' => $award->award_name,
+                'spoken_text' => $award->spoken_text,
+                'is_announcement_enabled' => $award->is_announcement_enabled,
+            ])->all() : [],
+            'queue_history' => $section === 'history' ? $student->queueItems->map(fn ($item) => [
+                'id' => $item->id,
+                'status' => $this->stageStatusForValue($item->status),
+                'occurred_at' => ($item->completed_at ?? $item->presented_at ?? $item->scanned_at ?? $item->created_at)?->toIso8601String(),
+            ])->all() : [],
+            'scan_history' => $section === 'history' ? $student->scanLogs->map(fn ($log) => [
+                'id' => $log->id,
+                'result' => str($log->result->value)->replace('_', ' ')->title()->toString(),
+                'occurred_at' => $log->scanned_at?->toIso8601String(),
+            ])->all() : [],
         ];
+    }
+
+    private function stageStatusForValue(StageQueueStatus $status): string
+    {
+        return match ($status) {
+            StageQueueStatus::Waiting => 'Waiting',
+            StageQueueStatus::Ready => 'Ready',
+            StageQueueStatus::Presenting => 'Presenting',
+            StageQueueStatus::Announced => 'Announced',
+            StageQueueStatus::Completed => 'Completed',
+            StageQueueStatus::Skipped => 'Skipped',
+            StageQueueStatus::Cancelled => 'Cancelled',
+        };
     }
 
     /**
@@ -544,13 +654,19 @@ class StudentController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function formOptions(): array
+    private function formOptions(?Ceremony $lockedCeremony = null): array
     {
+        $ceremonies = Ceremony::query()
+            ->orderByRaw('event_date DESC NULLS LAST')
+            ->orderBy('name')
+            ->get(['id', 'name', 'academic_year', 'status']);
+
+        if ($lockedCeremony !== null) {
+            $ceremonies = $ceremonies->where('id', $lockedCeremony->id)->values();
+        }
+
         return [
-            'ceremonies' => Ceremony::query()
-                ->orderByRaw('event_date DESC NULLS LAST')
-                ->orderBy('name')
-                ->get(['id', 'name', 'academic_year', 'status'])
+            'ceremonies' => $ceremonies
                 ->map(fn (Ceremony $ceremony): array => [
                     'id' => $ceremony->id,
                     'name' => $ceremony->name,
@@ -565,5 +681,91 @@ class StudentController extends Controller
                 EligibilityStatus::cases(),
             ),
         ];
+    }
+
+    private function resolveWorkspaceCeremony(Request $request): ?Ceremony
+    {
+        $routeCeremonyId = $request->route('ceremony');
+
+        if ($routeCeremonyId !== null) {
+            $routeCeremony = $routeCeremonyId instanceof Ceremony
+                ? $routeCeremonyId
+                : Ceremony::query()->findOrFail($routeCeremonyId);
+            Gate::authorize('view', $routeCeremony);
+            $workingCeremonies = app(WorkingCeremonyResolver::class);
+
+            if ($workingCeremonies->canSwitch($request->user())) {
+                $workingCeremonies->store($request, $routeCeremony);
+            }
+
+            return $routeCeremony;
+        }
+
+        return app(WorkingCeremonyResolver::class)->resolve($request);
+    }
+
+    private function resolvedCeremonyFilter(Request $request, ?Ceremony $workspaceCeremony): string
+    {
+        $requested = $request->string('ceremony_id')->toString();
+
+        if ($requested !== '') {
+            return $requested;
+        }
+
+        return $workspaceCeremony === null ? '' : (string) $workspaceCeremony->id;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function workspaceContext(?Ceremony $ceremony, bool $locked = false): ?array
+    {
+        if ($ceremony === null) {
+            return null;
+        }
+
+        return [
+            'locked' => $locked,
+            'ceremony' => [
+                'id' => $ceremony->id,
+                'name' => $ceremony->name,
+                'academic_year' => $ceremony->academic_year,
+                'status' => $ceremony->status->label(),
+            ],
+            'urls' => [
+                'graduates' => route('admin.ceremonies.students.index', $ceremony),
+                'create' => route('admin.ceremonies.students.create', $ceremony),
+                'import' => route('admin.ceremonies.students.import.index', $ceremony),
+                'qr' => route('admin.ceremonies.students.qr.index', $ceremony),
+                'announcements' => route('admin.ceremonies.announcements', $ceremony),
+                'overview' => route('admin.ceremonies.show', $ceremony),
+                'allGraduates' => route('admin.students.index'),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function workspaceContextForStudent(Request $request, Student $student): ?array
+    {
+        $workspaceCeremony = $this->resolveWorkspaceCeremony($request);
+
+        if (
+            $workspaceCeremony === null
+            || (int) $workspaceCeremony->id !== (int) $student->ceremony_id
+        ) {
+            return null;
+        }
+
+        return $this->workspaceContext(
+            $workspaceCeremony,
+            $request->route('ceremony') !== null,
+        );
+    }
+
+    private function ensureStudentBelongsToCeremony(Student $student, Ceremony $ceremony): void
+    {
+        abort_unless((int) $student->ceremony_id === (int) $ceremony->id, 404);
     }
 }

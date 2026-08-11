@@ -84,12 +84,12 @@ class AnnouncementCandidateReviewController extends Controller
 
         if ($next === null) {
             return redirect()
-                ->to(route('admin.voice-generation').'#review-queue')
+                ->to(route('admin.ceremonies.announcements', $student->ceremony).'#review-queue')
                 ->with('success', 'Review queue complete. No generated voices are awaiting approval.');
         }
 
         return redirect()
-            ->to(route('admin.students.show', $next->student_id).'#announcement-candidate-'.$next->id)
+            ->to(route('admin.ceremonies.students.show', [$student->ceremony, $next->student_id]).'?section=announcement#announcement-candidate-'.$next->id)
             ->with('success', $message);
     }
 }

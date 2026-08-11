@@ -15,8 +15,10 @@ use App\Models\Student;
 use App\Services\QrCodeRenderer;
 use App\Services\StudentQrTokenVersion;
 use App\Support\StudentQrReadiness;
+use App\Support\WorkingCeremonyResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -30,6 +32,7 @@ class StudentQrCodeController extends Controller
         StudentQrReadiness $readiness,
     ): InertiaResponse {
         $validated = $request->validated();
+        $workspaceCeremony = $this->resolveWorkspaceCeremony($request);
         $ceremonies = Ceremony::query()
             ->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
             ->orderByRaw('event_date DESC NULLS LAST')
@@ -37,13 +40,14 @@ class StudentQrCodeController extends Controller
             ->get(['id', 'name', 'academic_year', 'status']);
         $selectedCeremonyId = isset($validated['ceremony_id'])
             ? (int) $validated['ceremony_id']
-            : $ceremonies->first()?->id;
+            : ($workspaceCeremony?->id ?? $ceremonies->first()?->id);
         $filters = [
             'ceremony_id' => $selectedCeremonyId,
             'college' => $validated['college'] ?? null,
             'program' => $validated['program'] ?? null,
             'eligibility_status' => $validated['eligibility_status'] ?? null,
             'qr_readiness' => $validated['qr_readiness'] ?? null,
+            'media' => $validated['media'] ?? null,
             'sequence_from' => $validated['sequence_from'] ?? null,
             'sequence_to' => $validated['sequence_to'] ?? null,
         ];
@@ -90,6 +94,13 @@ class StudentQrCodeController extends Controller
                 fn (Builder $query) => $query->where(
                     'eligibility_status',
                     $filters['eligibility_status'],
+                ),
+            )
+            ->when(
+                $filters['media'] !== null,
+                fn (Builder $query) => $this->applyMediaFilter(
+                    $query,
+                    $filters['media'],
                 ),
             )
             ->when(
@@ -179,12 +190,17 @@ class StudentQrCodeController extends Controller
             'students' => $students,
             'filters' => $filters,
             'filterOptions' => [
-                'ceremonies' => $ceremonies->map(fn (Ceremony $ceremony): array => [
-                    'id' => $ceremony->id,
-                    'name' => $ceremony->name,
-                    'academic_year' => $ceremony->academic_year,
-                    'status' => $ceremony->status->label(),
-                ]),
+                'ceremonies' => $ceremonies
+                    ->when(
+                        $workspaceCeremony !== null,
+                        fn ($collection) => $collection->where('id', $workspaceCeremony->id)->values(),
+                    )
+                    ->map(fn (Ceremony $ceremony): array => [
+                        'id' => $ceremony->id,
+                        'name' => $ceremony->name,
+                        'academic_year' => $ceremony->academic_year,
+                        'status' => $ceremony->status->label(),
+                    ]),
                 'colleges' => (clone $optionQuery)
                     ->whereNotNull('college')
                     ->distinct()
@@ -198,6 +214,10 @@ class StudentQrCodeController extends Controller
             ],
             'maximumBatchSize' => PrepareStudentQrBatch::MAXIMUM_SIZE,
             'csrfToken' => csrf_token(),
+            'workspace' => $this->workspaceContext(
+                $request,
+                $workspaceCeremony,
+            ),
         ]);
     }
 
@@ -262,7 +282,20 @@ class StudentQrCodeController extends Controller
                 'regeneration_version' => $versions->fingerprint($student),
             ],
             'regenerationHistory' => $history,
+            'workspace' => $this->workspaceContextForStudent(request(), $student),
         ]);
+    }
+
+    public function showInCeremony(
+        Request $request,
+        $ceremony,
+        Student $student,
+        StudentQrReadiness $readiness,
+        StudentQrTokenVersion $versions,
+    ): InertiaResponse {
+        abort_unless((int) $student->ceremony_id === (int) $ceremony, 404);
+
+        return $this->show($student, $readiness, $versions);
     }
 
     public function image(
@@ -310,6 +343,18 @@ class StudentQrCodeController extends Controller
             ->header('X-Robots-Tag', 'noindex, noarchive');
     }
 
+    public function printInCeremony(
+        Request $request,
+        $ceremony,
+        Student $student,
+        QrCodeRenderer $renderer,
+        StudentQrReadiness $readiness,
+    ): Response {
+        abort_unless((int) $student->ceremony_id === (int) $ceremony, 404);
+
+        return $this->print($student, $renderer, $readiness);
+    }
+
     public function batch(
         PrintStudentQrBatchRequest $request,
         PrepareStudentQrBatch $batch,
@@ -349,11 +394,22 @@ class StudentQrCodeController extends Controller
         );
 
         return redirect()
-            ->route('admin.students.qr-codes.show', $student)
+            ->to($this->qrShowUrl($request, $student))
             ->with(
                 'warning',
                 'QR token replaced. Previously printed cards no longer work; print and test the replacement before use.',
             );
+    }
+
+    public function regenerateInCeremony(
+        RegenerateStudentQrCodeRequest $request,
+        $ceremony,
+        Student $student,
+        RegenerateStudentQrToken $regenerate,
+    ): RedirectResponse {
+        abort_unless((int) $student->ceremony_id === (int) $ceremony, 404);
+
+        return $this->regenerate($request, $student, $regenerate);
     }
 
     /**
@@ -390,5 +446,101 @@ class StudentQrCodeController extends Controller
             409,
             implode(' ', $summary['print_blockers']),
         );
+    }
+
+    private function resolveWorkspaceCeremony(Request $request): ?Ceremony
+    {
+        $routeCeremonyId = $request->route('ceremony');
+
+        if ($routeCeremonyId !== null) {
+            $routeCeremony = Ceremony::query()->findOrFail($routeCeremonyId);
+            Gate::authorize('view', $routeCeremony);
+            $workingCeremonies = app(WorkingCeremonyResolver::class);
+
+            if ($workingCeremonies->canSwitch($request->user())) {
+                $workingCeremonies->store($request, $routeCeremony);
+            }
+
+            return $routeCeremony;
+        }
+
+        return app(WorkingCeremonyResolver::class)->resolve($request);
+    }
+
+    private function applyMediaFilter(Builder $query, string $filter): void
+    {
+        match ($filter) {
+            'ready' => $query
+                ->whereNotNull('photo_path')
+                ->where('audio_readiness_status', 'approved'),
+            'missing_photo' => $query->whereNull('photo_path'),
+            'missing_audio' => $query->where('audio_readiness_status', 'missing'),
+            'audio_needs_review' => $query->where('audio_readiness_status', 'needs_review'),
+            'audio_rejected' => $query->where('audio_readiness_status', 'rejected'),
+            default => null,
+        };
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function workspaceContext($request, ?Ceremony $ceremony): ?array
+    {
+        if ($ceremony === null) {
+            return null;
+        }
+
+        $routeCeremony = $request->route('ceremony');
+        $locked = $routeCeremony !== null
+            ? (int) $routeCeremony === (int) $ceremony->id
+            : $this->resolveWorkspaceCeremony($request)?->is($ceremony) ?? false;
+
+        return [
+            'locked' => $locked,
+            'ceremony' => [
+                'id' => $ceremony->id,
+                'name' => $ceremony->name,
+                'academic_year' => $ceremony->academic_year,
+                'status' => $ceremony->status->label(),
+            ],
+            'urls' => [
+                'graduates' => route('admin.ceremonies.students.index', $ceremony),
+                'qr' => route('admin.ceremonies.students.qr.index', $ceremony),
+                'batch' => route('admin.ceremonies.students.qr.batch', $ceremony),
+                'overview' => route('admin.ceremonies.show', $ceremony),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function workspaceContextForStudent($request, Student $student): ?array
+    {
+        $workspaceCeremony = $this->resolveWorkspaceCeremony($request);
+
+        if ($workspaceCeremony === null) {
+            return null;
+        }
+
+        if ((int) $workspaceCeremony->id !== (int) $student->ceremony_id) {
+            return null;
+        }
+
+        return $this->workspaceContext($request, $workspaceCeremony);
+    }
+
+    private function qrShowUrl(RegenerateStudentQrCodeRequest $request, Student $student): string
+    {
+        $routeCeremonyId = $request->route('ceremony');
+
+        if ($routeCeremonyId !== null) {
+            return route('admin.ceremonies.students.qr.show', [
+                'ceremony' => $routeCeremonyId,
+                'student' => $student,
+            ]);
+        }
+
+        return route('admin.students.qr-codes.show', $student);
     }
 }

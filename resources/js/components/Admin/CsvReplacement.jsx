@@ -2,21 +2,25 @@ import { useForm } from '@inertiajs/react';
 import { useRef } from 'react';
 import { FieldError, ValidationSummary } from './FormSupport';
 
-export default function CsvReplacement({ studentImport }) {
+export default function CsvReplacement({ studentImport, workspace }) {
     const inputRef = useRef(null);
     const form = useForm({ csv_file: null });
 
     function submit(event) {
         event.preventDefault();
-        form.post(`/admin/students/import/${studentImport.token}/csv`, {
-            forceFormData: true,
-            onSuccess: () => {
-                form.reset('csv_file');
-                if (inputRef.current) {
-                    inputRef.current.value = '';
-                }
+        form.post(
+            workspace?.urls.csvReplace
+                ?? `/admin/students/import/${studentImport.token}/csv`,
+            {
+                forceFormData: true,
+                onSuccess: () => {
+                    form.reset('csv_file');
+                    if (inputRef.current) {
+                        inputRef.current.value = '';
+                    }
+                },
             },
-        });
+        );
     }
 
     return (

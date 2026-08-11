@@ -1,101 +1,180 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import AdminLayout from '../../../components/Admin/AdminLayout';
-import { ValidationSummary } from '../../../components/Admin/FormSupport';
-import PageHeader from '../../../components/Admin/PageHeader';
-import StatusText from '../../../components/Admin/StatusText';
+import CeremonyContextHeader from '../../../components/Admin/CeremonyContextHeader';
+import CeremonyWorkspaceNav from '../../../components/Admin/CeremonyWorkspaceNav';
 
-export default function CeremonyShow({ ceremony }) {
-    const { auth, errors } = usePage().props;
+function announcementSummary(summary) {
+    const parts = [`${summary.announcements_ready} ready`];
 
-    function deleteCeremony() {
-        if (
-            window.confirm(
-                `Delete "${ceremony.name}"? Only unused preparation records can be deleted.`,
-            )
-        ) {
-            router.delete(`/admin/ceremonies/${ceremony.id}`, {
-                preserveScroll: true,
-            });
-        }
+    if (summary.announcements_needs_review > 0) {
+        parts.push(`${summary.announcements_needs_review} review`);
     }
+
+    if (summary.announcements_missing > 0) {
+        parts.push(`${summary.announcements_missing} missing`);
+    }
+
+    if (summary.announcements_rejected > 0) {
+        parts.push(`${summary.announcements_rejected} rejected`);
+    }
+
+    return parts.join(' / ');
+}
+
+export default function CeremonyShow({ ceremony, overview }) {
+    const { auth } = usePage().props;
+    const summary = overview.summary;
+    const nextAction = overview.next_action;
 
     return (
         <AdminLayout>
             <Head title={ceremony.name} />
-            <PageHeader
+
+            <CeremonyContextHeader
                 actions={
                     <>
-                        <Link
-                            className="admin-button admin-button-secondary"
-                            href={`/admin/students?ceremony_id=${ceremony.id}`}
-                        >
-                            View graduates
-                        </Link>
                         {auth.abilities.manage_ceremonies && (
                             <Link
                                 className="admin-button admin-button-primary"
-                                href={`/admin/ceremonies/${ceremony.id}/edit`}
+                                href={`/admin/ceremonies/${ceremony.id}/setup`}
                             >
-                                Edit ceremony
+                                Open setup
                             </Link>
                         )}
-                        {auth.abilities.manage_announcement_settings && (
-                            <Link
-                                className="admin-button admin-button-primary"
-                                href="/admin/voice-generation"
-                            >
-                                Generate voice
-                            </Link>
-                        )}
-                        {auth.abilities.manage_announcement_settings && (
-                            <Link
-                                className="admin-button admin-button-secondary"
-                                href={`/admin/ceremonies/${ceremony.id}/announcement-settings`}
-                            >
-                                Announcement settings
-                            </Link>
-                        )}
-                        {auth.abilities.manage_announcement_batches && (
-                            <Link
-                                className="admin-button admin-button-secondary"
-                                href={`/admin/ceremonies/${ceremony.id}/announcement-batches`}
-                            >
-                                Announcement batches
-                            </Link>
-                        )}
+                        <Link
+                            className="admin-button admin-button-secondary"
+                            href="/admin/ceremonies"
+                        >
+                            Manage ceremonies
+                        </Link>
                     </>
                 }
-                description="Ceremony configuration and protected operational history."
-                eyebrow="Ceremonies"
-                title={ceremony.name}
+                ceremony={ceremony}
             />
 
-            <ValidationSummary errors={errors} />
+            <CeremonyWorkspaceNav ceremony={ceremony} />
 
-            <section className="admin-detail-section">
+            {nextAction ? (
+                <section className="ceremony-workspace-panel">
+                    <div className="admin-section-heading">
+                        <div>
+                            <h2>Next action</h2>
+                            <p>Continue the most urgent preparation task for this ceremony.</p>
+                        </div>
+                    </div>
+                    <div className="ceremony-workspace-next-action">
+                        <div>
+                            <strong>{nextAction.label}</strong>
+                            <p>{nextAction.detail}</p>
+                        </div>
+                        <Link className="admin-button admin-button-primary" href={nextAction.href}>
+                            Continue
+                        </Link>
+                    </div>
+                </section>
+            ) : null}
+
+            <section className="ceremony-workspace-panel">
                 <div className="admin-section-heading">
-                    <h2>Configuration</h2>
-                    <StatusText
-                        label={ceremony.status.label}
-                        value={ceremony.status.value}
-                    />
+                    <div>
+                        <h2>Needs attention</h2>
+                        <p>
+                            {overview.blockers.length === 0
+                                ? 'No immediate preparation blockers were detected from the current ceremony data.'
+                                : 'Resolve these concrete issues before moving into live ceremony operations.'}
+                        </p>
+                    </div>
                 </div>
+
+                {overview.blockers.length === 0 ? (
+                    <p className="admin-inline-empty">
+                        No graduate, photo, eligibility, or announcement blockers are currently flagged.
+                    </p>
+                ) : (
+                    <ol className="ceremony-workspace-blockers">
+                        {overview.blockers.map((blocker) => (
+                            <li key={blocker.label}>
+                                <span>
+                                    <strong>{blocker.label}</strong>
+                                    <small>{blocker.detail}</small>
+                                </span>
+                                <Link href={blocker.href}>Review</Link>
+                            </li>
+                        ))}
+                    </ol>
+                )}
+            </section>
+
+            <section className="ceremony-workspace-panel">
+                <div className="admin-section-heading">
+                    <div>
+                        <h2>Preparation status</h2>
+                        <p>Counts reflect the current records for this ceremony only.</p>
+                    </div>
+                </div>
+
+                <dl className="ceremony-workspace-status-list">
+                    <div>
+                        <dt>Graduate records</dt>
+                        <dd>{summary.graduates_total}</dd>
+                    </div>
+                    <div className={summary.eligibility_issues > 0 ? 'is-warning' : ''}>
+                        <dt>Eligibility</dt>
+                        <dd>
+                            {summary.eligibility_ready} ready / {summary.eligibility_issues} issues
+                        </dd>
+                    </div>
+                    <div className={summary.photos_missing > 0 ? 'is-warning' : ''}>
+                        <dt>Photos</dt>
+                        <dd>
+                            {summary.photos_ready} ready / {summary.photos_missing} missing
+                        </dd>
+                    </div>
+                    <div className={summary.qr_missing > 0 ? 'is-warning' : ''}>
+                        <dt>QR</dt>
+                        <dd>
+                            {summary.qr_ready} ready / {summary.qr_missing} missing
+                        </dd>
+                    </div>
+                    <div
+                        className={
+                            summary.announcements_needs_review > 0
+                            || summary.announcements_missing > 0
+                            || summary.announcements_rejected > 0
+                                ? 'is-warning'
+                                : ''
+                        }
+                    >
+                        <dt>Announcements</dt>
+                        <dd>{announcementSummary(summary)}</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section className="ceremony-workspace-panel">
+                <div className="admin-section-heading">
+                    <div>
+                        <h2>Ceremony</h2>
+                        <p>Configuration remains authoritative in the existing ceremony setup workflow.</p>
+                    </div>
+                </div>
+
                 <dl className="admin-detail-list">
                     <div>
-                        <dt>Academic year</dt>
-                        <dd>{ceremony.academic_year || 'Not set'}</dd>
-                    </div>
-                    <div>
                         <dt>Event date</dt>
-                        <dd>{ceremony.event_date || 'Not set'}</dd>
+                        <dd>{overview.details.event_date || 'Not set'}</dd>
                     </div>
                     <div>
                         <dt>Venue</dt>
-                        <dd>{ceremony.venue || 'Not set'}</dd>
+                        <dd>{overview.details.venue || 'Not set'}</dd>
                     </div>
                     <div>
                         <dt>Presentation mode</dt>
-                        <dd>{ceremony.presentation_mode.label}</dd>
+                        <dd>{overview.details.presentation_mode}</dd>
+                    </div>
+                    <div>
+                        <dt>Live status</dt>
+                        <dd>{overview.details.live_status}</dd>
                     </div>
                     <div>
                         <dt>Activated at</dt>
@@ -107,59 +186,6 @@ export default function CeremonyShow({ ceremony }) {
                     </div>
                 </dl>
             </section>
-
-            <section className="admin-detail-section">
-                <h2>Operational history protection</h2>
-                <dl className="admin-detail-list admin-detail-list-compact">
-                    <div>
-                        <dt>Graduate records</dt>
-                        <dd>{ceremony.students_count}</dd>
-                    </div>
-                    <div>
-                        <dt>Queue items</dt>
-                        <dd>{ceremony.queue_items_count}</dd>
-                    </div>
-                    <div>
-                        <dt>Scan logs</dt>
-                        <dd>{ceremony.scan_logs_count}</dd>
-                    </div>
-                    <div>
-                        <dt>Stage events</dt>
-                        <dd>{ceremony.stage_events_count}</dd>
-                    </div>
-                    <div>
-                        <dt>Stage state</dt>
-                        <dd>
-                            {ceremony.has_stage_state
-                                ? `${ceremony.stage_mode} · version ${ceremony.stage_version}`
-                                : 'Not initialized'}
-                        </dd>
-                    </div>
-                </dl>
-                <p className="admin-form-note">
-                    Any graduate or operational history protects this ceremony from
-                    deletion.
-                </p>
-            </section>
-
-            {auth.abilities.manage_ceremonies && (
-                <section className="admin-danger-zone">
-                    <div>
-                        <h2>Delete unused ceremony</h2>
-                        <p>
-                            Available only for a non-operational ceremony with no
-                            graduate, stage, queue, scan, or event records.
-                        </p>
-                    </div>
-                    <button
-                        className="admin-button admin-button-danger"
-                        onClick={deleteCeremony}
-                        type="button"
-                    >
-                        Delete ceremony
-                    </button>
-                </section>
-            )}
         </AdminLayout>
     );
 }

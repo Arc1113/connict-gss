@@ -54,22 +54,30 @@ function RowState({ classification }) {
     );
 }
 
-export default function StudentImportPreview({ preview, studentImport }) {
+export default function StudentImportPreview({ preview, studentImport, workspace }) {
     const form = useForm({ confirmed: false });
 
     function submit(event) {
         event.preventDefault();
-        form.post(`/admin/students/import/${studentImport.token}/confirm`);
+        form.post(
+            workspace?.urls.confirm
+                ?? `/admin/students/import/${studentImport.token}/confirm`,
+        );
     }
 
     return (
         <AdminLayout>
             <Head title="Review graduate import" />
             <PageHeader
+                backHref={workspace?.urls.mapping ?? `/admin/students/import/${studentImport.token}/mapping`}
+                backLabel="Mapping"
                 actions={
                     <Link
                         className="admin-button admin-button-secondary"
-                        href={`/admin/students/import/${studentImport.token}/mapping`}
+                        href={
+                            workspace?.urls.mapping
+                            ?? `/admin/students/import/${studentImport.token}/mapping`
+                        }
                     >
                         Change mapping
                     </Link>
@@ -102,7 +110,10 @@ export default function StudentImportPreview({ preview, studentImport }) {
                 </dl>
             </section>
 
-            <ImportSourceReplacements studentImport={studentImport} />
+            <ImportSourceReplacements
+                studentImport={studentImport}
+                workspace={workspace}
+            />
 
             <ImportCounts counts={preview} />
 

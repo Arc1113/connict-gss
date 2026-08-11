@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Models\Ceremony;
 use App\Models\StudentImport;
 use App\Models\User;
+use App\Support\WorkingCeremonyResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -84,6 +85,50 @@ class StudentImportAccessAndUploadTest extends TestCase
                     ->where('limits.max_rows', 2000)
                     ->where('limits.encoding', 'UTF-8'));
         }
+    }
+
+    public function test_import_workspace_can_lock_to_the_current_working_ceremony(): void
+    {
+        $encoder = User::factory()->role(UserRole::DataEncoder)->create();
+        $workingCeremony = Ceremony::factory()->create([
+            'name' => 'UM Commencement 2027',
+            'status' => CeremonyStatus::Prepared,
+        ]);
+        Ceremony::factory()->create([
+            'name' => 'Another ceremony',
+            'status' => CeremonyStatus::Prepared,
+        ]);
+
+        $this->actingAs($encoder)
+            ->withSession([
+                WorkingCeremonyResolver::SESSION_KEY => $workingCeremony->id,
+            ])
+            ->get('/admin/students/import')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Students/Import/Index')
+                ->where('workspace.locked', true)
+                ->where('workspace.ceremony.id', $workingCeremony->id)
+                ->has('ceremonies', 1)
+                ->where('ceremonies.0.id', $workingCeremony->id));
+
+        $response = $this->actingAs($encoder)
+            ->withSession([
+                WorkingCeremonyResolver::SESSION_KEY => $workingCeremony->id,
+            ])
+            ->post('/admin/students/import/inspect', [
+                'csv_file' => UploadedFile::fake()->createWithContent(
+                    'graduates.csv',
+                    $this->graduateCsv([
+                        ['2027-0001', 'Ana', '', 'Cruz', 'BSCS', 1, 'eligible'],
+                    ]),
+                ),
+            ]);
+
+        $studentImport = StudentImport::query()->sole();
+
+        $response->assertRedirect("/admin/students/import/{$studentImport->token}/mapping");
+        $this->assertSame($workingCeremony->id, $studentImport->ceremony_id);
     }
 
     public function test_imports_are_owner_bound_even_between_approved_users(): void

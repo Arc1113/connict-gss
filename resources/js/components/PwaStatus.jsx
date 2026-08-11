@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import AppIcon from './AppIcon';
 
-export default function PwaStatus() {
+export default function PwaStatus({ pageComponent }) {
+    const isAudienceStage = pageComponent === 'Stage';
     const [online, setOnline] = useState(() => navigator.onLine);
     const [installPrompt, setInstallPrompt] = useState(null);
     const [registration, setRegistration] = useState(null);
@@ -15,6 +16,10 @@ export default function PwaStatus() {
     });
 
     useEffect(() => {
+        if (isAudienceStage) {
+            return undefined;
+        }
+
         const handleOnline = () => setOnline(true);
         const handleOffline = () => setOnline(false);
         const handleInstallPrompt = (event) => {
@@ -62,7 +67,7 @@ export default function PwaStatus() {
             window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
             window.removeEventListener('appinstalled', handleInstalled);
         };
-    }, []);
+    }, [isAudienceStage]);
 
     const install = async () => {
         if (!installPrompt) {
@@ -97,6 +102,10 @@ export default function PwaStatus() {
             // The reminder can still be dismissed when storage is unavailable.
         }
     };
+
+    if (isAudienceStage) {
+        return null;
+    }
 
     if (online && (!installPrompt || installDismissed) && !updateReady) {
         return null;

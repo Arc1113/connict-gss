@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { requestJson } from '../../lib/http';
 import AudioPreview from './AudioPreview';
 import StatusText from './StatusText';
+import ConfirmDialog from '../ConfirmDialog';
 
 function formatDateTime(value) {
     if (!value) return 'Not completed';
@@ -77,6 +78,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
     const [editingAwardId, setEditingAwardId] = useState(null);
     const [reviewNotes, setReviewNotes] = useState({});
     const [reviewing, setReviewing] = useState(null);
+    const [confirmation, setConfirmation] = useState(null);
     const [candidatePlayable, setCandidatePlayable] = useState({});
     const awardForm = useForm({
         award_name: '',
@@ -188,18 +190,15 @@ export default function AnnouncementWorkspace({ announcement, student }) {
     }
 
     function removeAward(award) {
-        if (!window.confirm(`Remove “${award.award_name}” from this graduate?`)) return;
-
-        router.delete(`/admin/students/${student.id}/awards/${award.id}`, {
-            preserveScroll: true,
-        });
+        setConfirmation({ title: `Remove ${award.award_name}?`, description: `This award will no longer be included for ${student.display_name}.`, label: 'Remove award', tone: 'danger', run: () => router.delete(`/admin/students/${student.id}/awards/${award.id}`, { preserveScroll: true }) });
     }
 
     function generate(force = false) {
-        if (force && !window.confirm('Force a new Azure request even if an identical candidate exists?')) {
-            return;
-        }
+        if (force) return setConfirmation({ title: 'Force regenerate announcement?', description: 'A new provider request will be made even when an identical candidate already exists.', label: 'Force regenerate', tone: 'warning', run: () => generateCandidate(true) });
+        generateCandidate(false);
+    }
 
+    function generateCandidate(force) {
         generationForm.transform((data) => ({ ...data, force })).post(
             `/admin/students/${student.id}/announcement-candidates`,
             {
@@ -213,10 +212,12 @@ export default function AnnouncementWorkspace({ announcement, student }) {
         const notes = reviewNotes[generation.id] ?? '';
 
         if (decision === 'reject' && !notes.trim()) return;
-        if (decision === 'approve' && !window.confirm(
-            'Approve this candidate and replace the active stage audio?',
-        )) return;
+        if (decision === 'approve') return setConfirmation({ title: 'Approve announcement audio?', description: 'This candidate will replace the active stage audio for this graduate.', label: 'Approve audio', tone: 'warning', run: () => submitReview(generation, decision, notes) });
 
+        submitReview(generation, decision, notes);
+    }
+
+    function submitReview(generation, decision, notes) {
         setReviewing(`${generation.id}:${decision}`);
         router.post(
             `/admin/students/${student.id}/announcement-candidates/${generation.id}/${decision}`,
@@ -237,6 +238,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
 
     return (
         <section className="admin-detail-section announcement-workspace">
+            <ConfirmDialog busy={reviewing !== null || generationForm.processing} confirmLabel={confirmation?.label ?? 'Continue'} description={confirmation?.description} onCancel={() => setConfirmation(null)} onConfirm={() => { const pending = confirmation; setConfirmation(null); pending?.run(); }} open={Boolean(confirmation)} title={confirmation?.title ?? ''} tone={confirmation?.tone} />
             <div className="admin-section-heading announcement-heading">
                 <div>
                     <p className="announcement-kicker">Preparation only</p>
@@ -254,6 +256,13 @@ export default function AnnouncementWorkspace({ announcement, student }) {
             </div>
 
             <div className="announcement-source-grid">
+                {announcement.review_queue?.url && (
+                    <div className="admin-form-actions">
+                        <LinkButton href={announcement.review_queue.url}>
+                            Return to announcement queue
+                        </LinkButton>
+                    </div>
+                )}
                 <dl className="admin-detail-list admin-detail-list-compact">
                     <div><dt>Announcement name</dt><dd>{announcement.source.announcement_name}</dd></div>
                     <div><dt>TTS spoken name</dt><dd>{announcement.source.tts_spoken_name || 'Uses announcement name'}</dd></div>
@@ -493,5 +502,13 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                 )}
             </div>
         </section>
+    );
+}
+
+function LinkButton({ children, href }) {
+    return (
+        <a className="admin-button admin-button-secondary" href={href}>
+            {children}
+        </a>
     );
 }

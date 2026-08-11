@@ -9,6 +9,7 @@ export default function StudentIndex({
     filterOptions,
     filters,
     students,
+    workspace,
 }) {
     const { auth } = usePage().props;
     const hasFilters = Object.entries(filters).some(
@@ -26,21 +27,30 @@ export default function StudentIndex({
             <Head title="Graduate records" />
             <PageHeader
                 actions={
-                    (auth.abilities.import_students ||
-                        auth.abilities.manage_students) && (
+                    (auth.abilities.import_students
+                        || auth.abilities.manage_students
+                        || auth.abilities.prepare_qr_codes) && (
                         <>
                             {auth.abilities.import_students && (
                                 <Link
                                     className="admin-button admin-button-secondary"
-                                    href="/admin/students/import"
+                                    href={workspace?.urls.import ?? '/admin/students/import'}
                                 >
-                                    Import CSV
+                                    Import graduates
+                                </Link>
+                            )}
+                            {auth.abilities.prepare_qr_codes && (
+                                <Link
+                                    className="admin-button admin-button-secondary"
+                                    href={workspace?.urls.qr ?? '/admin/students/qr-codes'}
+                                >
+                                    QR preparation
                                 </Link>
                             )}
                             {auth.abilities.manage_students && (
                                 <Link
                                     className="admin-button admin-button-primary"
-                                    href="/admin/students/create"
+                                    href={workspace?.urls.create ?? '/admin/students/create'}
                                 >
                                     Add graduate
                                 </Link>
@@ -49,11 +59,35 @@ export default function StudentIndex({
                     )
                 }
                 description="Find and correct preparation data without exposing QR tokens."
-                eyebrow="Administration"
-                title="Graduate records"
+                eyebrow={workspace ? 'Ceremony workspace' : 'Administration'}
+                title={workspace ? 'Graduates' : 'Graduate records'}
             />
 
-            <form action="/admin/students" className="admin-filters" method="get">
+            {workspace && (
+                <section className="ceremony-workspace-panel">
+                    <div className="admin-section-heading">
+                        <div>
+                            <h2>{workspace.ceremony.name}</h2>
+                            <p>
+                                {students.total.toLocaleString()} graduates in the current
+                                working ceremony.
+                            </p>
+                        </div>
+                        <Link
+                            className="admin-button admin-button-secondary"
+                            href={workspace.urls.overview}
+                        >
+                            Ceremony workspace
+                        </Link>
+                    </div>
+                </section>
+            )}
+
+            <form
+                action={workspace?.urls.graduates ?? '/admin/students'}
+                className="admin-filters"
+                method="get"
+            >
                 <div className="admin-filter-search admin-filter-search-wide">
                     <label htmlFor="search">Search name or student number</label>
                     <input
@@ -65,21 +99,33 @@ export default function StudentIndex({
                         type="search"
                     />
                 </div>
-                <div>
-                    <label htmlFor="ceremony_id">Ceremony</label>
-                    <select
-                        defaultValue={filters.ceremony_id}
-                        id="ceremony_id"
-                        name="ceremony_id"
-                    >
-                        <option value="">All ceremonies</option>
-                        {filterOptions.ceremonies.map((ceremony) => (
-                            <option key={ceremony.id} value={ceremony.id}>
-                                {ceremony.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                {!workspace?.locked && (
+                    <div>
+                        <label htmlFor="ceremony_id">Ceremony</label>
+                        <select
+                            defaultValue={filters.ceremony_id}
+                            id="ceremony_id"
+                            name="ceremony_id"
+                        >
+                            <option value="">All ceremonies</option>
+                            {filterOptions.ceremonies.map((ceremony) => (
+                                <option key={ceremony.id} value={ceremony.id}>
+                                    {ceremony.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+                {workspace?.locked && (
+                    <div>
+                        <label>Working ceremony</label>
+                        <div className="admin-readonly-field">
+                            <strong>{workspace.ceremony.name}</strong>
+                            <span>{workspace.ceremony.status}</span>
+                        </div>
+                        <input name="ceremony_id" type="hidden" value={filters.ceremony_id} />
+                    </div>
+                )}
                 <div>
                     <label htmlFor="eligibility_status">Eligibility</label>
                     <select
@@ -180,7 +226,7 @@ export default function StudentIndex({
                     {hasFilters && (
                         <Link
                             className="admin-button admin-button-secondary"
-                            href="/admin/students"
+                            href={workspace?.urls.graduates ?? '/admin/students'}
                         >
                             Clear
                         </Link>
@@ -195,7 +241,7 @@ export default function StudentIndex({
                         auth.abilities.manage_students && (
                             <Link
                                 className="admin-button admin-button-primary"
-                                href="/admin/students/create"
+                                href={workspace?.urls.create ?? '/admin/students/create'}
                             >
                                 Add the first graduate
                             </Link>
@@ -226,7 +272,7 @@ export default function StudentIndex({
                                 <tr>
                                     <th scope="col">Sequence</th>
                                     <th scope="col">Graduate</th>
-                                    <th scope="col">Ceremony</th>
+                                    {!workspace && <th scope="col">Ceremony</th>}
                                     <th scope="col">Program</th>
                                     <th scope="col">Eligibility</th>
                                     <th scope="col">Media</th>
@@ -239,10 +285,12 @@ export default function StudentIndex({
                                     <tr key={student.id}>
                                         <td>{student.sequence_number}</td>
                                         <th scope="row">
-                                            {student.display_name}
+                                            <Link href={workspace ? `${workspace.urls.graduates}/${student.id}` : `/admin/students/${student.id}`}>
+                                                {student.display_name}
+                                            </Link>
                                             <small>{student.student_number}</small>
                                         </th>
-                                        <td>{student.ceremony.name}</td>
+                                        {!workspace && <td>{student.ceremony.name}</td>}
                                         <td>
                                             <span className="admin-cell-primary">
                                                 {student.program}
@@ -265,16 +313,14 @@ export default function StudentIndex({
                                         </td>
                                         <td>{student.stage_status.label}</td>
                                         <td>
-                                            <Link
-                                                className="admin-row-action"
-                                                href={`/admin/students/${student.id}`}
-                                            >
-                                                View
-                                            </Link>
                                             {auth.abilities.prepare_qr_codes && (
                                                 <Link
                                                     className="admin-row-action"
-                                                    href={`/admin/students/${student.id}/qr-code`}
+                                                    href={
+                                                        workspace
+                                                            ? `${workspace.urls.qr}/${student.id}`
+                                                            : `/admin/students/${student.id}/qr-code`
+                                                    }
                                                 >
                                                     QR card
                                                 </Link>
@@ -282,7 +328,7 @@ export default function StudentIndex({
                                             {auth.abilities.manage_students && (
                                                 <Link
                                                     className="admin-row-action"
-                                                    href={`/admin/students/${student.id}/edit`}
+                                                    href={workspace ? `${workspace.urls.graduates}/${student.id}/edit` : `/admin/students/${student.id}/edit`}
                                                 >
                                                     Edit
                                                 </Link>

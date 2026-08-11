@@ -3,7 +3,7 @@
 > **File:** `design.md`  
 > **Status:** Approved design direction for UI/UX refinement  
 > **Applies to:** Existing Graduation Stage System release candidate and all future interface changes  
-> **Primary stack:** Laravel, React, Inertia.js, Vite, Tailwind CSS, PostgreSQL, Laravel Reverb, Laravel Echo  
+> **Primary stack:** Laravel, React, Inertia.js, Vite, CSS, PostgreSQL, Laravel Reverb, Laravel Echo
 > **Runtime:** Local network, multi-laptop, installable PWA  
 > **Last updated:** 2026-07-31
 
@@ -103,6 +103,10 @@ A visually attractive screen that slows an operator or hides a problem is a desi
 ---
 
 # 4. Core UX Principles
+
+## Ceremony Context Rules
+
+**Working Ceremony != Live Ceremony.** The Working Ceremony is an operator-selected, administrative preparation context and never activates a ceremony. The Live Ceremony is status-controlled and is the only context used by Scanner, Stage Control, and Stage Display.
 
 ## 4.1 One Screen, One Primary Purpose
 
