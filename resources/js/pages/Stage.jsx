@@ -52,7 +52,7 @@ export default function Stage({ ceremony }) {
             return;
         }
 
-        void requestJson('/stage/audio-status', {
+        return requestJson('/stage/audio-status', {
             method: 'POST',
             body: JSON.stringify({
                 version: presentation.version,
@@ -67,6 +67,10 @@ export default function Stage({ ceremony }) {
             stopAudio();
 
             if (!audioEnabledRef.current || !presentation?.audio_url) {
+                if (presentation?.audio_url === null && ceremony?.presentation_mode === 'fully_automatic') {
+                    reportAudioStatus(presentation, 'failed');
+                }
+
                 return;
             }
 
@@ -78,7 +82,19 @@ export default function Stage({ ceremony }) {
 
             audio.src = presentation.audio_url;
             audio.preload = 'auto';
-            audio.onended = () => reportAudioStatus(presentation, 'stopped');
+            audio.onended = async () => {
+                await reportAudioStatus(presentation, 'stopped');
+
+                if (ceremony?.presentation_mode === 'fully_automatic') {
+                    await requestJson('/stage/automatic/advance', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            expected_version: presentation.version,
+                            student_id: presentation.student_id,
+                        }),
+                    });
+                }
+            };
             audio.onerror = () => reportAudioStatus(presentation, 'failed');
 
             try {
@@ -88,7 +104,7 @@ export default function Stage({ ceremony }) {
                 reportAudioStatus(presentation, 'failed');
             }
         },
-        [reportAudioStatus, stopAudio],
+        [ceremony?.presentation_mode, reportAudioStatus, stopAudio],
     );
 
     const preloadAudio = useCallback((url) => {
@@ -241,16 +257,6 @@ export default function Stage({ ceremony }) {
                             : null,
                     }));
 
-                    if (
-                        stageStateRef.current.mode === 'graduate' &&
-                        stageStateRef.current.presentation?.student_id ===
-                            event.student_id
-                    ) {
-                        void playAudio({
-                            ...stageStateRef.current.presentation,
-                            version: event.version,
-                        });
-                    }
                 })
                 .listen('.stage.holding-changed', (event) => {
                     if (event.version <= versionRef.current) {

@@ -250,7 +250,7 @@ final readonly class ScanStudentForPresentation
             $automaticallyPresented = false;
 
             if (
-                $ceremony->presentation_mode === PresentationMode::Automatic
+                in_array($ceremony->presentation_mode, [PresentationMode::Automatic, PresentationMode::FullyAutomatic], true)
                 && ! $stageState->automatic_paused
                 && $stageState->current_queue_item_id === null
                 && $stageState->display_mode === StageDisplayMode::Idle

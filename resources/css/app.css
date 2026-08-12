@@ -387,34 +387,34 @@ html {
 }
 
 :root {
-    /* Semantic colors from design.md. */
-    --color-bg-app: #f4f5f7;
-    --color-bg-sidebar: #eceef1;
+    /* Semantic Slate & Monochromatic tokens */
+    --color-bg-app: #f8fafc;
+    --color-bg-sidebar: #f1f5f9;
     --color-surface: #ffffff;
-    --color-surface-subtle: #f8f9fa;
-    --color-surface-selected: #eaf2ff;
-    --color-surface-hover: #f0f2f5;
-    --color-text-primary: #17191c;
-    --color-text-secondary: #5e6670;
-    --color-text-muted: #5e6670;
+    --color-surface-subtle: #f8fafc;
+    --color-surface-selected: #f1f5f9;
+    --color-surface-hover: #f1f5f9;
+    --color-text-primary: #0f172a;
+    --color-text-secondary: #475569;
+    --color-text-muted: #64748b;
     --color-text-inverse: #ffffff;
-    --color-border: #d9dde3;
-    --color-border-strong: #bbc2cc;
-    --color-accent: #1769e0;
-    --color-accent-hover: #1259c5;
-    --color-accent-subtle: #e8f1ff;
-    --color-success: #16794a;
-    --color-success-bg: #e8f6ef;
-    --color-warning: #9a5b00;
-    --color-warning-bg: #fff3d6;
-    --color-danger: #c73737;
-    --color-danger-bg: #fdecec;
-    --color-info: #1769e0;
-    --color-info-bg: #e8f1ff;
-    --color-focus: #1769e0;
-    --color-overlay: rgb(18 22 28 / 0.42);
+    --color-border: #e2e8f0;
+    --color-border-strong: #cbd5e1;
+    --color-accent: #0f172a;
+    --color-accent-hover: #1e293b;
+    --color-accent-subtle: #f1f5f9;
+    --color-success: #059669;
+    --color-success-bg: #ecfdf5;
+    --color-warning: #d97706;
+    --color-warning-bg: #fffbeb;
+    --color-danger: #dc2626;
+    --color-danger-bg: #fef2f2;
+    --color-info: #0284c7;
+    --color-info-bg: #f0f9ff;
+    --color-focus: #0f172a;
+    --color-overlay: rgb(15 23 42 / 0.5);
 
-    /* Operational component aliases used during page-by-page migration. */
+    /* Operational component aliases */
     --color-bg-surface: var(--color-surface);
     --color-bg-hover: var(--color-surface-hover);
     --color-bg-selected: var(--color-surface-selected);
@@ -430,7 +430,7 @@ html {
     --color-status-info-bg: var(--color-info-bg);
     --color-focus-ring: var(--color-focus);
 
-    /* Spacing, shape, motion, and layout. */
+    /* Spacing, shape, motion, and layout */
     --space-1: 0.25rem;
     --space-2: 0.5rem;
     --space-3: 0.75rem;
@@ -438,72 +438,72 @@ html {
     --space-5: 1.25rem;
     --space-6: 1.5rem;
     --space-8: 2rem;
-    --radius-control: 0.4375rem;
-    --radius-panel: 0.5625rem;
-    --radius-dialog: 0.6875rem;
+    --radius-control: 0.375rem;
+    --radius-panel: 0.625rem;
+    --radius-dialog: 0.875rem;
     --radius-sm: var(--radius-control);
     --radius-md: var(--radius-panel);
-    --motion-hover: 100ms ease;
-    --motion-panel: 160ms ease;
+    --motion-hover: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-panel: 180ms cubic-bezier(0.4, 0, 0.2, 1);
     --z-sidebar: 20;
     --z-toolbar: 18;
     --z-statusbar: 17;
     --z-overlay: 40;
     --z-dialog: 41;
 
-    /* Legacy aliases retained while page components migrate. */
+    /* Legacy aliases mapped to refined tokens */
     --gss-canvas: var(--color-bg-app);
     --gss-surface: #ffffff;
     --gss-surface-muted: var(--color-surface-subtle);
-    --gss-surface-dark: #1f2937;
-    --gss-card-dark: #263240;
+    --gss-surface-dark: #0f172a;
+    --gss-card-dark: #1e293b;
     --gss-ink: var(--color-text-primary);
     --gss-ink-muted: var(--color-text-secondary);
     --gss-ink-light: var(--color-text-muted);
     --gss-border: var(--color-border);
-    --gss-border-subtle: #eaedf1;
+    --gss-border-subtle: #f1f5f9;
     --gss-border-dark: var(--color-border-strong);
     --gss-navy: var(--color-text-primary);
-    --gss-navy-light: #303640;
-    --gss-gold: var(--color-accent);
+    --gss-navy-light: #334155;
+    --gss-gold: var(--color-text-primary);
     --gss-gold-hover: var(--color-accent-hover);
     --gss-gold-light: var(--color-accent-subtle);
-    --gss-gold-border: #b9d3fa;
+    --gss-gold-border: var(--color-border-strong);
     --gss-success: var(--color-success);
     --gss-success-bg: var(--color-success-bg);
-    --gss-success-border: #a9d9c2;
+    --gss-success-border: #a7f3d0;
     --gss-success-ink: var(--color-success);
-    --gss-warning: #c47a0b;
+    --gss-warning: var(--color-warning);
     --gss-warning-bg: var(--color-warning-bg);
-    --gss-warning-border: #e8ca87;
+    --gss-warning-border: #fde68a;
     --gss-warning-ink: var(--color-warning);
     --gss-danger: var(--color-danger);
     --gss-danger-bg: var(--color-danger-bg);
-    --gss-danger-border: #e9b6b6;
+    --gss-danger-border: #fca5a5;
     --gss-danger-ink: var(--color-danger);
     --gss-info: var(--color-info);
     --gss-info-bg: var(--color-info-bg);
-    --gss-info-border: #b9d3fa;
+    --gss-info-border: #bae6fd;
     --gss-info-ink: var(--color-info);
     --gss-focus: var(--color-focus);
-    --gss-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Ubuntu, Cantarell, sans-serif;
+    --gss-font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-    /* Safe audience-stage defaults; ceremony values override these inline. */
-    --stage-theme-accent: #d6b474;
-    --stage-theme-background: #082f2b;
-    --stage-theme-surface: #f6f1e7;
+    /* Audience-stage theme defaults */
+    --stage-theme-accent: #38bdf8;
+    --stage-theme-background: #0f172a;
+    --stage-theme-surface: #1e293b;
     --stage-theme-text: #ffffff;
     
     /* Stage Audience Specific (Dark Mode) */
-    --gss-stage-background: #000000;
+    --gss-stage-background: #090d16;
     --gss-stage-text: #ffffff;
     --gss-stage-gold: #ffffff;
     --gss-stage-subtext: #94a3b8;
 
-    --gss-shadow-sm: 0 1px 2px rgb(31 41 55 / 0.05);
-    --gss-shadow-md: 0 8px 22px rgb(31 41 55 / 0.12);
-    --gss-shadow-lg: 0 14px 34px rgb(31 41 55 / 0.14);
-    --gss-shadow-xl: 0 22px 54px rgb(31 41 55 / 0.18);
+    --gss-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.04);
+    --gss-shadow-md: 0 6px 18px rgb(15 23 42 / 0.08);
+    --gss-shadow-lg: 0 12px 30px rgb(15 23 42 / 0.1);
+    --gss-shadow-xl: 0 20px 48px rgb(15 23 42 / 0.14);
     --gss-radius-sm: var(--radius-control);
     --gss-radius-md: var(--radius-panel);
     --gss-radius-lg: var(--radius-dialog);
@@ -515,10 +515,28 @@ html {
 
     color: var(--gss-ink);
     background: var(--gss-canvas);
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Ubuntu, Cantarell, sans-serif;
+    font-family: var(--gss-font-sans);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+}
+
+/* Base Typography & Tabular Figures Utility */
+h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.022em;
+}
+
+.tabular-nums,
+[data-tabular] {
+    font-variant-numeric: tabular-nums;
+}
+
+.kicker-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
 }
 
 /* design.md desktop application shell -------------------------------------- */
@@ -1748,105 +1766,134 @@ html {
 
 /* Guided announcement setup and reusable stage-design library ----------- */
 
+/* --------------------------------------------------------------------------
+   Announcement Settings - Setup Map (Stepper)
+   -------------------------------------------------------------------------- */
 .announcement-setup-map {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1px;
-    overflow: hidden;
-    margin-bottom: var(--space-5);
-    border: 1px solid var(--color-border-default);
-    border-radius: var(--radius-md);
-    background: var(--color-border-default);
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: var(--space-6);
+    padding: 0 0.5rem;
+    overflow-x: auto;
 }
 
 .announcement-setup-map a {
-    display: grid;
-    grid-template-columns: 2rem minmax(0, 1fr);
-    gap: 0.1rem 0.65rem;
-    padding: 0.9rem;
-    color: var(--color-text-primary);
-    background: var(--color-bg-surface);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-text-secondary, #475569);
     text-decoration: none;
-    transition: background-color 180ms ease;
+    transition: color 150ms ease;
+    white-space: nowrap;
 }
 
 .announcement-setup-map a:hover {
-    background: var(--color-bg-hover);
+    color: var(--color-text-primary, #0f172a);
 }
 
 .announcement-setup-map a > span {
-    display: grid;
-    grid-row: 1 / 3;
-    width: 1.8rem;
-    height: 1.8rem;
-    place-items: center;
-    border-radius: 50%;
-    color: #fff;
-    background: #0d4b3d;
-    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 9999px;
+    background: var(--color-surface-hover, #f1f5f9);
+    color: var(--color-text-primary, #0f172a);
+    font-size: 0.8rem;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    border: 1px solid var(--color-border, #e2e8f0);
 }
 
-.announcement-setup-map strong,
+.announcement-setup-map a:hover > span {
+    background: var(--color-border, #e2e8f0);
+}
+
+.announcement-setup-map strong {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
 .announcement-setup-map small {
-    min-width: 0;
+    display: none; /* Hide the verbose small text in the stepper for cleaner look */
 }
 
-.announcement-setup-map small {
-    color: var(--color-text-secondary);
-}
-
+/* --------------------------------------------------------------------------
+   Announcement Settings - Quick Starts
+   -------------------------------------------------------------------------- */
 .announcement-quick-starts {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
 }
 
 .announcement-quick-starts button {
-    display: grid;
-    gap: 0.3rem;
-    padding: 0.9rem;
-    color: var(--color-text-primary);
-    background: var(--color-bg-surface);
-    border: 1px solid var(--color-border-default);
-    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem;
     text-align: left;
-    transition: border-color 180ms ease, transform 180ms ease;
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--gss-radius-md, 0.5rem);
+    color: var(--color-text-primary, #0f172a);
+    transition: all 150ms ease;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 
 .announcement-quick-starts button:hover {
-    border-color: #176b57;
+    border-color: var(--color-text-primary, #0f172a);
+    background: var(--color-surface-hover, #f1f5f9);
     transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
 }
 
 .announcement-quick-starts button:active {
     transform: translateY(0);
 }
 
-.announcement-quick-starts span,
+.announcement-quick-starts strong {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.announcement-quick-starts span {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary, #475569);
+    line-height: 1.4;
+}
+
 .announcement-advanced-settings > p,
 .announcement-review-step > div:first-child p {
-    color: var(--color-text-secondary);
+    color: var(--color-text-secondary, #475569);
 }
 
 .announcement-advanced-settings {
-    margin-top: var(--space-4);
-    padding: 0.8rem;
-    border: 1px solid var(--color-border-default);
-    border-radius: var(--radius-sm);
-    background: var(--color-bg-hover);
+    margin-top: var(--space-5);
+    padding: 1rem;
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--gss-radius-md, 0.5rem);
+    background: var(--color-surface-hover, #f1f5f9);
 }
 
 .announcement-advanced-settings summary {
     cursor: pointer;
-    color: var(--color-text-primary);
-    font-weight: 700;
+    color: var(--color-text-primary, #0f172a);
+    font-weight: 600;
+    user-select: none;
 }
 
+/* --------------------------------------------------------------------------
+   Announcement Settings - Review Step & Preview Card
+   -------------------------------------------------------------------------- */
 .announcement-review-step {
-    display: grid;
-    gap: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
     scroll-margin-top: 2rem;
 }
 
@@ -1856,8 +1903,31 @@ html {
     margin-top: 0;
 }
 
-.announcement-review-step .announcement-settings-preview {
+.announcement-settings-preview {
+    background: var(--color-surface-hover, #f1f5f9);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--gss-radius-lg, 0.75rem);
+    padding: 1.5rem;
     margin-bottom: 0;
+}
+
+.announcement-preview-meta {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary, #475569);
+    font-variant-numeric: tabular-nums;
+}
+
+.announcement-preview-copy {
+    font-size: 1.15rem;
+    line-height: 1.6;
+    color: var(--color-text-primary, #0f172a);
+    font-weight: 500;
+    margin: 0 0 1rem;
+    padding-left: 1rem;
+    border-left: 3px solid var(--color-text-muted, #94a3b8);
 }
 
 .stage-template-picker {
@@ -14052,31 +14122,59 @@ body {
 
 .announcement-provider-card,
 .voice-provider-readiness article {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 0.35rem;
     padding: 1rem;
-    border: 1px solid var(--admin-border, #d8dedb);
-    border-radius: 0.75rem;
-    background: var(--admin-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--gss-radius-md, 0.5rem);
+    background: var(--color-surface, #ffffff);
+    transition: all 150ms ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 
 .announcement-provider-card {
     cursor: pointer;
 }
 
+.announcement-provider-card:hover {
+    border-color: var(--color-text-primary, #0f172a);
+    background: var(--color-surface-hover, #f1f5f9);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+
 .announcement-provider-card.is-selected {
-    border-color: #176b57;
-    box-shadow: 0 0 0 2px rgb(23 107 87 / 12%);
+    border-color: var(--color-text-primary, #0f172a);
+    background: var(--color-surface-hover, #f1f5f9);
+    box-shadow: inset 0 0 0 1px var(--color-text-primary, #0f172a);
 }
 
 .announcement-provider-card input {
-    width: auto;
-    justify-self: start;
+    margin-bottom: 0.2rem;
+    cursor: pointer;
+}
+
+.announcement-provider-card strong {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #0f172a);
 }
 
 .announcement-provider-card span,
 .voice-provider-readiness p {
-    color: var(--admin-muted, #5f6e68);
+    font-size: 0.8rem;
+    color: var(--color-text-secondary, #475569);
+    line-height: 1.4;
+}
+
+.announcement-provider-card small {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-text-muted, #94a3b8);
 }
 
 .voice-workspace-summary {
@@ -14677,4 +14775,164 @@ body {
         align-items: flex-start;
         flex-direction: column;
     }
+}
+
+/* ==========================================================================
+   Stage Media Control Deck & Topbar UI Adjustments
+   ========================================================================== */
+.stage-control-media-deck {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--gss-radius-lg, 0.75rem);
+    box-shadow: var(--gss-shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+    color: var(--color-text-primary, #0f172a);
+}
+
+.media-deck-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.media-deck-title {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted, #64748b);
+    text-transform: uppercase;
+}
+
+.media-deck-status {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.6rem;
+    border-radius: 9999px;
+    background: var(--color-surface-hover, #f1f5f9);
+    color: var(--color-text-secondary, #475569);
+    letter-spacing: 0.04em;
+}
+
+.media-deck-controls {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.media-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.6rem 0.8rem;
+    flex: 1;
+    border: 1px solid var(--color-border-strong, #cbd5e1);
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text-primary, #0f172a);
+    border-radius: var(--gss-radius-md, 0.5rem);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    user-select: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.media-btn:hover:not(:disabled) {
+    background: var(--color-surface-hover, #f1f5f9);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.06);
+}
+
+.media-btn:active:not(:disabled) {
+    transform: translateY(0);
+    background: var(--color-border, #e2e8f0);
+}
+
+.media-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+    background: var(--color-surface-subtle, #f8fafc);
+    border-color: var(--color-border, #e2e8f0);
+}
+
+.media-btn-next {
+    background: var(--color-success, #059669);
+    color: #ffffff;
+    border-color: var(--color-success, #059669);
+}
+
+.media-btn-next:hover:not(:disabled) {
+    background: #047857;
+}
+
+.media-btn-next:active:not(:disabled) {
+    background: #064e3b;
+}
+
+.media-btn-pause.is-active {
+    background: var(--color-warning-bg, #fffbeb);
+    color: var(--color-warning, #d97706);
+    border-color: var(--color-warning, #d97706);
+}
+
+.media-btn-correct {
+    color: var(--color-danger, #dc2626);
+    border-color: var(--color-danger-bg, #fef2f2);
+}
+
+.media-btn-correct:hover:not(:disabled) {
+    background: var(--color-danger-bg, #fef2f2);
+    border-color: var(--color-danger, #dc2626);
+}
+
+.app-working-ceremony-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.5rem;
+    background: var(--gss-surface-muted, #f1f5f9);
+    border: 1px solid var(--gss-border, #e2e8f0);
+    border-radius: 0.4rem;
+}
+
+.app-working-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--gss-ink-muted, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.app-working-ceremony-pill select {
+    background: transparent;
+    border: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--gss-ink, #0f172a);
+    cursor: pointer;
+    outline: none;
+    padding: 0.15rem 0.3rem;
+}
+
+.admin-page-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stage-design-preview-container {
+    margin-bottom: 1.25rem;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }

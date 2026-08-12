@@ -76,6 +76,7 @@ final class PreviewFictionalAnnouncement
             ),
             provider: $provider,
             ceremonyIdentifier: $template->ceremony_id === null ? null : (int) $template->ceremony_id,
+            includeIntroduction: ($template->introduction_frequency ?? 'first_per_program') !== 'never',
         );
         $composition = $this->composer->compose($input);
 

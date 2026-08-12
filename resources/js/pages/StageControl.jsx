@@ -1,8 +1,9 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import AppIcon from '../components/AppIcon';
+import OperationCommandMenu from '../components/OperationCommandMenu';
 import { getEcho, observeEchoConnection } from '../lib/echo';
 import { requestJson } from '../lib/http';
-import OperationCommandMenu from '../components/OperationCommandMenu';
 import OnboardingGuide from '../components/OnboardingGuide';
 
 const EMPTY_CONTROL = {
@@ -304,7 +305,8 @@ export default function StageControl({ ceremony }) {
     const selected = waiting.find((item) => item.id === selectedId);
     const isHolding = stageMode === 'holding' || control.display_mode === 'holding';
     const stageBusy = Boolean(current);
-    const automatic = activeCeremony?.presentation_mode === 'automatic';
+    const automatic = ['automatic', 'fully_automatic'].includes(activeCeremony?.presentation_mode);
+    const fullyAutomatic = activeCeremony?.presentation_mode === 'fully_automatic';
     const unavailable = !activeCeremony;
 
     return (
@@ -325,7 +327,7 @@ export default function StageControl({ ceremony }) {
                             <span aria-hidden="true"> · </span>
                             <strong>
                                 {automatic
-                                    ? 'Assisted automatic'
+                                    ? fullyAutomatic ? 'Fully automatic' : 'Assisted automatic'
                                     : 'Controlled mode'}
                                 {automatic && control.automatic_paused
                                     ? ' paused'
@@ -375,11 +377,11 @@ export default function StageControl({ ceremony }) {
                     </p>
                     {automatic && (
                         <p className="stage-control-automatic-command">
-                            <strong>Assisted automatic</strong>
+                            <strong>{fullyAutomatic ? 'Fully automatic' : 'Assisted automatic'}</strong>
                             <span>
                                 {control.automatic_paused
                                     ? 'Paused — scans wait in queue'
-                                    : 'Running — idle scans present'}
+                                    : fullyAutomatic ? 'Running — scans present and audio advances the queue' : 'Running — idle scans present'}
                             </span>
                             <button
                                 className="secondary-action"
@@ -523,138 +525,138 @@ export default function StageControl({ ceremony }) {
                                 )}
                             </div>
 
-                            <div className="stage-control-primary-actions">
-                                <p className="stage-control-action-label">
-                                    Safe next action
-                                </p>
-                                {current ? (
-                                    <>
-                                        {waiting.length > 0 && (
-                                            <button
-                                                className="primary-action"
-                                                disabled={Boolean(pendingAction)}
-                                                onClick={() =>
-                                                    runCommand(
-                                                        'complete-next',
-                                                        '/stage/complete-and-present-next',
-                                                        {
-                                                            expected_version:
-                                                                control.version,
-                                                        },
-                                                    )
-                                                }
-                                                type="button"
-                                            >
-                                                {pendingAction === 'complete-next'
-                                                    ? 'Completing and presenting…'
-                                                    : 'Complete and present next'}
-                                            </button>
-                                        )}
+                            <div className="stage-control-media-deck" aria-label="Stage Media Player Controls">
+                                <div className="media-deck-header">
+                                    <span className="media-deck-title">STAGE MEDIA CONTROLS</span>
+                                    <span className="media-deck-status">
+                                        {isHolding ? 'PAUSED (HOLDING)' : current ? 'LIVE PRESENTATION' : 'IDLE / READY'}
+                                    </span>
+                                </div>
+                                <div className="media-deck-controls">
+                                    {/* PREVIOUS (mapped to correct) */}
+                                    {current && (
                                         <button
-                                            className={
-                                                waiting.length === 0
-                                                    ? 'primary-action'
-                                                    : 'secondary-action'
-                                            }
-                                            disabled={Boolean(pendingAction)}
-                                            onClick={() =>
-                                                runCommand(
-                                                    'complete',
-                                                    '/stage/complete-current',
-                                                )
-                                            }
-                                            type="button"
-                                        >
-                                            {pendingAction === 'complete'
-                                                ? 'Completing…'
-                                                : 'Complete and clear'}
-                                        </button>
-                                        <button
-                                            className="secondary-action"
-                                            data-tour="stage-replay"
-                                            disabled={
-                                                Boolean(pendingAction) ||
-                                                !current.student.has_audio ||
-                                                isHolding
-                                            }
-                                            onClick={() =>
-                                                runCommand(
-                                                    'replay',
-                                                    '/stage/replay',
-                                                )
-                                            }
-                                            type="button"
-                                        >
-                                            {pendingAction === 'replay'
-                                                ? 'Replaying…'
-                                                : 'Replay announcement'}
-                                        </button>
-                                        <button
-                                            className="stage-control-danger-action"
+                                            className="media-btn media-btn-correct"
                                             disabled={Boolean(pendingAction)}
                                             onClick={() =>
                                                 requestConfirmation(
                                                     'return-current',
                                                     '/stage/return-current',
-                                                    `Correct the current presentation for ${current.student.display_name}? The graduate will return to queue position ${current.queue_position}, audio will stop, and the audience will see the holding screen.`,
-                                                    {
-                                                        expected_version:
-                                                            control.version,
-                                                    },
+                                                    `Correct current presentation for ${current.student.display_name}? The graduate will return to queue position ${current.queue_position}.`,
+                                                    { expected_version: control.version },
                                                     {
                                                         title: 'Confirm wrong-graduate correction',
                                                         confirmLabel: 'Return graduate to queue',
                                                     },
                                                 )
                                             }
+                                            title="Return graduate to queue if wrongly presented"
                                             type="button"
                                         >
-                                            {pendingAction === 'return-current'
-                                                ? 'Returning graduate…'
-                                                : 'Correct wrong graduate'}
+                                            <AppIcon name="correct" size={16} />
+                                            <span>Previous</span>
                                         </button>
-                                    </>
-                                ) : (
+                                    )}
+
+                                    {/* PAUSE */}
                                     <button
-                                        className="primary-action"
-                                        disabled={
-                                            Boolean(pendingAction) ||
-                                            waiting.length === 0
-                                        }
+                                        className={`media-btn media-btn-pause${isHolding ? ' is-active' : ''}`}
+                                        disabled={Boolean(pendingAction)}
                                         onClick={() =>
                                             runCommand(
-                                                'present-next',
-                                                '/stage/present-next',
+                                                'holding',
+                                                isHolding
+                                                    ? '/stage/holding/deactivate'
+                                                    : '/stage/holding/activate',
                                             )
                                         }
+                                        title={isHolding ? 'Restore live display' : 'Pause and show holding screen'}
                                         type="button"
                                     >
-                                        {pendingAction === 'present-next'
-                                            ? 'Presenting…'
-                                            : 'Present next graduate'}
+                                        <AppIcon name="pause" size={18} />
+                                        <span>
+                                            {pendingAction === 'holding'
+                                                ? 'Updating…'
+                                                : isHolding
+                                                  ? 'Resume'
+                                                  : 'Pause'}
+                                        </span>
                                     </button>
-                                )}
 
-                                <button
-                                    className="secondary-action"
-                                    data-tour="stage-recovery"
-                                    disabled={Boolean(pendingAction)}
-                                    onClick={() =>
-                                        runCommand(
-                                            'holding',
+                                    {/* NEXT */}
+                                    {current && waiting.length > 0 ? (
+                                        <button
+                                            className="media-btn media-btn-next"
+                                            disabled={Boolean(pendingAction)}
+                                            onClick={() =>
+                                                runCommand(
+                                                    'complete-next',
+                                                    '/stage/complete-and-present-next',
+                                                    { expected_version: control.version },
+                                                )
+                                            }
+                                            title="Complete current and present next graduate"
+                                            type="button"
+                                        >
+                                            <AppIcon name="skipNext" size={20} />
+                                            <span>
+                                                {pendingAction === 'complete-next' ? 'Presenting…' : 'Next'}
+                                            </span>
+                                        </button>
+                                    ) : !current ? (
+                                        <button
+                                            className="media-btn media-btn-next"
+                                            disabled={Boolean(pendingAction) || waiting.length === 0}
+                                            onClick={() =>
+                                                runCommand('present-next', '/stage/present-next')
+                                            }
+                                            title="Present next graduate in queue"
+                                            type="button"
+                                        >
+                                            <AppIcon name="play" size={20} />
+                                            <span>
+                                                {pendingAction === 'present-next' ? 'Presenting…' : 'Next'}
+                                            </span>
+                                        </button>
+                                    ) : null}
+
+                                    {/* REPLAY */}
+                                    <button
+                                        className="media-btn media-btn-replay"
+                                        disabled={
+                                            Boolean(pendingAction) ||
+                                            !current ||
+                                            !current.student.has_audio ||
                                             isHolding
-                                                ? '/stage/holding/deactivate'
-                                                : '/stage/holding/activate',
-                                        )
-                                    }
-                                    type="button"
-                                >
-                                    {pendingAction === 'holding'
-                                        ? 'Updating display…'
-                                        : isHolding
-                                          ? 'Restore live display'
-                                          : 'Show holding screen'}
-                                </button>
+                                        }
+                                        onClick={() => runCommand('replay', '/stage/replay')}
+                                        title="Replay announcement audio"
+                                        type="button"
+                                    >
+                                        <AppIcon name="replay" size={18} />
+                                        <span>
+                                            {pendingAction === 'replay' ? 'Replaying…' : 'Replay'}
+                                        </span>
+                                    </button>
+
+                                    {/* STOP */}
+                                    {current && (
+                                        <button
+                                            className="media-btn media-btn-stop"
+                                            disabled={Boolean(pendingAction)}
+                                            onClick={() =>
+                                                runCommand('complete', '/stage/complete-current')
+                                            }
+                                            title="Complete current presentation and clear stage"
+                                            type="button"
+                                        >
+                                            <AppIcon name="stop" size={18} />
+                                            <span>
+                                                {pendingAction === 'complete' ? 'Clearing…' : 'Stop'}
+                                            </span>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </section>
 

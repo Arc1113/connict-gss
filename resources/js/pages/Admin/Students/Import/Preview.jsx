@@ -3,6 +3,7 @@ import AdminLayout from '../../../../components/Admin/AdminLayout';
 import { FieldError, ValidationSummary } from '../../../../components/Admin/FormSupport';
 import ImportCounts from '../../../../components/Admin/ImportCounts';
 import ImportProgress from '../../../../components/Admin/ImportProgress';
+import ImportCeremonyRetarget from '../../../../components/Admin/ImportCeremonyRetarget';
 import ImportSourceReplacements from '../../../../components/Admin/ImportSourceReplacements';
 import PageHeader from '../../../../components/Admin/PageHeader';
 import Pagination from '../../../../components/Admin/Pagination';
@@ -54,7 +55,7 @@ function RowState({ classification }) {
     );
 }
 
-export default function StudentImportPreview({ preview, studentImport, workspace }) {
+export default function StudentImportPreview({ ceremonies, preview, studentImport, workspace }) {
     const form = useForm({ confirmed: false });
 
     function submit(event) {
@@ -111,6 +112,12 @@ export default function StudentImportPreview({ preview, studentImport, workspace
             </section>
 
             <ImportSourceReplacements
+                studentImport={studentImport}
+                workspace={workspace}
+            />
+
+            <ImportCeremonyRetarget
+                ceremonies={ceremonies}
                 studentImport={studentImport}
                 workspace={workspace}
             />

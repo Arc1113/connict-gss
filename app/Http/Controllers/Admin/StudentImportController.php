@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Admin\ConfirmStudentImport;
 use App\Actions\Admin\InspectStudentImport;
 use App\Actions\Admin\ReplaceStudentImportCsv;
+use App\Actions\Admin\RetargetStudentImport;
 use App\Enums\CeremonyStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ConfirmStudentImportRequest;
 use App\Http\Requests\InspectStudentImportRequest;
 use App\Http\Requests\ReplaceStudentImportCsvRequest;
 use App\Http\Requests\ReplaceStudentImportMediaPackageRequest;
+use App\Http\Requests\RetargetStudentImportRequest;
 use App\Http\Requests\SaveStudentImportMappingRequest;
 use App\Models\Ceremony;
 use App\Models\StudentImport;
@@ -98,12 +100,19 @@ class StudentImportController extends Controller
 
         return Inertia::render('Admin/Students/Import/Mapping', [
             'studentImport' => $this->serializeImport($studentImport),
+            'ceremonies' => $this->ceremonyOptions(),
             'mappingRows' => $preparation->mappingRows($studentImport),
             'targetOptions' => $preparation->targetOptions(),
             'workspace' => [
                 ...($workspace ?? []),
                 'urls' => [
                     ...(isset($workspace['urls']) ? $workspace['urls'] : []),
+                    'ceremonyChange' => $this->importRoute(
+                        $request,
+                        $studentImport->ceremony,
+                        'ceremony.replace',
+                        $studentImport,
+                    ),
                     'previewStore' => $this->importRoute(
                         $request,
                         $studentImport->ceremony,
@@ -160,6 +169,32 @@ class StudentImportController extends Controller
                 $studentImport,
             ),
         );
+    }
+
+    public function retarget(
+        RetargetStudentImportRequest $request,
+        StudentImport $studentImport,
+        RetargetStudentImport $retarget,
+    ): RedirectResponse {
+        $studentImport = $retarget->execute(
+            $studentImport,
+            $request->integer('ceremony_id'),
+            $request->user(),
+            $request->ip(),
+        );
+
+        return redirect()
+            ->to($this->importRoute($request, $studentImport->ceremony, 'preview', $studentImport))
+            ->with('success', 'The destination ceremony was changed. Review conflicts again.');
+    }
+
+    public function retargetInCeremony(
+        RetargetStudentImportRequest $request,
+        $ceremony,
+        StudentImport $studentImport,
+        RetargetStudentImport $retarget,
+    ): RedirectResponse {
+        return $this->retarget($request, $studentImport, $retarget);
     }
 
     public function storeMappingInCeremony(
@@ -296,6 +331,7 @@ class StudentImportController extends Controller
 
         return Inertia::render('Admin/Students/Import/Preview', [
             'studentImport' => $this->serializeImport($studentImport),
+            'ceremonies' => $this->ceremonyOptions(),
             'preview' => [
                 ...$preview,
                 'rows' => $rows,
@@ -304,6 +340,12 @@ class StudentImportController extends Controller
                 ...($workspace ?? []),
                 'urls' => [
                     ...(isset($workspace['urls']) ? $workspace['urls'] : []),
+                    'ceremonyChange' => $this->importRoute(
+                        $request,
+                        $studentImport->ceremony,
+                        'ceremony.replace',
+                        $studentImport,
+                    ),
                     'mapping' => $this->importRoute(
                         $request,
                         $studentImport->ceremony,

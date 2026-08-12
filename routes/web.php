@@ -102,6 +102,8 @@ Route::middleware(['auth', 'active'])->group(function () {
             ->name('stage.present-next');
         Route::post('/stage/complete-and-present-next', [StageControlController::class, 'completeAndPresentNext'])
             ->name('stage.complete-and-present-next');
+        Route::post('/stage/automatic/advance', [StageControlController::class, 'advanceFullyAutomatic'])
+            ->name('stage.automatic.advance');
         Route::post('/stage/return-current', [StageControlController::class, 'returnCurrent'])
             ->name('stage.return-current');
         Route::post('/stage/present/{queueItem}', [StageControlController::class, 'presentSelected'])
@@ -202,6 +204,10 @@ Route::middleware(['auth', 'active'])->group(function () {
                     '/{studentImport}/csv',
                     [StudentImportController::class, 'replaceCsvInCeremony'],
                 )->name('csv.replace');
+                Route::patch(
+                    '/{studentImport}/ceremony',
+                    [StudentImportController::class, 'retargetInCeremony'],
+                )->name('ceremony.replace');
                 Route::get(
                     '/{studentImport}/preview',
                     [StudentImportController::class, 'previewInCeremony'],
@@ -320,6 +326,10 @@ Route::middleware(['auth', 'active'])->group(function () {
                     '/{studentImport}/csv',
                     [StudentImportController::class, 'replaceCsv'],
                 )->name('csv.replace');
+                Route::patch(
+                    '/{studentImport}/ceremony',
+                    [StudentImportController::class, 'retarget'],
+                )->name('ceremony.replace');
                 Route::get(
                     '/{studentImport}/preview',
                     [StudentImportController::class, 'preview'],

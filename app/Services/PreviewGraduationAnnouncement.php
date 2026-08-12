@@ -16,6 +16,7 @@ final class PreviewGraduationAnnouncement
         private readonly ResolveActiveAnnouncementTemplate $activeTemplateResolver,
         private readonly ComposeGraduationAnnouncement $composer,
         private readonly BuildGraduationAnnouncementSsml $ssmlBuilder,
+        private readonly AnnouncementCourseOpener $courseOpener,
     ) {}
 
     public function preview(
@@ -86,6 +87,9 @@ final class PreviewGraduationAnnouncement
             ),
             provider: $provider,
             ceremonyIdentifier: $student->ceremony_id,
+            includeIntroduction: ($template->introduction_frequency ?? 'first_per_program') !== 'never'
+                && (($template->introduction_frequency ?? 'first_per_program') === 'every_student'
+                    || $this->courseOpener->isOpener($student)),
         );
         $composition = $this->composer->compose($input);
         $ssml = $this->ssmlBuilder->build($composition);

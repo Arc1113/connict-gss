@@ -20,6 +20,41 @@ final class ApprovedAnnouncementVoices
     }
 
     /**
+     * @return list<array{
+     *     value: string,
+     *     label: string,
+     *     locale: string,
+     *     gender: string|null,
+     *     accent: string|null,
+     *     description: string|null
+     * }>
+     */
+    public function catalog(AnnouncementProvider $provider = AnnouncementProvider::Azure): array
+    {
+        $metadata = config('announcements.provider_voice_catalog.'.$provider->value, []);
+        $metadata = is_array($metadata) ? $metadata : [];
+
+        return collect($this->all($provider))
+            ->map(function (string $locale, string $voice) use ($metadata): array {
+                $details = $metadata[$voice] ?? [];
+                $details = is_array($details) ? $details : [];
+
+                return [
+                    'value' => $voice,
+                    'label' => (string) ($details['label'] ?? $voice),
+                    'locale' => $locale,
+                    'gender' => isset($details['gender']) ? (string) $details['gender'] : null,
+                    'accent' => isset($details['accent']) ? (string) $details['accent'] : null,
+                    'description' => isset($details['description'])
+                        ? (string) $details['description']
+                        : null,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return list<AnnouncementIssue>
      */
     public function validationIssues(

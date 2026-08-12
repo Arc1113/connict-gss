@@ -29,6 +29,7 @@ class SaveCeremonyAnnouncementSettingsRequest extends FormRequest
             'provider' => ['required', Rule::enum(AnnouncementProvider::class)],
             'name' => ['required', 'string', 'max:255', 'not_regex:/[<>]/'],
             'introduction_text' => ['required', 'string', 'max:500', 'not_regex:/[<>]/'],
+            'introduction_frequency' => ['required', Rule::in(['first_per_program', 'every_student', 'never'])],
             'include_program' => ['required', 'boolean'],
             'include_major' => ['required', 'boolean'],
             'include_honors' => ['required', 'boolean'],
@@ -85,6 +86,10 @@ class SaveCeremonyAnnouncementSettingsRequest extends FormRequest
             $this->merge(['provider' => $provider instanceof AnnouncementProvider
                 ? $provider->value
                 : ($provider ?? AnnouncementProvider::Azure->value)]);
+        }
+
+        if (! $this->has('introduction_frequency')) {
+            $this->merge(['introduction_frequency' => 'first_per_program']);
         }
 
         foreach (['name', 'introduction_text', 'awards_lead_in', 'closing_text'] as $field) {

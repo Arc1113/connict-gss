@@ -300,6 +300,104 @@ class StudentImportPreviewAndConfirmationTest extends TestCase
         ]);
     }
 
+    public function test_an_unfinished_import_can_change_ceremonies_and_rechecks_conflicts(): void
+    {
+        $otherCeremony = Ceremony::factory()->create([
+            'name' => 'University Commencement 2028',
+            'status' => CeremonyStatus::Draft,
+        ]);
+        Student::factory()->create([
+            'ceremony_id' => $this->ceremony->id,
+            'student_number' => '2027-RETARGET',
+            'sequence_number' => 17,
+        ]);
+
+        $studentImport = $this->importWithRows([
+            ['2027-RETARGET', 'Ana', '', 'Cruz', 'BSCS', 17, 'eligible'],
+        ]);
+        $this->saveSuggestedMapping($this->encoder, $studentImport);
+
+        $this->actingAs($this->encoder)
+            ->get("/admin/students/import/{$studentImport->token}/preview")
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('preview.can_confirm', false)
+                ->where('preview.rows.data.0.errors.0', 'That student number already exists in the selected ceremony.'));
+
+        $this->actingAs($this->encoder)
+            ->patch("/admin/students/import/{$studentImport->token}/ceremony", [
+                'ceremony_id' => $otherCeremony->id,
+            ])
+            ->assertRedirect("/admin/students/import/{$studentImport->token}/preview")
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame($otherCeremony->id, $studentImport->refresh()->ceremony_id);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'student_import.ceremony_changed',
+            'entity_id' => $studentImport->id,
+        ]);
+
+        $this->actingAs($this->encoder)
+            ->get("/admin/students/import/{$studentImport->token}/preview")
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('studentImport.ceremony.id', $otherCeremony->id)
+                ->where('preview.can_confirm', true)
+                ->where('preview.error_count', 0));
+    }
+
+    public function test_photo_path_alias_resolves_a_nested_zip_folder(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $archivePath = tempnam(sys_get_temp_dir(), 'gss-nested-media-');
+        $this->assertNotFalse($archivePath);
+        $archive = new ZipArchive;
+        $this->assertTrue($archive->open(
+            $archivePath,
+            ZipArchive::CREATE | ZipArchive::OVERWRITE,
+        ));
+        $archive->addFromString(
+            'graduation photos/2027-NESTED.png',
+            (string) base64_decode(
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+                true,
+            ),
+        );
+        $archive->close();
+
+        $csv = implode("\n", [
+            'student_number,first_name,last_name,program,sequence_number,eligibility_status,photo_path',
+            '2027-NESTED,Ana,Cruz,BS Computer Science,91,eligible,photos/graduation photos/2027-NESTED.png',
+        ]);
+
+        try {
+            $this->actingAs($this->encoder)
+                ->post('/admin/students/import/inspect', [
+                    'ceremony_id' => $this->ceremony->id,
+                    'csv_file' => UploadedFile::fake()->createWithContent('nested.csv', $csv),
+                    'media_package' => new UploadedFile(
+                        $archivePath,
+                        'photos.zip',
+                        'application/zip',
+                        null,
+                        true,
+                    ),
+                ])
+                ->assertRedirect();
+
+            $studentImport = StudentImport::query()->sole();
+            $this->saveSuggestedMapping($this->encoder, $studentImport)
+                ->assertSessionHasNoErrors();
+            $this->actingAs($this->encoder)
+                ->get("/admin/students/import/{$studentImport->token}/preview")
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('preview.can_confirm', true)
+                    ->where('preview.error_count', 0));
+        } finally {
+            @unlink($archivePath);
+        }
+    }
+
     public function test_confirmation_imports_referenced_photos_and_audio_from_a_local_media_zip(): void
     {
         Storage::fake('local');

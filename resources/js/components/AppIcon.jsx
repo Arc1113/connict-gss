@@ -121,6 +121,33 @@ const ICON_PATHS = {
         </>
     ),
     external: <path d="M14 4h6v6M20 4l-9 9M18 13v7H4V6h7" />,
+    play: <path d="M6 4v16l14-8L6 4z" fill="currentColor" stroke="none" />,
+    skipNext: (
+        <>
+            <path d="M5 4v16l11-8L5 4z" fill="currentColor" stroke="none" />
+            <rect x="17" y="4" width="3" height="16" rx="1" fill="currentColor" stroke="none" />
+        </>
+    ),
+    replay: (
+        <>
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+        </>
+    ),
+    pause: (
+        <>
+            <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none" />
+            <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none" />
+        </>
+    ),
+    stop: <rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" stroke="none" />,
+    correct: (
+        <>
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+            <path d="m12 8-4 4 4 4" />
+        </>
+    ),
 };
 
 export default function AppIcon({ name, size = 18 }) {

@@ -38,6 +38,7 @@ final readonly class AnnouncementCompositionInput
         public string $outputFormat,
         public AnnouncementProvider $provider = AnnouncementProvider::Azure,
         public ?int $ceremonyIdentifier = null,
+        public bool $includeIntroduction = true,
     ) {}
 
     public function fingerprintData(): AnnouncementSourceFingerprintData
@@ -62,6 +63,7 @@ final readonly class AnnouncementCompositionInput
             templateIdentifier: $this->templateIdentifier,
             templateVersion: $this->templateVersion,
             introductionText: $this->introductionText ?? '',
+            includeIntroduction: $this->includeIntroduction,
             includeProgram: $this->includeProgram,
             includeMajor: $this->includeMajor,
             includeHonors: $this->includeHonors,

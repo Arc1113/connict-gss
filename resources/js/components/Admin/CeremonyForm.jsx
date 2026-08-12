@@ -379,8 +379,10 @@ export default function CeremonyForm({
                             id="presentation_mode-hint"
                         >
                             {data.presentation_mode === 'automatic'
-                                ? 'Assisted automatic presents a new scan only while the stage is idle and no graduate is ahead. An operator still completes and advances the queue.'
-                                : 'Controlled mode keeps every scan waiting until a stage operator presents a graduate.'}
+                                ? 'Assisted automatic presents a new scan only while the stage is idle. An operator still completes and advances the queue.'
+                                : data.presentation_mode === 'fully_automatic'
+                                    ? 'Fully automatic presents scans FIFO and advances after each audience announcement ends. Playback failure pauses the flow for operator recovery.'
+                                    : 'Controlled mode keeps every scan waiting until a stage operator presents a graduate.'}
                         </p>
                         <FieldError
                             id="presentation_mode-error"

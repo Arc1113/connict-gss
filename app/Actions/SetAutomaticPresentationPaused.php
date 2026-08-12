@@ -34,7 +34,7 @@ final readonly class SetAutomaticPresentationPaused
 
             $ceremony = $resolution->ceremony;
 
-            if ($ceremony->presentation_mode !== PresentationMode::Automatic) {
+            if (! in_array($ceremony->presentation_mode, [PresentationMode::Automatic, PresentationMode::FullyAutomatic], true)) {
                 return ['status' => 'controlled_mode'];
             }
 

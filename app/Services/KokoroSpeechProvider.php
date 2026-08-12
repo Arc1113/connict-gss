@@ -47,6 +47,7 @@ final class KokoroSpeechProvider implements TextToSpeechProvider
                     'speed' => max(0.5, min(2.0, 1 + ($request->speakingRatePercent / 100))),
                     'pause_after_name_ms' => $request->pauseAfterNameMs,
                     'pause_between_sections_ms' => $request->pauseBetweenSectionsMs,
+                    'delivery_profile' => $request->deliveryProfile,
                 ]);
         } catch (ConnectionException) {
             throw $this->failure('local_tts_unavailable', 'The offline voice service is not reachable.');

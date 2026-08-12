@@ -36,6 +36,7 @@ const QUICK_STARTS = [
         values: { introduction_text: 'Please welcome', include_program: true, include_major: true, include_honors: true, include_awards: true, include_additional_text: true, awards_lead_in: 'recognized as', closing_text: '' },
     },
 ];
+const EMPTY_VOICES = [];
 
 function FictionalPreview({ preview }) {
     return (
@@ -74,6 +75,7 @@ export default function AnnouncementSettings({ announcement }) {
         provider: settings.provider,
         name: settings.name,
         introduction_text: settings.introduction_text,
+        introduction_frequency: settings.introduction_frequency ?? 'first_per_program',
         include_program: settings.include_program,
         include_major: settings.include_major,
         include_honors: settings.include_honors,
@@ -99,8 +101,22 @@ export default function AnnouncementSettings({ announcement }) {
     const previewIsCurrent = previewFingerprint === currentFingerprint;
     const selectedProvider = announcement.providers.find((item) => item.value === form.data.provider)
         ?? announcement.providers[0];
-    const voices = selectedProvider?.voices ?? [];
+    const voices = selectedProvider?.voices ?? EMPTY_VOICES;
     const provider = selectedProvider?.readiness ?? { configured: false };
+    const selectedVoice = voices.find((voice) => voice.value === form.data.default_voice);
+    const isLocalProvider = form.data.provider === 'kokoro';
+    const groupedVoices = useMemo(() => {
+        if (!isLocalProvider) return [];
+
+        return ['male', 'female'].map((gender) => ({
+            gender,
+            voices: voices.filter((voice) => voice.gender === gender),
+        })).filter((group) => group.voices.length > 0);
+    }, [isLocalProvider, voices]);
+    const voiceLabels = useMemo(() => Object.fromEntries(
+        announcement.providers.flatMap((item) => item.voices)
+            .map((voice) => [voice.value, voice.label]),
+    ), [announcement.providers]);
 
     function selectVoice(event) {
         const selected = voices.find((voice) => voice.value === event.target.value);
@@ -164,7 +180,7 @@ export default function AnnouncementSettings({ announcement }) {
         comparison.post(`/admin/ceremonies/${ceremony.id}/announcement-settings/voice-comparison`, { preserveScroll: true });
     }
 
-    const comparisonCharacters = preview.character_count * comparison.data.voices.length;
+
 
     function applyQuickStart(values) {
         form.setData((current) => ({ ...current, ...values }));
@@ -186,16 +202,17 @@ export default function AnnouncementSettings({ announcement }) {
             <ValidationSummary errors={{ ...form.errors, ...comparison.errors }} />
 
             <nav className="announcement-setup-map" aria-label="Announcement template setup">
-                <a href="#wording"><span>1</span><strong>Choose wording</strong><small>Start with a proven format</small></a>
-                <a href="#spoken-sections"><span>2</span><strong>Choose details</strong><small>Control what is announced</small></a>
-                <a href="#voice-pacing"><span>3</span><strong>Select voice</strong><small>Provider, voice, and speed</small></a>
-                <a href="#review-publish"><span>4</span><strong>Review and publish</strong><small>Listen before generating</small></a>
+                <a href="#wording"><span>1</span><strong>Choose wording</strong></a>
+                <a href="#spoken-sections"><span>2</span><strong>Choose details</strong></a>
+                <a href="#voice-pacing"><span>3</span><strong>Select voice</strong></a>
+                <a href="#review-publish"><span>4</span><strong>Review and publish</strong></a>
             </nav>
 
             <form className="admin-form announcement-settings-form" onSubmit={publish}>
-                <fieldset className="admin-form-section" id="wording">
-                    <legend>1. Choose a starting format</legend>
-                    <p className="admin-form-note">Pick the closest format, then edit the wording below. Publishing creates version {announcement.next_version}; it never rewrites an older version.</p>
+                <fieldset className="admin-form-section admin-card" id="wording">
+                    <div className="admin-card-header">
+                        <legend>1. Choose a starting format</legend>
+                    </div>
                     <div className="announcement-quick-starts">
                         {QUICK_STARTS.map((preset) => (
                             <button key={preset.id} onClick={() => applyQuickStart(preset.values)} type="button">
@@ -214,6 +231,16 @@ export default function AnnouncementSettings({ announcement }) {
                             <input id="introduction_text" maxLength="500" onChange={(event) => form.setData('introduction_text', event.target.value)} required value={form.data.introduction_text} />
                             <FieldError id="introduction-text-error" message={form.errors.introduction_text} />
                         </div>
+                        <div className="admin-field admin-field-wide">
+                            <label htmlFor="introduction_frequency">Introduction cadence</label>
+                            <select id="introduction_frequency" onChange={(event) => form.setData('introduction_frequency', event.target.value)} value={form.data.introduction_frequency}>
+                                <option value="first_per_program">First graduate in each course/program</option>
+                                <option value="every_student">Every graduate</option>
+                                <option value="never">Never</option>
+                            </select>
+                            <p className="admin-field-hint">Course openers are selected by the lowest eligible sequence number.</p>
+                            <FieldError id="introduction-frequency-error" message={form.errors.introduction_frequency} />
+                        </div>
                         <div className="admin-field">
                             <label htmlFor="awards_lead_in">Awards lead-in</label>
                             <input id="awards_lead_in" maxLength="255" onChange={(event) => form.setData('awards_lead_in', event.target.value)} value={form.data.awards_lead_in} />
@@ -225,9 +252,10 @@ export default function AnnouncementSettings({ announcement }) {
                     </div>
                 </fieldset>
 
-                <fieldset className="admin-form-section" id="spoken-sections">
-                    <legend>2. Choose what the announcer says</legend>
-                    <p className="admin-form-note">A graduate’s name is always included. Turn on only the verified details needed for this ceremony.</p>
+                <fieldset className="admin-form-section admin-card" id="spoken-sections">
+                    <div className="admin-card-header">
+                        <legend>2. Included graduate details</legend>
+                    </div>
                     <div className="announcement-settings-switches">
                         {[
                             ['include_program', 'Include program'],
@@ -238,14 +266,16 @@ export default function AnnouncementSettings({ announcement }) {
                         ].map(([field, label]) => (
                             <label className="admin-checkbox-row" key={field}>
                                 <input checked={form.data[field]} onChange={(event) => form.setData(field, event.target.checked)} type="checkbox" />
-                                {label}
+                                <span>{label}</span>
                             </label>
                         ))}
                     </div>
                 </fieldset>
 
-                <fieldset className="admin-form-section" id="voice-pacing">
-                    <legend>3. Select the voice and speed</legend>
+                <fieldset className="admin-form-section admin-card" id="voice-pacing">
+                    <div className="admin-card-header">
+                        <legend>3. Announcer voice and speed</legend>
+                    </div>
                     <div className="announcement-provider-grid">
                         {announcement.providers.map((item) => (
                             <label className={`announcement-provider-card${form.data.provider === item.value ? ' is-selected' : ''}`} key={item.value}>
@@ -260,8 +290,13 @@ export default function AnnouncementSettings({ announcement }) {
                         <div className="admin-field">
                             <label htmlFor="default_voice">Default voice</label>
                             <select id="default_voice" onChange={selectVoice} value={form.data.default_voice}>
-                                {voices.map((voice) => <option key={voice.value} value={voice.value}>{voice.label} · {voice.locale}</option>)}
+                                {isLocalProvider ? groupedVoices.map((group) => (
+                                    <optgroup key={group.gender} label={group.gender === 'male' ? 'Male voices' : 'Female voices'}>
+                                        {group.voices.map((voice) => <option key={voice.value} value={voice.value}>{voice.label} - {voice.accent}</option>)}
+                                    </optgroup>
+                                )) : voices.map((voice) => <option key={voice.value} value={voice.value}>{voice.label} · {voice.locale}</option>)}
                             </select>
+                            {selectedVoice?.description && <p className="admin-field-hint">{selectedVoice.description}</p>}
                         </div>
                         <div className="admin-field">
                             <label htmlFor="speaking_rate_percent">Speaking rate (%)</label>
@@ -271,10 +306,9 @@ export default function AnnouncementSettings({ announcement }) {
                     </div>
                     <details className="announcement-advanced-settings">
                         <summary>Advanced timing and length limits</summary>
-                        <p>Keep these defaults unless a rehearsal reveals rushed pauses or unusually long announcements.</p>
-                        <div className="admin-form-grid">
-                            <div className="admin-field"><label htmlFor="pause_after_name_ms">Pause after name (ms)</label><input id="pause_after_name_ms" max={limits.pause_maximum} min={limits.pause_minimum} onChange={(event) => form.setData('pause_after_name_ms', Number(event.target.value))} type="number" value={form.data.pause_after_name_ms} /></div>
-                            <div className="admin-field"><label htmlFor="pause_between_sections_ms">Pause between sections (ms)</label><input id="pause_between_sections_ms" max={limits.pause_maximum} min={limits.pause_minimum} onChange={(event) => form.setData('pause_between_sections_ms', Number(event.target.value))} type="number" value={form.data.pause_between_sections_ms} /></div>
+                        <div className="admin-form-grid" style={{ marginTop: '1rem' }}>
+                            {!isLocalProvider && <div className="admin-field"><label htmlFor="pause_after_name_ms">Pause after name (ms)</label><input id="pause_after_name_ms" max={limits.pause_maximum} min={limits.pause_minimum} onChange={(event) => form.setData('pause_after_name_ms', Number(event.target.value))} type="number" value={form.data.pause_after_name_ms} /></div>}
+                            {!isLocalProvider && <div className="admin-field"><label htmlFor="pause_between_sections_ms">Pause between sections (ms)</label><input id="pause_between_sections_ms" max={limits.pause_maximum} min={limits.pause_minimum} onChange={(event) => form.setData('pause_between_sections_ms', Number(event.target.value))} type="number" value={form.data.pause_between_sections_ms} /></div>}
                             <div className="admin-field"><label htmlFor="recommended_character_limit">Recommended characters</label><input id="recommended_character_limit" min="100" onChange={(event) => form.setData('recommended_character_limit', Number(event.target.value))} type="number" value={form.data.recommended_character_limit} /></div>
                             <div className="admin-field"><label htmlFor="maximum_character_limit">Maximum characters</label><input id="maximum_character_limit" min={form.data.recommended_character_limit} onChange={(event) => form.setData('maximum_character_limit', Number(event.target.value))} type="number" value={form.data.maximum_character_limit} /></div>
                         </div>
@@ -282,7 +316,11 @@ export default function AnnouncementSettings({ announcement }) {
                 </fieldset>
 
                 <section className="announcement-review-step" id="review-publish">
-                    <div><p className="announcement-kicker">Final check</p><h2>4. Review and publish</h2><p>Refresh the fictional announcement after every wording, detail, or voice change. Publish only when the preview reads naturally.</p></div>
+                    <div className="admin-section-heading">
+                        <div>
+                            <h2>4. Review and publish</h2>
+                        </div>
+                    </div>
                     {!previewIsCurrent && <p className="announcement-notice announcement-notice-warning">The preview is out of date. Refresh it before publishing.</p>}
                     <FictionalPreview preview={preview} />
                     <div className="admin-form-actions">
@@ -293,63 +331,66 @@ export default function AnnouncementSettings({ announcement }) {
                 </section>
             </form>
 
-            <section className="admin-detail-section announcement-voice-comparison" id="voice-comparison">
-                <div className="admin-section-heading">
+            <section className="admin-detail-section announcement-voice-comparison admin-card" id="voice-comparison">
+                <div className="admin-section-heading admin-card-header">
                     <div>
-                        <p className="announcement-kicker">Explicit preparation action</p>
                         <h2>Compare approved voices</h2>
-                        <p>Samples use the fixed fictional preview, expire after one hour, and can never become active audio.</p>
                     </div>
                     <StatusText label={provider.configured ? 'Provider ready' : 'Provider disabled'} value={provider.configured ? 'approved' : 'missing'} />
                 </div>
-                <form onSubmit={generateComparison}>
-                    <div className="announcement-settings-switches">
-                        {voices.map((voice) => (
-                            <label className="admin-checkbox-row" key={voice.value}>
-                                <input checked={comparison.data.voices.includes(voice.value)} onChange={() => toggleComparisonVoice(voice.value)} type="checkbox" />
-                                {voice.label} · {voice.locale}
-                            </label>
-                        ))}
-                    </div>
-                    <p className="admin-form-note">{form.isDirty ? 'Publish the template changes above before generating samples. This keeps every sample traceable to one immutable version.' : <>This request will synthesize {comparison.data.voices.length} sample(s){form.data.provider === 'azure' ? `, approximately ${comparisonCharacters.toLocaleString()} billable characters` : ' on this computer without internet'}. A pleasant sample does not prove a graduate name will be pronounced correctly.</>}</p>
-                    {comparison.errors.voice_comparison && <p className="announcement-notice announcement-notice-error" role="alert">{comparison.errors.voice_comparison}</p>}
-                    <button className="admin-button admin-button-primary" disabled={comparison.processing || !provider.configured || !settings.id || form.isDirty || comparison.data.voices.length === 0} type="submit">{comparison.processing ? 'Generating samples…' : 'Generate temporary samples'}</button>
-                </form>
+                <div className="admin-card-body">
+                    <form onSubmit={generateComparison}>
+                        <div className="announcement-settings-switches">
+                            {voices.map((voice) => (
+                                <label className="admin-checkbox-row" key={voice.value}>
+                                    <input checked={comparison.data.voices.includes(voice.value)} onChange={() => toggleComparisonVoice(voice.value)} type="checkbox" />
+                                    <span>{voice.label} · {voice.gender ? `${voice.gender === 'male' ? 'Male' : 'Female'} · ` : ''}{voice.locale}</span>
+                                </label>
+                            ))}
+                        </div>
+                        {comparison.errors.voice_comparison && <p className="announcement-notice announcement-notice-error" role="alert">{comparison.errors.voice_comparison}</p>}
+                        <div className="admin-form-actions">
+                            <button className="admin-button admin-button-primary" disabled={comparison.processing || !provider.configured || !settings.id || form.isDirty || comparison.data.voices.length === 0} type="submit">{comparison.processing ? 'Generating samples…' : 'Generate temporary samples'}</button>
+                        </div>
+                    </form>
 
-                {form.data.provider === 'azure' && <div className="announcement-usage">
-                    <strong>{announcement.usage.successful_characters.toLocaleString()} estimated characters used this month</strong>
-                    <span>{announcement.usage.estimated_remaining.toLocaleString()} estimated remaining of {announcement.usage.monthly_budget.toLocaleString()}</span>
-                    <small>{announcement.usage.label}</small>
-                </div>}
+                    {form.data.provider === 'azure' && <div className="announcement-usage" style={{ marginTop: '1.5rem' }}>
+                        <strong>{announcement.usage.successful_characters.toLocaleString()} estimated characters used this month</strong>
+                        <span>{announcement.usage.estimated_remaining.toLocaleString()} estimated remaining of {announcement.usage.monthly_budget.toLocaleString()}</span>
+                        <small>{announcement.usage.label}</small>
+                    </div>}
 
-                {announcement.samples.length === 0 ? <p className="admin-media-missing">No unexpired comparison samples.</p> : (
-                    <div className="announcement-voice-sample-grid">
-                        {announcement.samples.map((sample) => (
-                            <article key={sample.id}>
-                                <strong>{sample.voice}</strong>
-                                <span>{sample.provider === 'kokoro' ? 'Local offline' : 'Azure online'}</span>
-                                <span>{sample.locale} · template v{sample.template.version}</span>
-                                <small>Expires {formatDateTime(sample.expires_at)}</small>
-                                <AudioPreview label={`Fictional voice sample using ${sample.voice}`} src={sample.audio_url} />
-                            </article>
-                        ))}
-                    </div>
-                )}
+                    {announcement.samples.length === 0 ? <p className="admin-media-missing" style={{ marginTop: '1.5rem' }}>No unexpired comparison samples.</p> : (
+                        <div className="announcement-voice-sample-grid">
+                            {announcement.samples.map((sample) => (
+                                <article key={sample.id}>
+                                    <strong>{voiceLabels[sample.voice] ?? sample.voice}</strong>
+                                    <span>{sample.provider === 'kokoro' ? 'Local offline' : 'Azure online'}</span>
+                                    <span>{sample.locale} · template v{sample.template.version}</span>
+                                    <small>Expires {formatDateTime(sample.expires_at)}</small>
+                                    <AudioPreview label={`Fictional voice sample using ${sample.voice}`} src={sample.audio_url} />
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </section>
 
-            <section className="admin-detail-section">
-                <div className="admin-section-heading"><div><h2>Published versions</h2><p>Historical versions remain attached to their generation records.</p></div></div>
-                {announcement.history.length === 0 ? <p className="admin-media-missing">No announcement settings published yet.</p> : (
-                    <div className="announcement-template-history">
-                        {announcement.history.map((template) => (
-                            <article key={template.id}>
-                                <div><strong>{template.name} · version {template.version}</strong>{template.is_active && <span>Active default</span>}</div>
-                                <p>{template.default_voice} · {template.default_locale} · rate {template.speaking_rate_percent}%</p>
-                                <small>{template.generations_count} generation(s) · published {formatDateTime(template.created_at)}</small>
-                            </article>
-                        ))}
-                    </div>
-                )}
+            <section className="admin-detail-section admin-card">
+                <div className="admin-section-heading admin-card-header"><div><h2>Published versions</h2></div></div>
+                <div className="admin-card-body">
+                    {announcement.history.length === 0 ? <p className="admin-media-missing">No announcement settings published yet.</p> : (
+                        <div className="announcement-template-history">
+                            {announcement.history.map((template) => (
+                                <article key={template.id}>
+                                    <div><strong>{template.name} · version {template.version}</strong>{template.is_active && <span>Active default</span>}</div>
+                                    <p>{template.default_voice} · {template.default_locale} · rate {template.speaking_rate_percent}%</p>
+                                    <small>{template.generations_count} generation(s) · published {formatDateTime(template.created_at)}</small>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </section>
         </AdminLayout>
     );

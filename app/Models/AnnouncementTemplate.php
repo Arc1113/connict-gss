@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'ceremony_id',
     'name',
     'introduction_text',
+    'introduction_frequency',
     'include_program',
     'include_major',
     'include_honors',
@@ -44,6 +45,7 @@ class AnnouncementTemplate extends Model
         return [
             'provider' => AnnouncementProvider::class,
             'include_program' => 'boolean',
+            'introduction_frequency' => 'string',
             'include_major' => 'boolean',
             'include_honors' => 'boolean',
             'include_awards' => 'boolean',

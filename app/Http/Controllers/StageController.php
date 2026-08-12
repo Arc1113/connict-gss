@@ -22,6 +22,7 @@ class StageController extends Controller
             'ceremony' => $resolution->ceremony === null ? null : [
                 'id' => $resolution->ceremony->id,
                 'name' => $resolution->ceremony->name,
+                'presentation_mode' => $resolution->ceremony->presentation_mode->value,
                 'theme' => StageTheme::forCeremony($resolution->ceremony),
             ],
         ]);

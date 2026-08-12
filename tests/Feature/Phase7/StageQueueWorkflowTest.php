@@ -513,6 +513,78 @@ class StageQueueWorkflowTest extends TestCase
         );
     }
 
+    public function test_fully_automatic_scan_advances_after_audio_completion_and_preserves_fifo(): void
+    {
+        Event::fake();
+        $this->ceremony->update(['presentation_mode' => PresentationMode::FullyAutomatic]);
+        $first = $this->student('FULL-AUTO-FIRST');
+        $second = $this->student('FULL-AUTO-SECOND');
+
+        $this->actingAs($this->scanner)
+            ->postJson('/scans', ['token' => $first->qr_token])
+            ->assertCreated()
+            ->assertJsonPath('automatically_presented', true);
+        $this->actingAs($this->scanner)
+            ->postJson('/scans', ['token' => $second->qr_token])
+            ->assertCreated()
+            ->assertJsonPath('automatically_presented', false);
+
+        $this->actingAs($this->operator)
+            ->postJson('/stage/automatic/advance', [
+                'expected_version' => 3,
+                'student_id' => $first->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('status', 'completed_and_presented_next');
+
+        $this->assertDatabaseHas('stage_queue_items', [
+            'student_id' => $first->id,
+            'status' => StageQueueStatus::Completed->value,
+        ]);
+        $this->assertDatabaseHas('stage_queue_items', [
+            'student_id' => $second->id,
+            'status' => StageQueueStatus::Presenting->value,
+        ]);
+
+        $this->actingAs($this->operator)
+            ->postJson('/stage/automatic/advance', [
+                'expected_version' => 3,
+                'student_id' => $first->id,
+            ])
+            ->assertConflict()
+            ->assertJsonPath('status', 'stale_stage_state');
+    }
+
+    public function test_fully_automatic_playback_failure_pauses_before_advancement(): void
+    {
+        $this->ceremony->update(['presentation_mode' => PresentationMode::FullyAutomatic]);
+        $student = $this->student('FULL-AUTO-FAILURE');
+
+        $this->actingAs($this->scanner)
+            ->postJson('/scans', ['token' => $student->qr_token])
+            ->assertCreated();
+
+        $this->actingAs($this->operator)
+            ->postJson('/stage/audio-status', [
+                'version' => 2,
+                'student_id' => $student->id,
+                'status' => 'failed',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('stage_states', [
+            'ceremony_id' => $this->ceremony->id,
+            'automatic_paused' => true,
+        ]);
+        $this->actingAs($this->operator)
+            ->postJson('/stage/automatic/advance', [
+                'expected_version' => 2,
+                'student_id' => $student->id,
+            ])
+            ->assertConflict()
+            ->assertJsonPath('status', 'automatic_paused');
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */

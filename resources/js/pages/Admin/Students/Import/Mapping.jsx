@@ -2,11 +2,13 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import AdminLayout from '../../../../components/Admin/AdminLayout';
 import { FieldError, ValidationSummary } from '../../../../components/Admin/FormSupport';
 import ImportProgress from '../../../../components/Admin/ImportProgress';
+import ImportCeremonyRetarget from '../../../../components/Admin/ImportCeremonyRetarget';
 import ImportSourceReplacements from '../../../../components/Admin/ImportSourceReplacements';
 import PageHeader from '../../../../components/Admin/PageHeader';
 
 export default function StudentImportMapping({
     mappingRows,
+    ceremonies,
     studentImport,
     targetOptions,
     workspace,
@@ -72,6 +74,12 @@ export default function StudentImportMapping({
             </section>
 
             <ImportSourceReplacements
+                studentImport={studentImport}
+                workspace={workspace}
+            />
+
+            <ImportCeremonyRetarget
+                ceremonies={ceremonies}
                 studentImport={studentImport}
                 workspace={workspace}
             />

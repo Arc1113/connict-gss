@@ -10,6 +10,7 @@ use App\Data\AnnouncementLengthAssessment;
 use App\Data\AnnouncementSection;
 use App\Data\ComposedAnnouncement;
 use App\Data\PronunciationTransformResult;
+use App\Enums\AnnouncementProvider;
 
 final class ComposeGraduationAnnouncement
 {
@@ -34,7 +35,7 @@ final class ComposeGraduationAnnouncement
             $errors,
         );
 
-        if ($introduction !== null) {
+        if ($introduction !== null && $input->includeIntroduction) {
             $sections[] = ['code' => 'introduction', 'content' => $introduction];
         }
 
@@ -339,6 +340,7 @@ final class ComposeGraduationAnnouncement
             outputFormat: $this->normalizer->normalize($input->outputFormat) ?? '',
             provider: $input->provider,
             ceremonyIdentifier: $input->ceremonyIdentifier,
+            includeIntroduction: $input->includeIntroduction,
         );
     }
 
@@ -540,14 +542,16 @@ final class ComposeGraduationAnnouncement
         $pauseMilliseconds = 0;
         $lastIndex = array_key_last($sections);
 
-        foreach ($sections as $index => $section) {
-            if ($index === $lastIndex) {
-                continue;
-            }
+        if ($input->provider !== AnnouncementProvider::Kokoro) {
+            foreach ($sections as $index => $section) {
+                if ($index === $lastIndex) {
+                    continue;
+                }
 
-            $pauseMilliseconds += $section->code === 'name'
-                ? $input->pauseAfterNameMs
-                : $input->pauseBetweenSectionsMs;
+                $pauseMilliseconds += $section->code === 'name'
+                    ? $input->pauseAfterNameMs
+                    : $input->pauseBetweenSectionsMs;
+            }
         }
 
         $rateFactor = 100 + $input->speakingRatePercent;

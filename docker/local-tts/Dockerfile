@@ -28,6 +28,9 @@ ENV HF_HUB_OFFLINE=1 \
     TRANSFORMERS_OFFLINE=1 \
     TRANSFORMERS_CACHE=/tmp/transformers
 
+COPY docker/local-tts/audio_processing.py ./audio_processing.py
+COPY docker/local-tts/test_audio_processing.py ./test_audio_processing.py
+RUN python -m unittest test_audio_processing.py
 COPY docker/local-tts/server.py ./server.py
 RUN useradd --create-home --uid 10001 localtts \
     && chown -R localtts:localtts /srv/local-tts /opt/huggingface

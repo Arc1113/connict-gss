@@ -39,8 +39,39 @@ class KokoroSpeechProviderTest extends AnnouncementTestCase
             return $request->url() === 'http://local-tts:8880/v1/synthesize'
                 && $request['voice'] === 'af_heart'
                 && $request['sections'][1] === ['code' => 'name', 'text' => 'Fictional Graduate.']
-                && $request['pause_after_name_ms'] === 250;
+                && $request['pause_after_name_ms'] === 250
+                && $request['delivery_profile'] === 'professional_mc';
         });
+    }
+
+    public function test_approved_male_voice_is_sent_to_the_local_service(): void
+    {
+        Http::fake([
+            'http://local-tts:8880/v1/synthesize' => Http::response(
+                $this->mp3(),
+                200,
+                ['Content-Type' => 'audio/mpeg'],
+            ),
+        ]);
+        $request = $this->request();
+        $maleRequest = new AnnouncementSynthesisRequest(
+            ssml: $request->ssml,
+            plainText: $request->plainText,
+            characterCount: $request->characterCount,
+            voice: 'am_michael',
+            locale: 'en-US',
+            outputFormat: $request->outputFormat,
+            sourceHash: $request->sourceHash,
+            provider: $request->provider,
+            speakingRatePercent: $request->speakingRatePercent,
+            pauseAfterNameMs: $request->pauseAfterNameMs,
+            pauseBetweenSectionsMs: $request->pauseBetweenSectionsMs,
+            sections: $request->sections,
+        );
+
+        app(KokoroSpeechProvider::class)->synthesize($maleRequest);
+
+        Http::assertSent(fn (Request $sent): bool => $sent['voice'] === 'am_michael');
     }
 
     public function test_local_failure_is_explicit_and_never_calls_azure(): void

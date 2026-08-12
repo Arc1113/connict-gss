@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Enums\PresentationMode;
 use App\Enums\StageAudioStatus;
 use App\Enums\StageDisplayMode;
 use App\Enums\StageQueueStatus;
@@ -30,8 +31,12 @@ final readonly class CompleteAndPresentNext
     /**
      * @return array{data: array<string, mixed>, http_status: int}
      */
-    public function execute(User $operator, int $expectedVersion): array
-    {
+    public function execute(
+        User $operator,
+        int $expectedVersion,
+        ?int $expectedStudentId = null,
+        bool $fullyAutomaticOnly = false,
+    ): array {
         /**
          * @var array{
          *     data: array<string, mixed>,
@@ -46,6 +51,8 @@ final readonly class CompleteAndPresentNext
         $committed = DB::transaction(function () use (
             $operator,
             $expectedVersion,
+            $expectedStudentId,
+            $fullyAutomaticOnly,
         ): array {
             $resolution = $this->ceremonies->resolve(lockForUpdate: true);
 
@@ -57,6 +64,9 @@ final readonly class CompleteAndPresentNext
             }
 
             $ceremony = $resolution->ceremony;
+            if ($fullyAutomaticOnly && $ceremony->presentation_mode !== PresentationMode::FullyAutomatic) {
+                return $this->failure('not_fully_automatic', 'Fully automatic presentation is not active.', $ceremony->id);
+            }
             $state = StageState::query()
                 ->whereBelongsTo($ceremony)
                 ->lockForUpdate()
@@ -95,6 +105,14 @@ final readonly class CompleteAndPresentNext
                     'The persisted stage state requires operator review.',
                     $ceremony->id,
                 );
+            }
+
+            if ($expectedStudentId !== null && $current->student_id !== $expectedStudentId) {
+                return $this->failure('stale_presentation', 'The automatic completion belongs to an older graduate.', $ceremony->id);
+            }
+
+            if ($fullyAutomaticOnly && $state->automatic_paused) {
+                return $this->failure('automatic_paused', 'Fully automatic presentation is paused for operator recovery.', $ceremony->id);
             }
 
             $next = StageQueueItem::query()

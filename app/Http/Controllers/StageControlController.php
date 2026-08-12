@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\AdvanceFullyAutomaticPresentation;
 use App\Actions\CompleteAndPresentNext;
 use App\Actions\PresentStageQueueItem;
 use App\Actions\ReplayCurrentAnnouncement;
@@ -10,6 +11,7 @@ use App\Actions\ReturnStageQueueItem;
 use App\Actions\SetAutomaticPresentationPaused;
 use App\Actions\SetStageHolding;
 use App\Actions\SkipStageQueueItem;
+use App\Http\Requests\AdvanceFullyAutomaticPresentationRequest;
 use App\Support\ActiveCeremonyResolver;
 use App\Support\StageControlPayload;
 use Illuminate\Http\JsonResponse;
@@ -92,6 +94,20 @@ class StageControlController extends Controller
             fn (): array => $complete->execute(
                 $request->user(),
                 $expectedVersion,
+            ),
+        );
+    }
+
+    public function advanceFullyAutomatic(
+        AdvanceFullyAutomaticPresentationRequest $request,
+        AdvanceFullyAutomaticPresentation $advance,
+    ): JsonResponse {
+        return $this->run(
+            'fully_automatic_advance',
+            fn (): array => $advance->execute(
+                $request->user(),
+                (int) $request->validated('expected_version'),
+                (int) $request->validated('student_id'),
             ),
         );
     }

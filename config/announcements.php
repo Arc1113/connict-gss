@@ -9,8 +9,42 @@ return [
             'fil-PH-BlessicaNeural' => 'fil-PH',
         ],
         'kokoro' => [
+            'am_michael' => 'en-US',
+            'am_fenrir' => 'en-US',
             'af_heart' => 'en-US',
             'af_bella' => 'en-US',
+        ],
+    ],
+    'provider_voice_catalog' => [
+        'kokoro' => [
+            'am_michael' => [
+                'label' => 'Michael',
+                'locale' => 'en-US',
+                'gender' => 'male',
+                'accent' => 'American English',
+                'description' => 'Warm, clear male voice for professional ceremony delivery.',
+            ],
+            'am_fenrir' => [
+                'label' => 'Fenrir',
+                'locale' => 'en-US',
+                'gender' => 'male',
+                'accent' => 'American English',
+                'description' => 'Confident male alternative for voice comparison.',
+            ],
+            'af_heart' => [
+                'label' => 'Heart',
+                'locale' => 'en-US',
+                'gender' => 'female',
+                'accent' => 'American English',
+                'description' => 'Natural, balanced female voice.',
+            ],
+            'af_bella' => [
+                'label' => 'Bella',
+                'locale' => 'en-US',
+                'gender' => 'female',
+                'accent' => 'American English',
+                'description' => 'Expressive female alternative for voice comparison.',
+            ],
         ],
     ],
     'voices' => [
@@ -67,7 +101,8 @@ return [
         'connect_timeout_seconds' => (int) env('LOCAL_TTS_CONNECT_TIMEOUT', 2),
         'request_timeout_seconds' => (int) env('LOCAL_TTS_REQUEST_TIMEOUT', 90),
         'maximum_response_bytes' => (int) env('LOCAL_TTS_MAX_RESPONSE_BYTES', 15 * 1024 * 1024),
-        'default_voice' => 'af_heart',
+        'default_voice' => 'am_michael',
+        'delivery_profile' => 'professional_mc',
         'model_sha256' => '496dba118d1a58f5f3db2efc88dbdc216e0483fc89fe6e47ee1f2c53f18ad1e4',
     ],
 ];

@@ -58,6 +58,28 @@ class CeremonyAnnouncementSettingsTest extends AnnouncementTestCase
         $this->assertStringNotContainsString('never-render-this-key', $response->getContent());
     }
 
+    public function test_local_voice_catalog_exposes_grouping_metadata_and_michael_first(): void
+    {
+        $ceremony = Ceremony::factory()->create();
+        AnnouncementTemplate::factory()->active()->for($ceremony)->create([
+            'provider' => 'kokoro',
+            'default_voice' => 'am_michael',
+            'default_locale' => 'en-US',
+        ]);
+        $administrator = User::factory()->role(UserRole::Administrator)->create();
+
+        $this->actingAs($administrator)
+            ->get(route('admin.ceremonies.announcement-settings.show', $ceremony))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('announcement.settings.default_voice', 'am_michael')
+                ->where('announcement.voices.0.value', 'am_michael')
+                ->where('announcement.voices.0.label', 'Michael')
+                ->where('announcement.voices.0.gender', 'male')
+                ->where('announcement.voices.0.accent', 'American English')
+                ->where('announcement.providers.1.voices', fn ($voices): bool => $voices->count() === 4));
+    }
+
     public function test_publishing_creates_new_active_version_and_invalidates_old_generated_audio(): void
     {
         $ceremony = Ceremony::factory()->create();

@@ -2,15 +2,17 @@ import os
 import subprocess
 import tempfile
 from threading import Lock
+from typing import Literal
 
 import numpy as np
 import soundfile as sf
 from fastapi import FastAPI, HTTPException, Response
-from pydantic import BaseModel, Field
 from kokoro import KPipeline
+from pydantic import BaseModel, Field
 
-ALLOWED_VOICES = {"af_heart", "af_bella"}
-SAMPLE_RATE = 24000
+from audio_processing import SAMPLE_RATE, join_sections, normalize_silence
+
+ALLOWED_VOICES = {"am_michael", "am_fenrir", "af_heart", "af_bella"}
 MODEL_REVISION = "f3ff3571791e39611d31c381e3a41a3af07b4987"
 LAME_BINARY = os.environ.get("LAME_BINARY", "lame")
 
@@ -31,6 +33,7 @@ class SynthesisRequest(BaseModel):
     speed: float = Field(ge=0.5, le=2.0)
     pause_after_name_ms: int = Field(ge=0, le=1500)
     pause_between_sections_ms: int = Field(ge=0, le=1500)
+    delivery_profile: Literal["professional_mc"] = "professional_mc"
 
 
 @app.get("/health")
@@ -45,10 +48,6 @@ def render_text(text: str, voice: str, speed: float) -> np.ndarray:
     return np.concatenate(chunks).astype(np.float32, copy=False)
 
 
-def pause(milliseconds: int) -> np.ndarray:
-    return np.zeros(int(SAMPLE_RATE * milliseconds / 1000), dtype=np.float32)
-
-
 @app.post("/v1/synthesize")
 def synthesize(request: SynthesisRequest):
     if request.voice not in ALLOWED_VOICES:
@@ -58,14 +57,13 @@ def synthesize(request: SynthesisRequest):
 
     try:
         sections = request.sections or [Section(code="announcement", text=request.text)]
-        output = []
-        for index, section in enumerate(sections):
-            output.append(render_text(section.text, request.voice, request.speed))
-            if index < len(sections) - 1:
-                duration = request.pause_after_name_ms if section.code == "name" else request.pause_between_sections_ms
-                if duration:
-                    output.append(pause(duration))
-        audio = np.concatenate(output)
+        contextual_text = join_sections(
+            [section.text for section in sections],
+            request.text,
+        )
+        audio = normalize_silence(
+            render_text(contextual_text, request.voice, request.speed),
+        )
 
         with tempfile.TemporaryDirectory(prefix="kokoro-") as directory:
             wav_path = os.path.join(directory, "announcement.wav")

@@ -45,12 +45,7 @@ final class CeremonyAnnouncementSettingsWorkspace
                     'generations_count' => $template->generations_count,
                     'created_at' => $template->created_at?->toIso8601String(),
                 ]),
-            'voices' => collect($this->voices->all($editable->provider))
-                ->map(fn (string $locale, string $voice): array => [
-                    'value' => $voice,
-                    'locale' => $locale,
-                    'label' => $voice,
-                ])->values(),
+            'voices' => $this->voices->catalog($editable->provider),
             'limits' => [
                 'speaking_rate_minimum' => $this->voices->minimumSpeakingRatePercent(),
                 'speaking_rate_maximum' => $this->voices->maximumSpeakingRatePercent(),
@@ -69,13 +64,7 @@ final class CeremonyAnnouncementSettingsWorkspace
                         ? 'Works without internet after the local model is installed.'
                         : 'Requires internet and configured Azure credentials.',
                     'readiness' => $this->providerHealth->offline($provider),
-                    'voices' => collect($this->voices->all($provider))->map(
-                        static fn (string $locale, string $voice): array => [
-                            'value' => $voice,
-                            'locale' => $locale,
-                            'label' => $voice,
-                        ],
-                    )->values(),
+                    'voices' => $this->voices->catalog($provider),
                 ];
             })->values(),
             'usage' => $this->serializeUsage(),
@@ -116,6 +105,7 @@ final class CeremonyAnnouncementSettingsWorkspace
             'version' => (int) ($template->version ?? 0),
             'is_active' => (bool) ($template->is_active ?? false),
             'introduction_text' => $template->introduction_text,
+            'introduction_frequency' => $template->introduction_frequency ?? 'first_per_program',
             'include_program' => $template->include_program,
             'include_major' => $template->include_major,
             'include_honors' => $template->include_honors,
@@ -140,6 +130,7 @@ final class CeremonyAnnouncementSettingsWorkspace
         return [
             'name' => 'Ceremony announcement',
             'introduction_text' => 'We proudly present',
+            'introduction_frequency' => 'first_per_program',
             'include_program' => true,
             'include_major' => true,
             'include_honors' => true,

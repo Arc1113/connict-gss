@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Enums\PresentationMode;
 use App\Enums\StageAudioStatus;
 use App\Enums\StageDisplayMode;
 use App\Events\StageAudioStatusChanged;
@@ -77,6 +78,22 @@ final readonly class ReportStageAudioStatus
                     'performed_by' => $displayOperator->id,
                     'created_at' => now(),
                 ]);
+
+                if ($resolution->ceremony->presentation_mode === PresentationMode::FullyAutomatic) {
+                    $state->automatic_paused = true;
+                    $state->save();
+                    StageEvent::query()->create([
+                        'ceremony_id' => $resolution->ceremony->id,
+                        'queue_item_id' => $item->id,
+                        'event_type' => 'automatic_mode_paused',
+                        'payload' => [
+                            'version' => $version,
+                            'reason' => 'announcement_playback_failed',
+                        ],
+                        'performed_by' => $displayOperator->id,
+                        'created_at' => now(),
+                    ]);
+                }
             }
 
             return [

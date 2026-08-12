@@ -8,7 +8,7 @@ final readonly class AnnouncementSourceFingerprintData
 {
     public const COMPOSITION_SCHEMA_VERSION = 2;
 
-    public const KOKORO_ENGINE_REVISION = 2;
+    public const KOKORO_ENGINE_REVISION = 3;
 
     /**
      * @param  list<array{
@@ -44,6 +44,7 @@ final readonly class AnnouncementSourceFingerprintData
         public int $pauseAfterNameMs,
         public int $pauseBetweenSectionsMs,
         public ?string $outputFormat = null,
+        public bool $includeIntroduction = true,
     ) {}
 
     /**
@@ -78,6 +79,7 @@ final readonly class AnnouncementSourceFingerprintData
                 'identifier' => $this->templateIdentifier,
                 'version' => $this->templateVersion,
                 'introduction_text' => $this->introductionText,
+                'include_introduction' => $this->includeIntroduction,
                 'include_program' => $this->includeProgram,
                 'include_major' => $this->includeMajor,
                 'include_honors' => $this->includeHonors,

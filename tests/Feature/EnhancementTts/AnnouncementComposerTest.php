@@ -4,6 +4,7 @@ namespace Tests\Feature\EnhancementTts;
 
 use App\Data\ComposedAnnouncement;
 use App\Enums\PronunciationRuleSection;
+use App\Enums\AnnouncementProvider;
 use App\Services\BuildAnnouncementSourceFingerprint;
 use App\Services\ComposeGraduationAnnouncement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -119,6 +120,17 @@ class AnnouncementComposerTest extends AnnouncementTestCase
         $this->assertTrue($omitted->isReady());
     }
 
+    public function test_introduction_can_be_omitted_for_a_course_continuation(): void
+    {
+        $result = $this->compose(['includeIntroduction' => false]);
+
+        $this->assertSame(
+            'Fictional Graduate, Bachelor of Science in Fictional Studies.',
+            $result->plainText,
+        );
+        $this->assertSame(['name', 'program'], array_column($result->sections, 'code'));
+    }
+
     public function test_disabled_optional_source_fields_do_not_affect_readiness(): void
     {
         $result = $this->compose([
@@ -213,6 +225,20 @@ class AnnouncementComposerTest extends AnnouncementTestCase
             $faster->durationEstimate->maximumSeconds,
         );
         $this->assertStringStartsWith('Approximate', $default->durationEstimate->label);
+    }
+
+    public function test_local_duration_does_not_add_azure_only_section_pauses(): void
+    {
+        $local = $this->compose([
+            'provider' => AnnouncementProvider::Kokoro,
+            'voice' => 'am_michael',
+            'locale' => 'en-US',
+            'pauseAfterNameMs' => 1500,
+            'pauseBetweenSectionsMs' => 1500,
+        ]);
+
+        $this->assertNotNull($local->durationEstimate);
+        $this->assertSame(0, $local->durationEstimate->includedPauseMilliseconds);
     }
 
     public function test_identical_normalized_input_has_one_hash_and_spoken_changes_invalidate_it(): void

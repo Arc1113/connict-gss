@@ -150,12 +150,21 @@ final class StudentImportMediaPackage
         $zip = $this->openStored($studentImport);
 
         try {
-            $index = $zip->locateName($name, ZipArchive::FL_NOCASE);
-            if ($index === false) {
+            $matches = $this->matchingEntries($zip, $name, $kind);
+
+            if (count($matches) === 0) {
                 throw ValidationException::withMessages([
                     $field => "{$name} was not found in the media ZIP.",
                 ]);
             }
+
+            if (count($matches) > 1) {
+                throw ValidationException::withMessages([
+                    $field => "{$name} matches more than one file in the media ZIP.",
+                ]);
+            }
+
+            $index = $matches[0];
 
             $stat = $zip->statIndex($index);
             if (! is_array($stat)) {
@@ -251,7 +260,13 @@ final class StudentImportMediaPackage
             ]);
         }
 
-        if (! str_contains($reference, '/')) {
+        $filenameOnly = ! str_contains($reference, '/');
+
+        if ($filenameOnly) {
+            $reference = $prefix.$reference;
+        }
+
+        if (! str_starts_with(strtolower($reference), $prefix)) {
             $reference = $prefix.$reference;
         }
 
@@ -268,6 +283,44 @@ final class StudentImportMediaPackage
         }
 
         return $reference;
+    }
+
+    /**
+     * Resolve exact paths first, then safe folder-prefix equivalents. A
+     * basename fallback is only used for filename-only CSV references.
+     *
+     * @return list<int>
+     */
+    private function matchingEntries(ZipArchive $zip, string $name, string $kind): array
+    {
+        $prefix = $kind === 'photo' ? 'photos/' : 'audio/';
+        $normalizedName = strtolower(str_replace('\\', '/', $name));
+        $relativeName = substr($normalizedName, strlen($prefix));
+        $basenameOnly = ! str_contains($relativeName, '/');
+        $matches = [];
+
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $stat = $zip->statIndex($index);
+            $entryName = is_array($stat) ? (string) ($stat['name'] ?? '') : '';
+            $entryName = strtolower(str_replace('\\', '/', $entryName));
+
+            if ($entryName === '' || str_ends_with($entryName, '/')) {
+                continue;
+            }
+
+            $exact = $entryName === $normalizedName;
+            $rootRelative = $entryName === $relativeName;
+            $wrapped = str_ends_with($entryName, '/'.$normalizedName)
+                || str_ends_with($entryName, '/'.$relativeName);
+            $basename = $basenameOnly
+                && basename($entryName) === basename($relativeName);
+
+            if ($exact || $rootRelative || $wrapped || $basename) {
+                $matches[] = $index;
+            }
+        }
+
+        return array_values(array_unique($matches));
     }
 
     private function inspectArchive(string $path): void

@@ -68,8 +68,14 @@ final class StudentImportPreparation
         'eligibility' => 'eligibility_status',
         'photo_filename' => 'photo_filename',
         'photo_file' => 'photo_filename',
+        'photo_path' => 'photo_filename',
+        'photo_route' => 'photo_filename',
+        'photo_filepath' => 'photo_filename',
         'audio_filename' => 'audio_filename',
         'audio_file' => 'audio_filename',
+        'audio_path' => 'audio_filename',
+        'audio_route' => 'audio_filename',
+        'audio_filepath' => 'audio_filename',
     ];
 
     public function __construct(

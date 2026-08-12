@@ -20,5 +20,6 @@ final readonly class AnnouncementSynthesisRequest
         public int $pauseBetweenSectionsMs = 0,
         /** @var list<array{code: string, text: string}> */
         public array $sections = [],
+        public string $deliveryProfile = 'professional_mc',
     ) {}
 }

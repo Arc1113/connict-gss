@@ -156,6 +156,9 @@ final class GenerateAnnouncementCandidate
                         static fn ($section): array => ['code' => $section->code, 'text' => $section->spokenText],
                         $composition->sections,
                     ),
+                    deliveryProfile: $input->provider === AnnouncementProvider::Kokoro
+                        ? (string) config('announcements.kokoro.delivery_profile', 'professional_mc')
+                        : 'professional_mc',
                 ),
             ];
         }, 3);
