@@ -10,9 +10,18 @@ final class BuildAnnouncementSourceFingerprint
     /**
      * @throws JsonException
      */
-    public function handle(AnnouncementSourceFingerprintData $source): string
+    public function handle(AnnouncementSourceFingerprintData $source, array $pronunciation = []): string
     {
-        return hash('sha256', $this->canonicalJson($source));
+        $canonical = $source->toCanonicalArray();
+        $canonical['pronunciation'] = $pronunciation;
+
+        return hash('sha256', json_encode(
+            $this->sortAssociativeKeys($canonical),
+            JSON_THROW_ON_ERROR
+                | JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_PRESERVE_ZERO_FRACTION,
+        ));
     }
 
     /**

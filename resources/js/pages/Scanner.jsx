@@ -1,9 +1,10 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { observeEchoConnection } from '../lib/echo';
 import { requestJson } from '../lib/http';
 import OperationCommandMenu from '../components/OperationCommandMenu';
 import ScannerCamera from '../components/ScannerCamera';
+import OnboardingGuide from '../components/OnboardingGuide';
 
 const CAPTURE_MODE_KEY = 'gss.scanner.captureMode';
 
@@ -162,6 +163,7 @@ function serverStatus(state) {
 }
 
 export default function Scanner({ ceremony, ceremonyStatus }) {
+    const { onboarding } = usePage().props;
     const inputRef = useRef(null);
     const fallbackRef = useRef(null);
     const lookupInputRef = useRef(null);
@@ -618,6 +620,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
     return (
         <>
             <Head title="Scanner" />
+            <OnboardingGuide onboarding={onboarding} standalone />
 
             <a className="skip-link" href="#scanner-content">
                 Skip to scanner
@@ -658,7 +661,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                         </nav>
                     </header>
 
-                    <ul className="scanner-system-status" aria-label="Scanner service status">
+                    <ul className="scanner-system-status" aria-label="Scanner service status" data-tour="scanner-connection">
                         {[
                             currentCaptureStatus,
                             serverStatus(serverState),
@@ -730,6 +733,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                                         QR scan or manual token
                                     </label>
                                     <input
+                                        data-tour="scanner-input"
                                         ref={inputRef}
                                         id="scan-token"
                                         name="token"
@@ -760,6 +764,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
 
                     <section
                         className={`scan-feedback scan-feedback-${feedback.tone}`}
+                        data-tour="scanner-feedback"
                         data-feedback-status={feedback.status}
                         role={feedback.tone === 'neutral' ? 'status' : 'alert'}
                         aria-live={feedback.tone === 'neutral' ? 'polite' : 'assertive'}
@@ -804,6 +809,7 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                     <details
                         ref={fallbackRef}
                         className="scanner-fallback"
+                        data-tour="scanner-fallback"
                         onToggle={(event) => {
                             const isOpen = event.currentTarget.open;
 

@@ -52,9 +52,11 @@ function FictionalPreview({ preview }) {
                 <span>{preview.award_count} sample award</span>
                 {preview.duration && <span>About {preview.duration.minimum_seconds}–{preview.duration.maximum_seconds} seconds</span>}
             </div>
-            <blockquote className="announcement-preview-copy">
-                {preview.plain_text || 'The current settings cannot produce a valid preview.'}
-            </blockquote>
+            <div className="announcement-pronunciation-comparison">
+                <div><span>Display text</span><blockquote>{preview.display_text || preview.plain_text || 'The current settings cannot produce a valid preview.'}</blockquote></div>
+                <div><span>Speech text</span><blockquote>{preview.speech_text || preview.plain_text || 'The current settings cannot produce a valid preview.'}</blockquote></div>
+            </div>
+            {preview.applied_rules?.length > 0 && <p className="admin-form-note">{preview.applied_rules.length} common pronunciation correction{preview.applied_rules.length === 1 ? '' : 's'} applied to this fictional preview.</p>}
             {preview.warnings.map((warning) => <p className="announcement-notice announcement-notice-warning" key={warning.code}>{warning.message}</p>)}
             {preview.blocking_errors.map((error) => <p className="announcement-notice announcement-notice-error" key={error.code} role="alert">{error.message}</p>)}
         </section>

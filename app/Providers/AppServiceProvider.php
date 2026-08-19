@@ -168,6 +168,24 @@ class AppServiceProvider extends ServiceProvider
             'manage-announcement-batches',
             fn (User $user): bool => $user->hasRole(UserRole::Administrator),
         );
+        Gate::define(
+            'view-pronunciation-rules',
+            fn (User $user): bool => in_array($user->role, [
+                UserRole::Administrator,
+                UserRole::DataEncoder,
+            ], true),
+        );
+        Gate::define(
+            'manage-common-pronunciation',
+            fn (User $user): bool => $user->hasRole(UserRole::Administrator),
+        );
+        Gate::define(
+            'manage-ceremony-pronunciation',
+            fn (User $user): bool => in_array($user->role, [
+                UserRole::Administrator,
+                UserRole::DataEncoder,
+            ], true),
+        );
     }
 
     private function ensurePersistentDirectories(): void

@@ -10,6 +10,7 @@ final readonly class AnnouncementAwardListResult
      */
     public function __construct(
         public string $text,
+        public string $displayText,
         public int $awardCount,
         public array $warnings,
         public array $blockingErrors,

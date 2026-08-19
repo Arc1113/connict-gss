@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { requestJson } from '../../lib/http';
 import AudioPreview from './AudioPreview';
@@ -29,9 +29,25 @@ function PreviewPanel({ preview }) {
                     </span>
                 )}
             </div>
-            <blockquote className="announcement-preview-copy">
-                {preview.plain_text || 'No announcement can be composed yet.'}
-            </blockquote>
+            <div className="announcement-pronunciation-comparison" data-tour="announcement-pronunciation-preview">
+                <div>
+                    <span>Display text</span>
+                    <blockquote>{preview.display_text || preview.plain_text || 'No announcement can be composed yet.'}</blockquote>
+                </div>
+                <div>
+                    <span>Speech sent to {preview.applied_rules?.[0]?.provider || 'the selected provider'}</span>
+                    <blockquote>{preview.speech_text || preview.plain_text || 'No announcement can be composed yet.'}</blockquote>
+                </div>
+            </div>
+            {preview.applied_rules?.length > 0 && (
+                <div className="announcement-applied-rules" aria-label="Applied pronunciation rules">
+                    {preview.applied_rules.map((rule, index) => (
+                        <span key={`${rule.rule_id}-${rule.variant_id}-${index}`}>
+                            {rule.match_text} → {rule.replacement_text} · {rule.scope} · {rule.provider}{rule.voice ? ` / ${rule.voice}` : ''}
+                        </span>
+                    ))}
+                </div>
+            )}
             {preview.duration && (
                 <p className="admin-field-hint">{preview.duration.label}</p>
             )}
@@ -234,6 +250,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                     label={announcement.provider?.configured ? 'Provider ready' : 'Provider disabled'}
                     value={announcement.provider?.configured ? 'approved' : 'missing'}
                 />
+                {announcement.permissions.manage_awards && <Link className="admin-button admin-button-secondary" href="/admin/pronunciation-rules">Open dictionary</Link>}
             </div>
 
             <div className="announcement-source-grid">
@@ -273,7 +290,7 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                                     <div className="announcement-award-actions">
                                         <button aria-label={`Move ${award.award_name} up`} className="admin-button admin-button-secondary" disabled={!award.can_move_up} onClick={() => moveAward(award, 'up')} type="button">↑</button>
                                         <button aria-label={`Move ${award.award_name} down`} className="admin-button admin-button-secondary" disabled={!award.can_move_down} onClick={() => moveAward(award, 'down')} type="button">↓</button>
-                                        <button className="admin-button admin-button-secondary" onClick={() => editAward(award)} type="button">Edit</button>
+                                        <button className="admin-button admin-button-secondary" onClick={() => editAward(award)} type="button">Correct award</button>
                                         <button className="admin-button admin-button-danger" onClick={() => removeAward(award)} type="button">Remove</button>
                                     </div>
                                 )}
@@ -344,6 +361,9 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                     <button className="admin-button admin-button-secondary" disabled={previewing} onClick={refreshPreview} type="button">
                         {previewing ? 'Refreshing preview…' : 'Preview announcement'}
                     </button>
+                    <Link className="admin-button admin-button-secondary" href={`/admin/students/${student.id}/edit#tts_spoken_name`}>Correct this graduate</Link>
+                    {announcement.permissions.manage_ceremony_pronunciation && <Link className="admin-button admin-button-secondary" href={`/admin/pronunciation-rules?ceremony=${student.ceremony_id}`}>Save for this ceremony</Link>}
+                    {announcement.permissions.manage_common_pronunciation && <Link className="admin-button admin-button-text" href="/admin/pronunciation-rules?ceremony=common">Save as common pronunciation</Link>}
                 </div>
                 {previewError && <p className="announcement-notice announcement-notice-error" role="alert">{previewError}</p>}
                 <PreviewPanel preview={preview} />
@@ -405,7 +425,9 @@ export default function AnnouncementWorkspace({ announcement, student }) {
                                     </div>
                                     <StatusText label={generation.status_label} value={generation.status} />
                                 </div>
-                                <p>{generation.plain_text}</p>
+                                {generation.display_text !== generation.plain_text && <p className="admin-field-hint"><strong>Display:</strong> {generation.display_text}</p>}
+                                <p><strong>Speech:</strong> {generation.plain_text}</p>
+                                {generation.pronunciation_manifest?.length > 0 && <p className="admin-field-hint">{generation.pronunciation_manifest.length} pronunciation correction{generation.pronunciation_manifest.length === 1 ? '' : 's'} applied.</p>}
                                 <dl className="admin-detail-list admin-detail-list-compact">
                                     <div><dt>Characters</dt><dd>{generation.character_count ?? 'Not recorded'}</dd></div>
                                     <div><dt>Attempts</dt><dd>{generation.attempt_count}</dd></div>

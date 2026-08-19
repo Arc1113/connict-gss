@@ -5,8 +5,8 @@ This guide is for the school laptop that will run Connict GSS during the ceremon
 1. Connect the server laptop to the dedicated ceremony network and plug it into power.
 2. Run `ConnictGSS-Setup-x.y.z.exe` as an administrator.
 3. Open the **Connict GSS** desktop shortcut.
-4. On first run, enter the institution name and first administrator details. Use an administrator password with at least 12 characters.
-5. Wait for the ready screen, then choose **Open Connict GSS**.
+4. On first run, follow the guided setup wizard. Review the institution and first administrator details before approving the single Windows elevation prompt. Use an administrator password with at least 12 characters.
+5. Wait for the wizard to verify the local services, then choose **Open Connict GSS**. If setup cannot finish, retry from the review step or export diagnostics from the same window.
 6. Use the displayed server address to connect other ceremony devices.
 
 No PHP, Composer, Node.js, PostgreSQL, Docker, or terminal commands are required on the client laptop.

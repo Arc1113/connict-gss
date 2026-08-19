@@ -8,6 +8,7 @@ use App\Models\Ceremony;
 use App\Models\Student;
 use App\Models\StudentImport;
 use App\Models\User;
+use App\Services\OnboardingWorkspace;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Throwable;
@@ -83,6 +84,9 @@ class HandleInertiaRequests extends Middleware
                     'manage_announcement_batches' => $user->can('manage-announcement-batches'),
                     'generate_announcement_candidates' => $user->can('generate-announcement-candidates'),
                     'review_announcement_candidates' => $user->can('review-announcement-candidates'),
+                    'view_pronunciation_rules' => $user->can('view-pronunciation-rules'),
+                    'manage_common_pronunciation' => $user->can('manage-common-pronunciation'),
+                    'manage_ceremony_pronunciation' => $user->can('manage-ceremony-pronunciation'),
                 ],
             ],
             'flash' => [
@@ -94,6 +98,7 @@ class HandleInertiaRequests extends Middleware
                 'commit' => config('connict.commit'),
             ],
             'ceremonyContext' => fn (): array => $this->ceremonyContext($user),
+            'onboarding' => fn (): ?array => $this->onboarding($request, $user),
         ];
     }
 
@@ -138,5 +143,17 @@ class HandleInertiaRequests extends Middleware
                 'active' => null,
             ];
         }
+    }
+
+    /** @return array<string, mixed>|null */
+    private function onboarding(Request $request, ?User $user): ?array
+    {
+        if ($user === null || $request->routeIs('stage')) {
+            return null;
+        }
+
+        $active = Ceremony::query()->where('status', CeremonyStatus::Active)->exists();
+
+        return app(OnboardingWorkspace::class)->forUser($user, $active);
     }
 }

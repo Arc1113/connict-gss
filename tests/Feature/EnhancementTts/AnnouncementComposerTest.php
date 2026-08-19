@@ -3,11 +3,15 @@
 namespace Tests\Feature\EnhancementTts;
 
 use App\Data\ComposedAnnouncement;
+use App\Enums\PronunciationRuleSection;
 use App\Services\BuildAnnouncementSourceFingerprint;
 use App\Services\ComposeGraduationAnnouncement;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class AnnouncementComposerTest extends AnnouncementTestCase
 {
+    use RefreshDatabase;
+
     public function test_it_uses_the_spoken_override_and_normalizes_unicode_whitespace(): void
     {
         $result = $this->compose([
@@ -19,9 +23,36 @@ class AnnouncementComposerTest extends AnnouncementTestCase
             'We proudly present, Ma. Élan Niño O’Connor, Bachelor of Science in Fictional Studies.',
             $result->plainText,
         );
+        $this->assertSame(
+            'We proudly present, Displayed Name, Bachelor of Science in Fictional Studies.',
+            $result->displayText,
+        );
         $this->assertSame(mb_strlen($result->plainText), $result->characterCount);
         $this->assertSame('en-PH-JamesNeural', $result->voice);
         $this->assertSame('en-PH', $result->locale);
+    }
+
+    public function test_award_override_changes_speech_without_changing_display_spelling(): void
+    {
+        $this->pronunciationRule(
+            'Leadership Medal',
+            'lee-der-ship medal',
+            PronunciationRuleSection::Award,
+        );
+        $result = $this->compose([
+            'includeAwards' => true,
+            'awards' => [
+                $this->award('Excellence Award', 'ek-suh-lens award', 0, 1),
+                $this->award('Leadership Medal', null, 1, 2),
+            ],
+        ]);
+
+        $this->assertStringContainsString('ek-suh-lens award', $result->plainText);
+        $this->assertStringContainsString('lee-der-ship medal', $result->plainText);
+        $this->assertStringContainsString('Excellence Award', $result->displayText);
+        $this->assertStringContainsString('Leadership Medal', $result->displayText);
+        $this->assertStringNotContainsString('ek-suh-lens', $result->displayText);
+        $this->assertCount(1, $result->appliedRules);
     }
 
     public function test_whitespace_override_falls_back_to_announcement_name(): void
@@ -53,6 +84,7 @@ class AnnouncementComposerTest extends AnnouncementTestCase
 
     public function test_program_and_optional_sections_follow_flags_in_approved_order(): void
     {
+        $this->pronunciationRule('Magna Cum Laude', 'mag-na koom lau-deh');
         $result = $this->compose([
             'major' => 'Creative Computing',
             'honors' => 'Magna Cum Laude',
@@ -66,9 +98,11 @@ class AnnouncementComposerTest extends AnnouncementTestCase
             array_column($result->sections, 'code'),
         );
         $this->assertSame(
-            'We proudly present, Fictional Graduate, Bachelor of Science in Fictional Studies, Creative Computing, Magna Cum Laude, with an approved fictional distinction, Congratulations!',
+            'We proudly present, Fictional Graduate, Bachelor of Science in Fictional Studies, Creative Computing, mag-na koom lau-deh, with an approved fictional distinction, Congratulations!',
             $result->plainText,
         );
+        $this->assertStringContainsString('Magna Cum Laude', $result->displayText);
+        $this->assertCount(1, $result->appliedRules);
 
         $omitted = $this->compose([
             'includeProgram' => false,
@@ -191,7 +225,7 @@ class AnnouncementComposerTest extends AnnouncementTestCase
         $this->assertNotSame($first->sourceHash, $changed->sourceHash);
         $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $first->sourceHash);
         $this->assertStringContainsString(
-            '"composition_schema_version":1',
+            '"composition_schema_version":2',
             app(BuildAnnouncementSourceFingerprint::class)->canonicalJson(
                 $first->input->fingerprintData(),
             ),

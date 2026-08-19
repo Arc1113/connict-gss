@@ -56,6 +56,7 @@ class AnnouncementAwardFormatterTest extends AnnouncementTestCase
         ], null);
 
         $this->assertSame('reviewed spoken wording and Fallback Name', $result->text);
+        $this->assertSame('Administrative Name and Fallback Name', $result->displayText);
     }
 
     public function test_duplicate_empty_lead_in_and_list_breaking_awards_block(): void

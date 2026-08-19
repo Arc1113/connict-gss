@@ -15,13 +15,19 @@ final class FormatAnnouncementAwardList
     /**
      * @param  list<AnnouncementAwardInput>  $awards
      */
-    public function format(array $awards, ?string $leadIn): AnnouncementAwardListResult
+    public function format(
+        array $awards,
+        ?string $leadIn,
+        ?string $displayLeadIn = null,
+    ): AnnouncementAwardListResult
     {
         $warnings = [];
         $errors = [];
         $phrases = [];
+        $displayPhrases = [];
         $seen = [];
         $normalizedLeadIn = $this->normalizer->normalize($leadIn);
+        $normalizedDisplayLeadIn = $this->normalizer->normalize($displayLeadIn) ?? $normalizedLeadIn;
 
         $ordered = [];
 
@@ -125,10 +131,15 @@ final class FormatAnnouncementAwardList
 
             $seen[$comparisonKey] = true;
             $phrases[] = $phrase;
+            $displayPhrases[] = $this->normalizer->withoutTrailingClausePunctuation(
+                $this->normalizer->normalize($award->awardName) ?? $phrase,
+            );
         }
 
         $list = $this->naturalLanguageList($phrases);
+        $displayList = $this->naturalLanguageList($displayPhrases);
         $text = $list;
+        $displayText = $displayList;
 
         if ($list !== '' && $normalizedLeadIn !== null) {
             if ($this->normalizer->containsKnownSsmlMarkup($normalizedLeadIn)) {
@@ -142,11 +153,15 @@ final class FormatAnnouncementAwardList
                 $text = $this->normalizer->withoutTrailingClausePunctuation(
                     $normalizedLeadIn,
                 ).' '.$list;
+                $displayText = $this->normalizer->withoutTrailingClausePunctuation(
+                    $normalizedDisplayLeadIn,
+                ).' '.$displayList;
             }
         }
 
         return new AnnouncementAwardListResult(
             text: $text,
+            displayText: $displayText,
             awardCount: count($phrases),
             warnings: $warnings,
             blockingErrors: $errors,

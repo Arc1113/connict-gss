@@ -75,6 +75,7 @@ final class PreviewFictionalAnnouncement
                 'audio-24khz-48kbitrate-mono-mp3',
             ),
             provider: $provider,
+            ceremonyIdentifier: $template->ceremony_id === null ? null : (int) $template->ceremony_id,
         );
         $composition = $this->composer->compose($input);
 

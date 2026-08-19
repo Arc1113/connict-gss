@@ -12,6 +12,7 @@ final readonly class ComposedAnnouncement
     public function __construct(
         public AnnouncementCompositionInput $input,
         public string $plainText,
+        public string $displayText,
         public array $sections,
         public int $characterCount,
         public int $awardCount,
@@ -22,6 +23,8 @@ final readonly class ComposedAnnouncement
         public string $locale,
         public AnnouncementLengthAssessment $lengthAssessment,
         public ?AnnouncementDurationEstimate $durationEstimate,
+        /** @var list<array<string, mixed>> */
+        public array $appliedRules = [],
     ) {}
 
     public function isReady(): bool

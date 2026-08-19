@@ -18,6 +18,7 @@ export function buildNavigation(abilities, currentUrl) {
                     icon: 'overview',
                     label: 'Overview',
                     active: currentUrl === '/dashboard',
+                    tour: 'readiness',
                 },
                 abilities.operate_scanner && {
                     href: '/scanner',
@@ -48,12 +49,14 @@ export function buildNavigation(abilities, currentUrl) {
                     icon: 'graduates',
                     label: 'Graduates',
                     active: isGraduateRoute(currentUrl),
+                    tour: 'graduates',
                 },
                 abilities.view_ceremonies && {
                     href: '/admin/ceremonies',
                     icon: 'ceremony',
                     label: 'Ceremonies',
                     active: currentUrl.startsWith('/admin/ceremonies'),
+                    tour: 'ceremonies',
                 },
                 abilities.manage_stage_designs && {
                     href: '/admin/stage-designs',
@@ -85,6 +88,14 @@ export function buildNavigation(abilities, currentUrl) {
                     icon: 'audio',
                     label: 'Voice generation',
                     active: currentUrl.startsWith('/admin/voice-generation'),
+                    tour: 'voice-generation',
+                },
+                abilities.view_pronunciation_rules && {
+                    href: '/admin/pronunciation-rules',
+                    icon: 'audio',
+                    label: 'Pronunciation dictionary',
+                    active: currentUrl.startsWith('/admin/pronunciation-rules'),
+                    tour: 'pronunciation-dictionary',
                 },
                 abilities.view_students && {
                     href: '/admin/students?media=audio_needs_review',
@@ -97,6 +108,7 @@ export function buildNavigation(abilities, currentUrl) {
                     icon: 'scanLog',
                     label: 'Scan logs',
                     active: currentUrl.startsWith('/admin/scan-logs'),
+                    tour: 'operational-logs',
                 },
                 abilities.view_operational_logs && {
                     href: '/admin/stage-events',
@@ -126,18 +138,21 @@ export function buildNavigation(abilities, currentUrl) {
                     icon: 'backup',
                     label: 'Backups',
                     active: currentUrl.startsWith('/admin/backups'),
+                    tour: 'backups',
                 },
                 abilities.manage_users && {
                     href: '/admin/users',
                     icon: 'users',
                     label: 'Operator accounts',
                     active: currentUrl.startsWith('/admin/users'),
+                    tour: 'operator-accounts',
                 },
                 abilities.manage_device_connections && {
                     href: '/admin/device-connections',
                     icon: 'devices',
                     label: 'Connect devices',
                     active: currentUrl.startsWith('/admin/device-connections'),
+                    tour: 'device-connections',
                 },
             ].filter(Boolean),
         },

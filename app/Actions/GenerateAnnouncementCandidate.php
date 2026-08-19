@@ -126,6 +126,8 @@ final class GenerateAnnouncementCandidate
                 'provider_voice' => $composition->voice,
                 'locale' => $composition->locale,
                 'plain_text' => $composition->plainText,
+                'display_text' => $composition->displayText,
+                'pronunciation_manifest' => $composition->appliedRules,
                 'ssml' => $preview->ssml->ssml,
                 'source_hash' => $composition->sourceHash,
                 'status' => AnnouncementGenerationStatus::Pending,

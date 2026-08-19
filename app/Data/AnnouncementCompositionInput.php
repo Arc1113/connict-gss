@@ -37,6 +37,7 @@ final readonly class AnnouncementCompositionInput
         public int $maximumCharacterLimit,
         public string $outputFormat,
         public AnnouncementProvider $provider = AnnouncementProvider::Azure,
+        public ?int $ceremonyIdentifier = null,
     ) {}
 
     public function fingerprintData(): AnnouncementSourceFingerprintData

@@ -83,6 +83,21 @@ class User extends Authenticatable
         return $this->hasMany(AnnouncementGeneration::class, 'reviewed_by');
     }
 
+    public function onboardingProgress(): HasMany
+    {
+        return $this->hasMany(UserOnboardingProgress::class);
+    }
+
+    public function createdPronunciationRules(): HasMany
+    {
+        return $this->hasMany(PronunciationRule::class, 'created_by');
+    }
+
+    public function updatedPronunciationRules(): HasMany
+    {
+        return $this->hasMany(PronunciationRule::class, 'updated_by');
+    }
+
     public function hasRole(UserRole $role): bool
     {
         return $this->role === $role;

@@ -96,4 +96,9 @@ class Ceremony extends Model
     {
         return $this->hasMany(AnnouncementGenerationBatch::class);
     }
+
+    public function pronunciationRules(): HasMany
+    {
+        return $this->hasMany(PronunciationRule::class);
+    }
 }

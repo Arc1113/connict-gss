@@ -1,8 +1,9 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getEcho, observeEchoConnection } from '../lib/echo';
 import { requestJson } from '../lib/http';
 import OperationCommandMenu from '../components/OperationCommandMenu';
+import OnboardingGuide from '../components/OnboardingGuide';
 
 const EMPTY_CONTROL = {
     version: 0,
@@ -50,6 +51,7 @@ function connectionCopy(state) {
 }
 
 export default function StageControl({ ceremony }) {
+    const { onboarding } = usePage().props;
     const [activeCeremony, setActiveCeremony] = useState(() => ceremony ?? null);
     const [channelCeremonyId, setChannelCeremonyId] = useState(
         ceremony?.id ?? null,
@@ -308,6 +310,7 @@ export default function StageControl({ ceremony }) {
     return (
         <>
             <Head title="Stage control" />
+            <OnboardingGuide onboarding={onboarding} standalone />
 
             <a className="skip-link" href="#stage-control-content">
                 Skip to stage controls
@@ -344,6 +347,7 @@ export default function StageControl({ ceremony }) {
                 <section
                     className={`stage-control-status${automatic ? ' stage-control-status-automatic' : ''}`}
                     aria-label="Operational status"
+                    data-tour="stage-connection"
                 >
                     <p>
                         <strong>Connection</strong>
@@ -567,6 +571,7 @@ export default function StageControl({ ceremony }) {
                                         </button>
                                         <button
                                             className="secondary-action"
+                                            data-tour="stage-replay"
                                             disabled={
                                                 Boolean(pendingAction) ||
                                                 !current.student.has_audio ||
@@ -632,6 +637,7 @@ export default function StageControl({ ceremony }) {
 
                                 <button
                                     className="secondary-action"
+                                    data-tour="stage-recovery"
                                     disabled={Boolean(pendingAction)}
                                     onClick={() =>
                                         runCommand(
@@ -654,6 +660,7 @@ export default function StageControl({ ceremony }) {
 
                         <section
                             className="stage-control-queue"
+                            data-tour="stage-queue"
                             id="queue"
                             aria-labelledby="waiting-queue-heading"
                         >

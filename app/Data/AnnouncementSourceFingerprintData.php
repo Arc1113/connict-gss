@@ -6,7 +6,7 @@ use App\Enums\AnnouncementProvider;
 
 final readonly class AnnouncementSourceFingerprintData
 {
-    public const COMPOSITION_SCHEMA_VERSION = 1;
+    public const COMPOSITION_SCHEMA_VERSION = 2;
 
     public const KOKORO_ENGINE_REVISION = 2;
 

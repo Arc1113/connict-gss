@@ -36,6 +36,7 @@ class WindowsDistributionTest extends TestCase
         $upgrade = File::get(base_path('distribution/windows/scripts/Upgrade-ConnictGss.ps1'));
         $snapshot = File::get(base_path('distribution/windows/scripts/Snapshot-ConnictGssRuntime.ps1'));
         $launcher = File::get(base_path('distribution/windows/launcher/Program.cs'));
+        $setupWizard = File::get(base_path('distribution/windows/launcher/SetupWizard.cs'));
         $network = File::get(base_path('distribution/windows/scripts/Update-ConnictGssNetworkConfiguration.ps1'));
         $runtimeBuild = File::get(base_path('distribution/windows/scripts/Build-ConnictGssRelease.ps1'));
         $runtimeBootstrap = File::get(base_path('distribution/windows/scripts/Get-ConnictGssRuntimeInputs.ps1'));
@@ -53,8 +54,13 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('$Mode -eq \'Prepare\'', $upgrade);
         $this->assertStringNotContainsString('migrate:fresh', $setup.$upgrade);
         $this->assertStringContainsString('ProtectedData]::Unprotect', $setup);
-        $this->assertStringContainsString('ProtectedData.Protect', $launcher);
-        $this->assertStringNotContainsString('GSS_INITIAL_ADMIN_PASSWORD"]', $launcher);
+        $this->assertStringContainsString('new SetupWizard', $launcher);
+        $this->assertStringContainsString('ProtectedData.Protect', $setupWizard);
+        $this->assertStringContainsString('File.Delete(requestPath)', $setupWizard);
+        $this->assertStringContainsString('WaitForServices', $setupWizard);
+        $this->assertStringContainsString('Open Connict GSS', $setupWizard);
+        $this->assertStringNotContainsString('GSS_INITIAL_ADMIN_PASSWORD"]', $launcher.$setupWizard);
+        $this->assertStringNotContainsString('static string? Prompt', $launcher);
         $this->assertStringContainsString('REVERB_ALLOWED_ORIGINS', $network);
         $this->assertStringContainsString('Write-ConnictGssRuntimeConfiguration.ps1', $network);
         $this->assertStringContainsString('Assert-VerifiedRuntime', $runtimeBuild);
@@ -79,7 +85,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('Do not include runtime.env', $diagnostics);
         $this->assertStringContainsString('Snapshot-ConnictGssRuntime.ps1', $upgrade);
         $this->assertStringContainsString('robocopy', $snapshot);
-        $this->assertStringContainsString('Export diagnostics', $launcher);
+        $this->assertStringContainsString('Export diagnostics', $launcher.$setupWizard);
         $this->assertStringContainsString('Restart-ConnictGssServices.ps1', $launcher);
         $this->assertStringContainsString('no database in application directory', $cleanMachine);
         $this->assertStringContainsString('offline TTS service', $cleanMachine);

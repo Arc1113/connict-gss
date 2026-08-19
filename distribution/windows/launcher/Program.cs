@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 
 ApplicationConfiguration.Initialize();
@@ -9,18 +7,8 @@ var dataRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.
 var statusPath = Path.Combine(dataRoot, "status.json");
 var initialized = IsInitialized(statusPath);
 if (!initialized) {
-    var institution = Prompt("Institution name", "Connict GSS setup");
-    var administrator = Prompt("First administrator name", "Connict GSS setup");
-    var email = Prompt("Administrator email (used to sign in)", "Connict GSS setup");
-    var password = Prompt("Administrator password (at least 12 characters)", "Connict GSS setup", true);
-    if (new[] { institution, administrator, email, password }.Any(string.IsNullOrWhiteSpace)) return;
-    var requestPath = Path.Combine(Path.GetTempPath(), $"connict-gss-setup-{Guid.NewGuid():N}.bin");
-    var request = JsonSerializer.SerializeToUtf8Bytes(new { institutionName = institution, administratorName = administrator, administratorEmail = email, administratorPassword = password });
-    File.WriteAllBytes(requestPath, ProtectedData.Protect(request, null, DataProtectionScope.CurrentUser));
-    var setup = new ProcessStartInfo("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -File \"{Path.Combine(installRoot, "scripts", "Initialize-ConnictGss.ps1")}\" -SetupRequest \"{requestPath}\"") { UseShellExecute = true, Verb = "runas" };
-    using var process = Process.Start(setup)!;
-    process.WaitForExit();
-    MessageBox.Show(process.ExitCode == 0 ? "Connict GSS is ready. Open it again to start the system." : "Setup could not finish. Your data was preserved; open Connict GSS again or send diagnostics to support.", "Connict GSS setup", MessageBoxButtons.OK, process.ExitCode == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Error);
+    using var wizard = new SetupWizard(installRoot, dataRoot, statusPath);
+    wizard.ShowDialog();
     return;
 }
 
@@ -92,14 +80,4 @@ static void RunElevated(string installRoot, string script, string arguments, str
     } catch {
         MessageBox.Show("The action was cancelled or could not start.", title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
-}
-
-static string? Prompt(string label, string title, bool password = false) {
-    using var form = new Form { Width = 440, Height = 170, Text = title, StartPosition = FormStartPosition.CenterScreen, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false };
-    var description = new Label { Left = 18, Top = 18, Width = 390, Text = label };
-    var input = new TextBox { Left = 18, Top = 46, Width = 390, UseSystemPasswordChar = password };
-    var okay = new Button { Text = "Continue", Left = 240, Width = 80, Top = 86, DialogResult = DialogResult.OK };
-    var cancel = new Button { Text = "Cancel", Left = 328, Width = 80, Top = 86, DialogResult = DialogResult.Cancel };
-    form.Controls.AddRange([description, input, okay, cancel]); form.AcceptButton = okay; form.CancelButton = cancel;
-    return form.ShowDialog() == DialogResult.OK ? input.Text.Trim() : null;
 }

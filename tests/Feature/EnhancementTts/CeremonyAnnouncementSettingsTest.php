@@ -133,6 +133,7 @@ class CeremonyAnnouncementSettingsTest extends AnnouncementTestCase
 
     public function test_fictional_preview_uses_draft_settings_without_database_or_http_side_effects(): void
     {
+        $this->pronunciationRule('magna cum laude', 'mag-na koom lau-deh');
         $ceremony = Ceremony::factory()->create();
         $administrator = User::factory()->role(UserRole::Administrator)->create();
         Http::fake();
@@ -147,7 +148,8 @@ class CeremonyAnnouncementSettingsTest extends AnnouncementTestCase
             ->assertJsonPath('preview.ready', true)
             ->assertJsonPath('preview.award_count', 0)
             ->assertJsonPath('preview.voice', 'en-PH-JamesNeural')
-            ->assertJsonFragment(['plain_text' => 'We proudly present, Maria Santos, Bachelor of Science in Information Technology, Web and Mobile Applications, magna cum laude, Congratulations to our fictional graduate.']);
+            ->assertJsonFragment(['plain_text' => 'We proudly present, Maria Santos, Bachelor of Science in Information Technology, Web and Mobile Applications, mag-na koom lau-deh, Congratulations to our fictional graduate.'])
+            ->assertJsonFragment(['display_text' => 'We proudly present, Maria Santos, Bachelor of Science in Information Technology, Web and Mobile Applications, magna cum laude, Congratulations to our fictional graduate.']);
 
         $this->assertDatabaseCount('announcement_templates', 0);
         $this->assertDatabaseCount('announcement_generations', 0);

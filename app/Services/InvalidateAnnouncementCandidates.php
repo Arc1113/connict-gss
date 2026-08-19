@@ -68,6 +68,36 @@ final class InvalidateAnnouncementCandidates
         }, 3);
     }
 
+    public function manualAudioForStudent(int $studentId, string $reason): int
+    {
+        return Student::query()
+            ->whereKey($studentId)
+            ->where('audio_source_type', GraduateAudioSourceType::ManualUpload->value)
+            ->whereNotNull('audio_path')
+            ->where('audio_readiness_status', '!=', AudioReadinessStatus::NeedsReview->value)
+            ->update([
+                'audio_readiness_status' => AudioReadinessStatus::NeedsReview->value,
+                'audio_approved_at' => null,
+                'audio_approved_by' => null,
+                'audio_review_notes' => mb_substr($reason, 0, 1000),
+            ]);
+    }
+
+    public function manualAudioForCeremony(int $ceremonyId, string $reason): int
+    {
+        return Student::query()
+            ->where('ceremony_id', $ceremonyId)
+            ->where('audio_source_type', GraduateAudioSourceType::ManualUpload->value)
+            ->whereNotNull('audio_path')
+            ->where('audio_readiness_status', '!=', AudioReadinessStatus::NeedsReview->value)
+            ->update([
+                'audio_readiness_status' => AudioReadinessStatus::NeedsReview->value,
+                'audio_approved_at' => null,
+                'audio_approved_by' => null,
+                'audio_review_notes' => mb_substr($reason, 0, 1000),
+            ]);
+    }
+
     public function forCeremony(int $ceremonyId, ?int $activeTemplateId = null): int
     {
         $count = 0;

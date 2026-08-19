@@ -39,6 +39,8 @@ final class StudentAnnouncementWorkspace
                 'generate' => $canGenerate,
                 'force_generate' => $actor->can('manage-announcement-settings'),
                 'review' => $canReview,
+                'manage_common_pronunciation' => $actor->can('manage-common-pronunciation'),
+                'manage_ceremony_pronunciation' => $actor->can('manage-ceremony-pronunciation'),
             ],
             'source' => [
                 'announcement_name' => $student->announcement_name,
@@ -124,6 +126,8 @@ final class StudentAnnouncementWorkspace
                     'status' => $generation->status->value,
                     'status_label' => str($generation->status->value)->replace('_', ' ')->title()->toString(),
                     'plain_text' => $generation->plain_text,
+                    'display_text' => $generation->display_text ?? $generation->plain_text,
+                    'pronunciation_manifest' => $generation->pronunciation_manifest ?? [],
                     'character_count' => $generation->character_count,
                     'voice' => $generation->provider_voice,
                     'provider' => $generation->provider->value,

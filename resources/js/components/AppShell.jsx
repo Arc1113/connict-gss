@@ -6,6 +6,7 @@ import { buildNavigation } from './appNavigation';
 import BrandMark from './BrandMark';
 import CommandPalette from './CommandPalette';
 import SystemStatusBar from './SystemStatusBar';
+import OnboardingGuide from './OnboardingGuide';
 
 function ceremonyCopy(ceremonyContext) {
     return {
@@ -37,7 +38,7 @@ function ceremonyCopy(ceremonyContext) {
 }
 
 export default function AppShell({ children }) {
-    const { application, auth, ceremonyContext } = usePage().props;
+    const { application, auth, ceremonyContext, onboarding } = usePage().props;
     const currentUrl = usePage().url;
     const [collapsed, setCollapsed] = useState(() => {
         try {
@@ -211,6 +212,7 @@ export default function AppShell({ children }) {
                                         <Link
                                             aria-current={item.active ? 'page' : undefined}
                                             className={item.active ? 'is-active' : ''}
+                                            data-tour={item.tour ? `nav-${item.tour}` : undefined}
                                             href={item.href}
                                             onClick={() => setMobileOpen(false)}
                                             rel={item.external ? 'noreferrer' : undefined}
@@ -229,18 +231,13 @@ export default function AppShell({ children }) {
                 </nav>
 
                 <footer className="app-sidebar-footer">
-                    <button
-                        onClick={() => {
+                    <OnboardingGuide
+                        onboarding={onboarding}
+                        onShowShortcuts={() => {
                             setPaletteMode('shortcuts');
                             setPaletteOpen(true);
                         }}
-                        title="Keyboard shortcuts"
-                        type="button"
-                    >
-                        <AppIcon name="help" />
-                        <span>Keyboard shortcuts</span>
-                        <kbd>?</kbd>
-                    </button>
+                    />
                 </footer>
             </aside>
 
@@ -271,7 +268,7 @@ export default function AppShell({ children }) {
                     </div>
 
                     <div className="app-toolbar-actions">
-                        <div className={`app-connection app-status-${connection.tone}`}>
+                        <div className={`app-connection app-status-${connection.tone}`} data-tour="application-connection">
                             <span className="app-status-symbol" aria-hidden="true" />
                             <span>{connection.label}</span>
                         </div>

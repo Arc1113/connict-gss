@@ -85,6 +85,7 @@ final class PreviewGraduationAnnouncement
                 'audio-24khz-48kbitrate-mono-mp3',
             ),
             provider: $provider,
+            ceremonyIdentifier: $student->ceremony_id,
         );
         $composition = $this->composer->compose($input);
         $ssml = $this->ssmlBuilder->build($composition);

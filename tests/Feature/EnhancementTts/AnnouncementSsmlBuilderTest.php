@@ -7,9 +7,12 @@ use App\Services\BuildGraduationAnnouncementSsml;
 use App\Services\ComposeGraduationAnnouncement;
 use DOMDocument;
 use DOMXPath;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class AnnouncementSsmlBuilderTest extends AnnouncementTestCase
 {
+    use RefreshDatabase;
+
     public function test_ssml_is_valid_namespaced_deterministic_xml_with_controlled_metadata(): void
     {
         $result = $this->build();

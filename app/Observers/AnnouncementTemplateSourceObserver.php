@@ -7,6 +7,18 @@ use App\Services\InvalidateAnnouncementCandidates;
 
 final class AnnouncementTemplateSourceObserver
 {
+    private const WORDING_FIELDS = [
+        'introduction_text',
+        'include_program',
+        'include_major',
+        'include_honors',
+        'include_awards',
+        'include_additional_text',
+        'awards_lead_in',
+        'closing_text',
+        'is_active',
+    ];
+
     private const SOURCE_FIELDS = [
         'introduction_text',
         'include_program',
@@ -35,6 +47,13 @@ final class AnnouncementTemplateSourceObserver
 
             if ($template->wasChanged('is_active') && $template->is_active) {
                 $invalidator->forCeremony($template->ceremony_id, $template->id);
+            }
+
+            if ($template->wasChanged(self::WORDING_FIELDS)) {
+                $invalidator->manualAudioForCeremony(
+                    $template->ceremony_id,
+                    'Uploaded audio needs review because the ceremony announcement wording changed.',
+                );
             }
         }
     }

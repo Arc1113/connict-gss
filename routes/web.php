@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\CeremonyController;
 use App\Http\Controllers\Admin\CeremonyOperationalResetController;
 use App\Http\Controllers\Admin\CeremonySummaryController;
 use App\Http\Controllers\Admin\DeviceConnectionController;
+use App\Http\Controllers\Admin\PronunciationRuleController;
 use App\Http\Controllers\Admin\ScanLogController;
 use App\Http\Controllers\Admin\StageDesignTemplateController;
 use App\Http\Controllers\Admin\StageEventController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Admin\VoiceGenerationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CompleteCurrentPresentationController;
 use App\Http\Controllers\LocalCertificateController;
+use App\Http\Controllers\OnboardingProgressController;
 use App\Http\Controllers\PhoneOnboardingController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\ScannerController;
@@ -56,6 +58,12 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware(['auth', 'active'])->group(function () {
+    Route::put('/onboarding/{tourKey}', [OnboardingProgressController::class, 'update'])
+        ->where('tourKey', '[a-z0-9-]+')
+        ->name('onboarding.update');
+    Route::post('/onboarding/{tourKey}/reset', [OnboardingProgressController::class, 'reset'])
+        ->where('tourKey', '[a-z0-9-]+')
+        ->name('onboarding.reset');
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
@@ -120,6 +128,14 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/', AdminDashboardController::class)->name('index');
         Route::get('/voice-generation', VoiceGenerationController::class)
             ->name('voice-generation');
+        Route::get('/pronunciation-rules', [PronunciationRuleController::class, 'index'])
+            ->name('pronunciation-rules.index');
+        Route::post('/pronunciation-rules', [PronunciationRuleController::class, 'store'])
+            ->name('pronunciation-rules.store');
+        Route::put('/pronunciation-rules/{pronunciationRule}', [PronunciationRuleController::class, 'update'])
+            ->name('pronunciation-rules.update');
+        Route::post('/pronunciation-rules/preview', [PronunciationRuleController::class, 'preview'])
+            ->name('pronunciation-rules.preview');
         Route::get('/device-connections', DeviceConnectionController::class)
             ->middleware('can:manage-device-connections')
             ->name('device-connections');

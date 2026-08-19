@@ -20,7 +20,12 @@ final class StudentAnnouncementSourceObserver
     public function updated(Student $student): void
     {
         if ($student->wasChanged(self::SOURCE_FIELDS)) {
-            app(InvalidateAnnouncementCandidates::class)->forStudent($student->id);
+            $invalidator = app(InvalidateAnnouncementCandidates::class);
+            $invalidator->forStudent($student->id);
+            $invalidator->manualAudioForStudent(
+                $student->id,
+                'Uploaded audio needs review because the graduate announcement wording changed.',
+            );
         }
     }
 }

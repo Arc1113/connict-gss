@@ -5,6 +5,9 @@ namespace Tests\Feature\EnhancementTts;
 use App\Data\AnnouncementAwardInput;
 use App\Data\AnnouncementCompositionInput;
 use App\Data\AnnouncementIssue;
+use App\Enums\AnnouncementProvider;
+use App\Enums\PronunciationRuleSection;
+use App\Models\PronunciationRule;
 use Tests\TestCase;
 
 abstract class AnnouncementTestCase extends TestCase
@@ -81,5 +84,33 @@ abstract class AnnouncementTestCase extends TestCase
     protected function issueCodes(array $issues): array
     {
         return array_map(static fn ($issue): string => $issue->code, $issues);
+    }
+
+    protected function pronunciationRule(
+        string $match,
+        string $replacement,
+        PronunciationRuleSection $section = PronunciationRuleSection::Honors,
+    ): PronunciationRule {
+        $rule = PronunciationRule::query()->create([
+            'ceremony_id' => null,
+            'section' => $section,
+            'match_text' => $match,
+            'normalized_match' => mb_strtolower($match, 'UTF-8'),
+            'is_enabled' => true,
+            'is_builtin' => false,
+            'revision' => 1,
+        ]);
+
+        foreach (AnnouncementProvider::cases() as $provider) {
+            $rule->variants()->create([
+                'provider' => $provider,
+                'locale' => '',
+                'voice' => '',
+                'replacement_text' => $replacement,
+                'is_enabled' => true,
+            ]);
+        }
+
+        return $rule;
     }
 }

@@ -9,6 +9,7 @@ use App\Data\AnnouncementIssue;
 use App\Data\AnnouncementLengthAssessment;
 use App\Data\AnnouncementSection;
 use App\Data\ComposedAnnouncement;
+use App\Data\PronunciationTransformResult;
 
 final class ComposeGraduationAnnouncement
 {
@@ -17,6 +18,7 @@ final class ComposeGraduationAnnouncement
         private readonly FormatAnnouncementAwardList $awardListFormatter,
         private readonly ApprovedAnnouncementVoices $approvedVoices,
         private readonly BuildAnnouncementSourceFingerprint $fingerprint,
+        private readonly TransformPronunciation $pronunciation,
     ) {}
 
     public function compose(AnnouncementCompositionInput $input): ComposedAnnouncement
@@ -36,15 +38,16 @@ final class ComposeGraduationAnnouncement
             $sections[] = ['code' => 'introduction', 'content' => $introduction];
         }
 
-        $name = $this->plainText(
-            $input->ttsSpokenName,
-            'tts_spoken_name',
-            $errors,
-        ) ?? $this->plainText(
+        $displayName = $this->plainText(
             $input->announcementName,
             'announcement_name',
             $errors,
         );
+        $name = $this->plainText(
+            $input->ttsSpokenName,
+            'tts_spoken_name',
+            $errors,
+        ) ?? $displayName;
 
         if ($name === null) {
             $errors[] = new AnnouncementIssue(
@@ -53,7 +56,11 @@ final class ComposeGraduationAnnouncement
                 'announcement_name',
             );
         } else {
-            $sections[] = ['code' => 'name', 'content' => $name];
+            $sections[] = [
+                'code' => 'name',
+                'content' => $name,
+                'display_content' => $displayName ?? $name,
+            ];
         }
 
         $program = $this->normalizer->normalize($input->program);
@@ -107,8 +114,10 @@ final class ComposeGraduationAnnouncement
         $awardCount = 0;
 
         if ($input->includeAwards) {
+            [$preparedAwards, $preparedLeadIn, $awardRules] = $this->prepareAwards($input);
             $awardList = $this->awardListFormatter->format(
-                $input->awards,
+                $preparedAwards,
+                $preparedLeadIn,
                 $input->awardsLeadIn,
             );
             $warnings = [...$warnings, ...$awardList->warnings];
@@ -116,7 +125,12 @@ final class ComposeGraduationAnnouncement
             $awardCount = $awardList->awardCount;
 
             if ($awardList->text !== '') {
-                $sections[] = ['code' => 'awards', 'content' => $awardList->text];
+                $sections[] = [
+                    'code' => 'awards',
+                    'content' => $awardList->text,
+                    'display_content' => $awardList->displayText,
+                    'applied_rules' => $awardRules,
+                ];
             }
         }
 
@@ -138,11 +152,22 @@ final class ComposeGraduationAnnouncement
             $sections[] = ['code' => 'closing', 'content' => $closing];
         }
 
-        $composedSections = $this->punctuateSections($sections);
+        $composedSections = $this->applyPronunciation(
+            $this->punctuateSections($sections),
+            $input,
+        );
         $plainText = implode(' ', array_map(
             static fn (AnnouncementSection $section): string => $section->spokenText,
             $composedSections,
         ));
+        $displayText = implode(' ', array_map(
+            static fn (AnnouncementSection $section): string => $section->displayText ?? $section->spokenText,
+            $composedSections,
+        ));
+        $appliedRules = array_values(array_merge(...array_map(
+            static fn (AnnouncementSection $section): array => $section->appliedRules,
+            $composedSections,
+        )));
         $characterCount = mb_strlen($plainText, 'UTF-8');
         $lengthAssessment = $this->assessLength($input, $characterCount, $warnings, $errors);
         $durationEstimate = $this->estimateDuration($input, $composedSections, $plainText);
@@ -150,16 +175,21 @@ final class ComposeGraduationAnnouncement
         return new ComposedAnnouncement(
             input: $input,
             plainText: $plainText,
+            displayText: $displayText,
             sections: $composedSections,
             characterCount: $characterCount,
             awardCount: $awardCount,
             warnings: $warnings,
             blockingErrors: $errors,
-            sourceHash: $this->fingerprint->handle($input->fingerprintData()),
+            sourceHash: $this->fingerprint->handle($input->fingerprintData(), [
+                'speech_text' => $plainText,
+                'applied_rules' => $appliedRules,
+            ]),
             voice: $input->voice,
             locale: $input->locale,
             lengthAssessment: $lengthAssessment,
             durationEstimate: $durationEstimate,
+            appliedRules: $appliedRules,
         );
     }
 
@@ -308,11 +338,89 @@ final class ComposeGraduationAnnouncement
             maximumCharacterLimit: $input->maximumCharacterLimit,
             outputFormat: $this->normalizer->normalize($input->outputFormat) ?? '',
             provider: $input->provider,
+            ceremonyIdentifier: $input->ceremonyIdentifier,
         );
     }
 
     /**
-     * @param  list<array{code: string, content: string}>  $sections
+     * @param  list<AnnouncementSection>  $sections
+     * @return list<AnnouncementSection>
+     */
+    private function applyPronunciation(array $sections, AnnouncementCompositionInput $input): array
+    {
+        return array_map(function (AnnouncementSection $section) use ($input): AnnouncementSection {
+            $transformed = $section->code === 'awards'
+                ? new PronunciationTransformResult($section->spokenText, $section->appliedRules)
+                : $this->pronunciation->transform(
+                    text: $section->spokenText,
+                    section: $section->code,
+                    ceremonyId: $input->ceremonyIdentifier,
+                    provider: $input->provider,
+                    locale: $input->locale,
+                    voice: $input->voice,
+                    protected: $section->code === 'name' && $input->ttsSpokenName !== null,
+                );
+
+            return new AnnouncementSection(
+                code: $section->code,
+                content: $section->content,
+                spokenText: $transformed->text,
+                displayText: $section->displayText ?? $section->spokenText,
+                appliedRules: $transformed->appliedRules,
+            );
+        }, $sections);
+    }
+
+    /**
+     * @return array{0: list<AnnouncementAwardInput>, 1: ?string, 2: list<array<string, mixed>>}
+     */
+    private function prepareAwards(AnnouncementCompositionInput $input): array
+    {
+        $appliedRules = [];
+        $awards = array_map(function (AnnouncementAwardInput $award) use ($input, &$appliedRules): AnnouncementAwardInput {
+            if (! $award->isAnnouncementEnabled || $award->spokenText !== null) {
+                return $award;
+            }
+
+            $transformed = $this->pronunciation->transform(
+                text: $award->awardName,
+                section: 'awards',
+                ceremonyId: $input->ceremonyIdentifier,
+                provider: $input->provider,
+                locale: $input->locale,
+                voice: $input->voice,
+            );
+            $appliedRules = [...$appliedRules, ...$transformed->appliedRules];
+
+            return new AnnouncementAwardInput(
+                identifier: $award->identifier,
+                awardName: $award->awardName,
+                spokenText: $transformed->text,
+                displayOrder: $award->displayOrder,
+                isAnnouncementEnabled: $award->isAnnouncementEnabled,
+            );
+        }, $input->awards);
+
+        $leadIn = $input->awardsLeadIn;
+
+        if ($leadIn !== null) {
+            $transformedLeadIn = $this->pronunciation->transform(
+                text: $leadIn,
+                section: 'awards',
+                ceremonyId: $input->ceremonyIdentifier,
+                provider: $input->provider,
+                locale: $input->locale,
+                voice: $input->voice,
+            );
+            $leadIn = $transformedLeadIn->text;
+            $appliedRules = [...$appliedRules, ...$transformedLeadIn->appliedRules];
+        }
+
+        return [$awards, $leadIn, $appliedRules];
+    }
+
+    /**
+     * @param  list<array{code: string, content: string, display_content?: string, applied_rules?: list<array<string, mixed>>}>  $sections
      */
     private function duplicatesExistingSection(string $candidate, array $sections): bool
     {
@@ -326,7 +434,7 @@ final class ComposeGraduationAnnouncement
     }
 
     /**
-     * @param  list<array{code: string, content: string}>  $sections
+     * @param  list<array{code: string, content: string, display_content?: string, applied_rules?: list<array<string, mixed>>}>  $sections
      * @return list<AnnouncementSection>
      */
     private function punctuateSections(array $sections): array
@@ -334,23 +442,31 @@ final class ComposeGraduationAnnouncement
         $lastIndex = array_key_last($sections);
 
         return array_map(function (array $section, int $index) use ($lastIndex): AnnouncementSection {
-            $content = $section['content'];
-            $terminal = mb_substr($content, -1, 1, 'UTF-8');
-
-            if (in_array($terminal, ['!', '?', '！', '？'], true)) {
-                $spokenText = preg_replace('/[!?！？\s]+$/u', '', $content).$terminal;
-            } elseif ($index === $lastIndex) {
-                $spokenText = $this->normalizer->withoutTrailingClausePunctuation($content).'.';
-            } else {
-                $spokenText = $this->normalizer->withoutTrailingClausePunctuation($content).',';
-            }
+            $spokenText = $this->punctuate($section['content'], $index === $lastIndex);
+            $displayText = $this->punctuate(
+                $section['display_content'] ?? $section['content'],
+                $index === $lastIndex,
+            );
 
             return new AnnouncementSection(
                 code: $section['code'],
-                content: $content,
+                content: $section['content'],
                 spokenText: $spokenText,
+                displayText: $displayText,
+                appliedRules: $section['applied_rules'] ?? [],
             );
         }, $sections, array_keys($sections));
+    }
+
+    private function punctuate(string $content, bool $isLast): string
+    {
+        $terminal = mb_substr($content, -1, 1, 'UTF-8');
+
+        if (in_array($terminal, ['!', '?', '！', '？'], true)) {
+            return (preg_replace('/[!?！？\s]+$/u', '', $content) ?? $content).$terminal;
+        }
+
+        return $this->normalizer->withoutTrailingClausePunctuation($content).($isLast ? '.' : ',');
     }
 
     /**
