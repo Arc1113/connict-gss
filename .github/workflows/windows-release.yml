@@ -1,0 +1,92 @@
+name: Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic version to package, for example 1.0.0
+        required: true
+        type: string
+      runtime_bundle_url:
+        description: HTTPS URL to the approved Windows runtime-input ZIP
+        required: true
+        type: string
+      runtime_bundle_sha256:
+        description: SHA-256 for the approved runtime-input ZIP
+        required: true
+        type: string
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: graduation_stage_system_testing
+          POSTGRES_USER: gss_app
+          POSTGRES_PASSWORD: test-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U gss_app -d graduation_stage_system_testing"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.3', extensions: 'pgsql, mbstring, intl, zip, bcmath' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: composer install --no-interaction --prefer-dist
+      - run: npm ci
+      - run: cp .env.example .env && php artisan key:generate --force
+      - run: npm run lint
+      - run: npm run build
+      - run: vendor/bin/pint --test
+      - run: php artisan test --compact
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: graduation_stage_system_testing
+          DB_USERNAME: gss_app
+          DB_PASSWORD: test-password
+
+  package:
+    needs: validate
+    runs-on: windows-2022
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.3', extensions: 'pgsql, mbstring, intl, zip, bcmath' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '8.0.x' }
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress --yes
+      - name: Download approved runtime bundle
+        shell: pwsh
+        env:
+          RUNTIME_BUNDLE_URL: ${{ inputs.runtime_bundle_url }}
+          RUNTIME_BUNDLE_SHA256: ${{ inputs.runtime_bundle_sha256 }}
+        run: |
+          $target = 'distribution/windows/runtime-input.zip'
+          if ($env:RUNTIME_BUNDLE_URL -notmatch '^https://') { throw 'Runtime bundle URL must use HTTPS.' }
+          if ($env:RUNTIME_BUNDLE_SHA256 -notmatch '^[a-fA-F0-9]{64}$') { throw 'Runtime bundle SHA-256 is invalid.' }
+          Invoke-WebRequest -Uri $env:RUNTIME_BUNDLE_URL -OutFile $target
+          if ((Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:RUNTIME_BUNDLE_SHA256.ToLowerInvariant()) { throw 'Runtime bundle checksum mismatch.' }
+          Expand-Archive -LiteralPath $target -DestinationPath 'distribution/windows/runtime-input' -Force
+      - name: Build installer
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: ./distribution/windows/scripts/Build-ConnictGssRelease.ps1 -Version $env:RELEASE_VERSION
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ConnictGSS-Setup-${{ inputs.version }}
+          path: distribution/windows/installer/Output/ConnictGSS-Setup-${{ inputs.version }}.exe
+          if-no-files-found: error

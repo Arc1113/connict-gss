@@ -10,7 +10,20 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 
-return Application::configure(basePath: dirname(__DIR__))
+$runtimeEnvironment = getenv('GSS_ENV_FILE');
+$dataDirectory = getenv('GSS_DATA_DIR');
+
+if (! is_string($dataDirectory) || $dataDirectory === '') {
+    $environmentFile = is_string($runtimeEnvironment) && $runtimeEnvironment !== ''
+        ? $runtimeEnvironment
+        : dirname(__DIR__).'/.env';
+
+    if (is_file($environmentFile) && preg_match('/^GSS_DATA_DIR=(.+)$/m', (string) file_get_contents($environmentFile), $match) === 1) {
+        $dataDirectory = trim($match[1], " \t\n\r\0\x0B\"'");
+    }
+}
+
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
@@ -51,3 +64,17 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();
+
+// The Windows launcher supplies these process-level values. Keeping the
+// generated environment file and every writable Laravel directory outside the
+// installed release means upgrades never overwrite ceremony data.
+if (is_string($runtimeEnvironment) && $runtimeEnvironment !== '' && is_file($runtimeEnvironment)) {
+    $app->useEnvironmentPath(dirname($runtimeEnvironment));
+    $app->loadEnvironmentFrom(basename($runtimeEnvironment));
+}
+
+if (is_string($dataDirectory) && $dataDirectory !== '') {
+    $app->useStoragePath(rtrim($dataDirectory, '/\\').DIRECTORY_SEPARATOR.'storage');
+}
+
+return $app;

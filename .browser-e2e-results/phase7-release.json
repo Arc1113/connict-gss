@@ -1,0 +1,98 @@
+{
+  "tests": {
+    "invalid credentials return keyboard focus to the email field": {
+      "title": "invalid credentials return keyboard focus to the email field",
+      "status": "pass",
+      "attempts": 1,
+      "last_output": "e ................. 28.53ms DONE\n  2026_07_31_000014_add_media_package_to_student_imports ......... 3.58ms DONE\n  2026_07_31_000015_add_stage_theme_to_ceremonies ................ 5.78ms DONE\n  2026_08_03_000016_add_announcement_source_metadata_to_students  19.41ms DONE\n  2026_08_03_000017_create_student_awards_table ................. 35.55ms DONE\n  2026_08_03_000018_create_announcement_templates_table ......... 47.57ms DONE\n  2026_08_03_000019_create_announcement_generations_table ....... 50.05ms DONE\n  2026_08_03_000020_add_audio_generation_reference_to_students .. 12.98ms DONE\n  2026_08_04_000021_create_announcement_voice_samples_table ..... 34.52ms DONE\n  2026_08_04_000022_create_announcement_generation_batches ...... 79.10ms DONE\n  2026_08_10_000001_add_local_announcement_provider ............. 19.20ms DONE\n  2026_08_10_000002_create_stage_design_templates_table ......... 23.57ms DONE\n  2026_08_10_000003_invalidate_kokoro_audio_without_phonemizer_fallback  2.86ms DONE\n\n\n   INFO  Seeding database.  \n\n\nRunning 1 test using 1 worker\n\n  ✓  1 tests/Browser/full-system-critical.spec.js:129:1 › invalid credentials return keyboard focus to the email field (2.3s)\n\n  1 passed (3.4s)\ntime=\"2026-08-12T04:53:39+08:00\" level=warning msg=\"Found orphan containers ([graduation-stage-system-proxy-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.\"\n Container graduation-stage-system-database-1  Running\ntime=\"2026-08-12T04:53:45+08:00\" level=warning msg=\"Found orphan containers ([graduation-stage-system-proxy-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.\"\n Container graduation-stage-system-database-1  Running\n(node:3297367) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    },
+    "stage suppresses workstation PWA install and update controls while other pages keep them": {
+      "title": "stage suppresses workstation PWA install and update controls while other pages keep them",
+      "status": "pass",
+      "attempts": 1,
+      "last_output": "DONE\n  2026_07_31_000014_add_media_package_to_student_imports ......... 3.28ms DONE\n  2026_07_31_000015_add_stage_theme_to_ceremonies ................ 5.67ms DONE\n  2026_08_03_000016_add_announcement_source_metadata_to_students  18.79ms DONE\n  2026_08_03_000017_create_student_awards_table ................. 34.79ms DONE\n  2026_08_03_000018_create_announcement_templates_table ......... 48.67ms DONE\n  2026_08_03_000019_create_announcement_generations_table ....... 52.72ms DONE\n  2026_08_03_000020_add_audio_generation_reference_to_students .. 13.02ms DONE\n  2026_08_04_000021_create_announcement_voice_samples_table ..... 33.55ms DONE\n  2026_08_04_000022_create_announcement_generation_batches ...... 76.67ms DONE\n  2026_08_10_000001_add_local_announcement_provider ............. 19.40ms DONE\n  2026_08_10_000002_create_stage_design_templates_table ......... 23.39ms DONE\n  2026_08_10_000003_invalidate_kokoro_audio_without_phonemizer_fallback  2.95ms DONE\n\n\n   INFO  Seeding database.  \n\n\nRunning 1 test using 1 worker\n\n  ✓  1 tests/Browser/full-system-critical.spec.js:155:1 › stage suppresses workstation PWA install and update controls while other pages keep them (4.2s)\n\n  1 passed (5.3s)\ntime=\"2026-08-12T04:53:53+08:00\" level=warning msg=\"Found orphan containers ([graduation-stage-system-proxy-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.\"\n Container graduation-stage-system-database-1  Running\ntime=\"2026-08-12T04:53:58+08:00\" level=warning msg=\"Found orphan containers ([graduation-stage-system-proxy-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.\"\n Container graduation-stage-system-database-1  Running\n(node:3298923) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    },
+    "working ceremony can differ from the live ceremony across admin navigation": {
+      "title": "working ceremony can differ from the live ceremony across admin navigation",
+      "status": "pass",
+      "attempts": 1,
+      "last_output": "..... 29.20ms DONE\n  2026_07_31_000014_add_media_package_to_student_imports ......... 2.85ms DONE\n  2026_07_31_000015_add_stage_theme_to_ceremonies ................ 4.16ms DONE\n  2026_08_03_000016_add_announcement_source_metadata_to_students  15.91ms DONE\n  2026_08_03_000017_create_student_awards_table ................. 32.73ms DONE\n  2026_08_03_000018_create_announcement_templates_table ......... 42.61ms DONE\n  2026_08_03_000019_create_announcement_generations_table ....... 43.44ms DONE\n  2026_08_03_000020_add_audio_generation_reference_to_students .. 10.91ms DONE\n  2026_08_04_000021_create_announcement_voice_samples_table ..... 28.99ms DONE\n  2026_08_04_000022_create_announcement_generation_batches ...... 67.65ms DONE\n  2026_08_10_000001_add_local_announcement_provider ............. 14.95ms DONE\n  2026_08_10_000002_create_stage_design_templates_table ......... 21.30ms DONE\n  2026_08_10_000003_invalidate_kokoro_audio_without_phonemizer_fallback  2.15ms DONE\n\n\n   INFO  Seeding database.  \n\n\nRunning 1 test using 1 worker\n\n  ✓  1 tests/Browser/full-system-critical.spec.js:205:1 › working ceremony can differ from the live ceremony across admin navigation (3.0s)\n\n  1 passed (4.2s)\ntime=\"2026-08-12T04:54:09+08:00\" level=warning msg=\"Found orphan containers ([graduation-stage-system-proxy-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.\"\n Container graduation-stage-system-database-1  Running\ntime=\"2026-08-12T04:54:14+08:00\" level=warning msg=\"Found orphan containers ([graduation-stage-system-proxy-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.\"\n Container graduation-stage-system-database-1  Running\n(node:3300609) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    },
+    "unified overview keeps working preparation separate from the live ceremony": {
+      "title": "unified overview keeps working preparation separate from the live ceremony",
+      "status": "pass",
+      "attempts": 2,
+      "last_output": "..... 30.13ms DONE\n  2026_07_31_000014_add_media_package_to_student_imports ......... 3.37ms DONE\n  2026_07_31_000015_add_stage_theme_to_ceremonies ................ 5.75ms DONE\n  2026_08_03_000016_add_announcement_source_metadata_to_students  19.02ms DONE\n  2026_08_03_000017_create_student_awards_table ................. 36.04ms DONE\n  2026_08_03_000018_create_announcement_templates_table ......... 48.38ms DONE\n  2026_08_03_000019_create_announcement_generations_table ....... 45.19ms DONE\n  2026_08_03_000020_add_audio_generation_reference_to_students .. 11.74ms DONE\n  2026_08_04_000021_create_announcement_voice_samples_table ..... 34.23ms DONE\n  2026_08_04_000022_create_announcement_generation_batches ...... 80.32ms DONE\n  2026_08_10_000001_add_local_announcement_provider ............. 19.42ms DONE\n  2026_08_10_000002_create_stage_design_templates_table ......... 23.64ms DONE\n  2026_08_10_000003_invalidate_kokoro_audio_without_phonemizer_fallback  3.02ms DONE\n\n\n   INFO  Seeding database.  \n\n\nRunning 1 test using 1 worker\n\n  ✓  1 tests/Browser/full-system-critical.spec.js:251:1 › unified overview keeps working preparation separate from the live ceremony (4.9s)\n\n  1 passed (6.1s)\ntime=\"2026-08-12T04:55:38+08:00\" level=warning msg=\"Found orphan containers ([graduation-stage-system-proxy-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.\"\n Container graduation-stage-system-database-1  Running\ntime=\"2026-08-12T04:55:43+08:00\" level=warning msg=\"Found orphan containers ([graduation-stage-system-proxy-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.\"\n Container graduation-stage-system-database-1  Running\n(node:3308084) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+    },
+    "ceremony workspace opens with local navigation while working and live ceremony stay isolated": {
+      "title": "ceremony workspace opens with local navigation while working and live ceremony stay isolated",
+      "status": "pending",
+      "attempts": 0
+    },
+    "phase five preparation journey keeps the same working ceremony across workspace sections": {
+      "title": "phase five preparation journey keeps the same working ceremony across workspace sections",
+      "status": "pending",
+      "attempts": 0
+    },
+    "graduate detail keeps overview, academic, media, announcement, and history workflows connected": {
+      "title": "graduate detail keeps overview, academic, media, announcement, and history workflows connected",
+      "status": "pending",
+      "attempts": 0
+    },
+    "phase eight uses semantic parent links for direct-entry ceremony workspace pages": {
+      "title": "phase eight uses semantic parent links for direct-entry ceremony workspace pages",
+      "status": "pending",
+      "attempts": 0
+    },
+    "phase five keeps live operations on the live ceremony while preparation stays on the working ceremony": {
+      "title": "phase five keeps live operations on the live ceremony while preparation stays on the working ceremony",
+      "status": "pending",
+      "attempts": 0
+    },
+    "administrator and data encoder receive only their assigned capabilities": {
+      "title": "administrator and data encoder receive only their assigned capabilities",
+      "status": "pending",
+      "attempts": 0
+    },
+    "administrator admin-only workflows remain usable after the navigation refactor": {
+      "title": "administrator admin-only workflows remain usable after the navigation refactor",
+      "status": "pending",
+      "attempts": 0
+    },
+    "stage operator navigation stays limited to live operations and review destinations": {
+      "title": "stage operator navigation stays limited to live operations and review destinations",
+      "status": "pending",
+      "attempts": 0
+    },
+    "navigation active states prefer the specific primary workspace": {
+      "title": "navigation active states prefer the specific primary workspace",
+      "status": "pending",
+      "attempts": 0
+    },
+    "command palette lists the new authorized navigation destinations": {
+      "title": "command palette lists the new authorized navigation destinations",
+      "status": "pending",
+      "attempts": 0
+    },
+    "mobile navigation drawer keeps the workflow groups reachable and closes after navigation": {
+      "title": "mobile navigation drawer keeps the workflow groups reachable and closes after navigation",
+      "status": "pending",
+      "attempts": 0
+    },
+    "USB scan, queue, stage commands, realtime updates, and refresh recovery remain atomic": {
+      "title": "USB scan, queue, stage commands, realtime updates, and refresh recovery remain atomic",
+      "status": "pending",
+      "attempts": 0
+    },
+    "critical screens remain usable at supported desktop viewports": {
+      "title": "critical screens remain usable at supported desktop viewports",
+      "status": "pending",
+      "attempts": 0
+    },
+    "assisted automatic state remains readable, locked, and persistent": {
+      "title": "assisted automatic state remains readable, locked, and persistent",
+      "status": "pending",
+      "attempts": 0
+    }
+  }
+}

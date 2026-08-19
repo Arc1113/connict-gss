@@ -1,0 +1,7 @@
+<service>
+  <id>ConnictGSS-Reverb</id><name>Connict GSS Realtime</name>
+  <executable>%BASE%\..\runtime\frankenphp\php.exe</executable>
+  <arguments>%BASE%\..\app\artisan reverb:start --host=127.0.0.1 --port=8080</arguments>
+  <env name="GSS_DATA_DIR" value="C:\ProgramData\ConnictGSS" /><env name="GSS_ENV_FILE" value="C:\ProgramData\ConnictGSS\configuration\runtime.env" />
+  <onfailure action="restart" delay="10 sec" />
+</service>

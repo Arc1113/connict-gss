@@ -13,7 +13,7 @@
 
 Add a preparation-time text-to-speech workflow that generates a ceremonial voice announcement for each graduate.
 
-The announcement may include:
+The announcement may include:s
 
 - Graduate announcement name
 - Degree or program

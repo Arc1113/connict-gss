@@ -39,6 +39,14 @@ Thumbs.db
 /playwright-report/
 /test-results/
 
+# Windows release payloads and installer binaries are generated from signed
+# runtime inputs in CI. Never commit proprietary runtime binaries or releases.
+/distribution/windows/payload/
+/distribution/windows/runtime-input/
+/distribution/windows/launcher/publish/
+/distribution/windows/installer/Output/
+/distribution/windows/runtime-input.zip
+
 # Ignore common picture and video assets.
 *.jpg
 *.jpeg*

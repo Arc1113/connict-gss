@@ -12,6 +12,7 @@ from kokoro import KPipeline
 ALLOWED_VOICES = {"af_heart", "af_bella"}
 SAMPLE_RATE = 24000
 MODEL_REVISION = "f3ff3571791e39611d31c381e3a41a3af07b4987"
+LAME_BINARY = os.environ.get("LAME_BINARY", "lame")
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 pipeline = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
@@ -71,7 +72,7 @@ def synthesize(request: SynthesisRequest):
             mp3_path = os.path.join(directory, "announcement.mp3")
             sf.write(wav_path, audio, SAMPLE_RATE, subtype="PCM_16")
             subprocess.run([
-                "lame", "--silent", "-m", "m", "-b", "48", "--resample", "24",
+                LAME_BINARY, "--silent", "-m", "m", "-b", "48", "--resample", "24",
                 wav_path, mp3_path,
             ], check=True, timeout=30)
             with open(mp3_path, "rb") as generated:

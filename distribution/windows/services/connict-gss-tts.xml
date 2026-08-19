@@ -1,0 +1,12 @@
+<service>
+  <id>ConnictGSS-TTS</id><name>Connict GSS Offline TTS</name>
+  <executable>%BASE%\..\runtime\tts\tts-server.exe</executable>
+  <arguments>--host 127.0.0.1 --port 8880</arguments>
+  <workingdirectory>%BASE%\..\runtime\tts</workingdirectory>
+  <env name="HF_HOME" value="%BASE%\..\runtime\tts\models" />
+  <env name="HF_HUB_OFFLINE" value="1" />
+  <env name="TRANSFORMERS_OFFLINE" value="1" />
+  <env name="LAME_BINARY" value="%BASE%\..\runtime\tts\tools\lame.exe" />
+  <env name="PATH" value="%BASE%\..\runtime\tts\tools\espeak-ng;%PATH%" />
+  <onfailure action="restart" delay="10 sec" />
+</service>

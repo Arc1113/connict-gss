@@ -1,0 +1,7 @@
+<service>
+  <id>ConnictGSS-Queue</id><name>Connict GSS Announcement Worker</name>
+  <executable>%BASE%\..\runtime\frankenphp\php.exe</executable>
+  <arguments>%BASE%\..\app\artisan queue:work database --queue=tts-preparation --sleep=1 --tries=1 --timeout=180</arguments>
+  <env name="GSS_DATA_DIR" value="C:\ProgramData\ConnictGSS" /><env name="GSS_ENV_FILE" value="C:\ProgramData\ConnictGSS\configuration\runtime.env" />
+  <onfailure action="restart" delay="10 sec" />
+</service>

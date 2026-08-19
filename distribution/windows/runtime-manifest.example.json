@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "platform": "windows-x64",
+  "artifacts": [
+    {
+      "path": "frankenphp/frankenphp.exe",
+      "version": "PINNED_RELEASE_VERSION",
+      "sha256": "LOWERCASE_SHA256_OF_STAGED_FILE",
+      "source_url": "https://official-source.example/releases/...",
+      "license": "LICENSE_IDENTIFIER_OR_REFERENCE",
+      "verification": "official-release-checksum-or-authenticode-signature"
+    },
+    {
+      "path": "frankenphp/php.exe",
+      "version": "PINNED_RELEASE_VERSION",
+      "sha256": "LOWERCASE_SHA256_OF_STAGED_FILE",
+      "source_url": "https://official-source.example/releases/...",
+      "license": "LICENSE_IDENTIFIER_OR_REFERENCE",
+      "verification": "official-release-checksum-or-authenticode-signature"
+    },
+    {
+      "path": "postgres/bin/initdb.exe",
+      "version": "PINNED_RELEASE_VERSION",
+      "sha256": "LOWERCASE_SHA256_OF_STAGED_FILE",
+      "source_url": "https://official-source.example/releases/...",
+      "license": "PostgreSQL",
+      "verification": "official-release-checksum-or-authenticode-signature"
+    },
+    {
+      "path": "postgres/bin/pg_ctl.exe",
+      "version": "PINNED_RELEASE_VERSION",
+      "sha256": "LOWERCASE_SHA256_OF_STAGED_FILE",
+      "source_url": "https://official-source.example/releases/...",
+      "license": "PostgreSQL",
+      "verification": "official-release-checksum-or-authenticode-signature"
+    },
+    {
+      "path": "postgres/bin/psql.exe",
+      "version": "PINNED_RELEASE_VERSION",
+      "sha256": "LOWERCASE_SHA256_OF_STAGED_FILE",
+      "source_url": "https://official-source.example/releases/...",
+      "license": "PostgreSQL",
+      "verification": "official-release-checksum-or-authenticode-signature"
+    },
+    {
+      "path": "postgres/bin/createdb.exe",
+      "version": "PINNED_RELEASE_VERSION",
+      "sha256": "LOWERCASE_SHA256_OF_STAGED_FILE",
+      "source_url": "https://official-source.example/releases/...",
+      "license": "PostgreSQL",
+      "verification": "official-release-checksum-or-authenticode-signature"
+    },
+    {
+      "path": "postgres/bin/pg_dump.exe",
+      "version": "PINNED_RELEASE_VERSION",
+      "sha256": "LOWERCASE_SHA256_OF_STAGED_FILE",
+      "source_url": "https://official-source.example/releases/...",
+      "license": "PostgreSQL",
+      "verification": "official-release-checksum-or-authenticode-signature"
+    },
+    {
+      "path": "tts/tts-server.exe",
+      "version": "PINNED_RELEASE_VERSION",
+      "sha256": "LOWERCASE_SHA256_OF_STAGED_FILE",
+      "source_url": "https://internal-release-registry.example/connict-gss-tts/...",
+      "license": "BUNDLED_MODEL_AND_RUNTIME_LICENSES_REVIEWED",
+      "verification": "release-attestation-and-sha256"
+    },
+    {
+      "path": "winsw/WinSW-x64.exe",
+      "version": "PINNED_RELEASE_VERSION",
+      "sha256": "LOWERCASE_SHA256_OF_STAGED_FILE",
+      "source_url": "https://official-source.example/releases/...",
+      "license": "MIT",
+      "verification": "official-release-checksum-or-authenticode-signature"
+    }
+  ]
+}

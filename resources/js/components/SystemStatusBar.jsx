@@ -9,7 +9,7 @@ function localTime(date) {
     }).format(date);
 }
 
-export default function SystemStatusBar({ ceremony, connection, online }) {
+export default function SystemStatusBar({ ceremony, connection, online, version }) {
     const [now, setNow] = useState(() => new Date());
 
     useEffect(() => {
@@ -33,7 +33,10 @@ export default function SystemStatusBar({ ceremony, connection, online }) {
                     Ceremony {ceremony.shortLabel}
                 </span>
             </div>
-            <time dateTime={now.toISOString()}>{localTime(now)}</time>
+            <div>
+                {version && <span>Connict GSS {version}</span>}
+                <time dateTime={now.toISOString()}>{localTime(now)}</time>
+            </div>
         </footer>
     );
 }

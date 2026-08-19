@@ -89,6 +89,10 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'warning' => fn () => $request->session()->get('warning'),
             ],
+            'application' => [
+                'version' => config('connict.version'),
+                'commit' => config('connict.commit'),
+            ],
             'ceremonyContext' => fn (): array => $this->ceremonyContext($user),
         ];
     }

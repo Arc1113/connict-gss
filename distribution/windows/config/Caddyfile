@@ -1,0 +1,26 @@
+{
+    storage file_system {
+        root "__GSS_CADDY_DATA__"
+    }
+}
+
+http://__GSS_HTTPS_HOST__ {
+    @phoneOnboarding path /connect-phone /connect-phone/local-ca.crt
+    handle @phoneOnboarding {
+        root * "__GSS_APP_PUBLIC__"
+        php_server
+    }
+
+    handle {
+        redir https://__GSS_HTTPS_HOST__{uri} permanent
+    }
+}
+
+https://__GSS_HTTPS_HOST__ {
+    tls internal
+    encode zstd gzip
+    root * "__GSS_APP_PUBLIC__"
+    @reverb path /app/* /apps/*
+    reverse_proxy @reverb 127.0.0.1:8080
+    php_server
+}

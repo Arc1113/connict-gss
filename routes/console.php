@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\UserRole;
+use App\Models\User;
 use App\Support\BackupManager;
 use App\Support\RestoreVerifier;
 use Illuminate\Foundation\Inspiring;
@@ -52,3 +54,33 @@ Artisan::command('gss:restore-verify {--backup= : Backup directory to verify}', 
 
     return Command::SUCCESS;
 })->purpose('Verify a backup by restoring it into a disposable PostgreSQL database');
+
+Artisan::command('gss:bootstrap-install {--admin-name= : First administrator name} {--admin-email= : First administrator email/username} {--admin-password= : First administrator password}', function () {
+    $name = trim((string) ($this->option('admin-name') ?: env('GSS_INITIAL_ADMIN_NAME')));
+    $email = strtolower(trim((string) ($this->option('admin-email') ?: env('GSS_INITIAL_ADMIN_EMAIL'))));
+    $password = (string) ($this->option('admin-password') ?: env('GSS_INITIAL_ADMIN_PASSWORD'));
+
+    if ($name === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 12) {
+        $this->error('Provide an administrator name, a valid email address, and a password of at least 12 characters.');
+
+        return Command::FAILURE;
+    }
+
+    if (User::query()->exists()) {
+        $this->error('Initial setup is already complete. No user was changed.');
+
+        return Command::FAILURE;
+    }
+
+    User::query()->create([
+        'name' => $name,
+        'email' => $email,
+        'password' => $password,
+        'role' => UserRole::Administrator,
+        'is_active' => true,
+    ]);
+
+    $this->info('Initial administrator created.');
+
+    return Command::SUCCESS;
+})->purpose('Create the first administrator during controlled Windows first-run setup');

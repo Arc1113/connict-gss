@@ -21,6 +21,7 @@ use App\Policies\StudentImportPolicy;
 use App\Policies\StudentPolicy;
 use App\Services\AtomicPrivateCandidateAudioStore;
 use App\Services\TextToSpeechProviderRegistry;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -40,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->ensurePersistentDirectories();
         Student::observe(StudentAnnouncementSourceObserver::class);
         StudentAward::observe(StudentAwardAnnouncementObserver::class);
         AnnouncementTemplate::observe(AnnouncementTemplateSourceObserver::class);
@@ -166,5 +168,28 @@ class AppServiceProvider extends ServiceProvider
             'manage-announcement-batches',
             fn (User $user): bool => $user->hasRole(UserRole::Administrator),
         );
+    }
+
+    private function ensurePersistentDirectories(): void
+    {
+        $dataDirectory = env('GSS_DATA_DIR');
+
+        if (! is_string($dataDirectory) || $dataDirectory === '') {
+            return;
+        }
+
+        foreach ([
+            storage_path('app/public/graduates'),
+            storage_path('app/private'),
+            storage_path('app/gss-certificates'),
+            storage_path('framework/cache/data'),
+            storage_path('framework/sessions'),
+            storage_path('framework/views'),
+            storage_path('logs'),
+            rtrim($dataDirectory, '/\\').DIRECTORY_SEPARATOR.'backups',
+            rtrim($dataDirectory, '/\\').DIRECTORY_SEPARATOR.'configuration',
+        ] as $directory) {
+            File::ensureDirectoryExists($directory);
+        }
     }
 }

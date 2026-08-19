@@ -37,7 +37,7 @@ function ceremonyCopy(ceremonyContext) {
 }
 
 export default function AppShell({ children }) {
-    const { auth, ceremonyContext } = usePage().props;
+    const { application, auth, ceremonyContext } = usePage().props;
     const currentUrl = usePage().url;
     const [collapsed, setCollapsed] = useState(() => {
         try {
@@ -311,6 +311,7 @@ export default function AppShell({ children }) {
                     ceremony={ceremony}
                     connection={connection}
                     online={online}
+                    version={application?.version}
                 />
             </div>
 

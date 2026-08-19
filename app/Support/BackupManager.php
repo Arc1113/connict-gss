@@ -59,6 +59,8 @@ final class BackupManager
                 'created_at' => now()->toIso8601String(),
                 'environment' => app()->environment(),
                 'git_commit' => $this->gitCommit(),
+                'application_version' => config('connict.version'),
+                'source_commit' => config('connict.commit'),
                 'laravel_version' => app()->version(),
                 'postgresql_version' => $this->postgresVersion(),
                 'database_dump' => 'database.sql',
@@ -109,7 +111,9 @@ final class BackupManager
     public function destination(?string $destination = null): string
     {
         $destination ??= env('GSS_BACKUP_PATH');
-        $destination ??= storage_path('app/gss-backups');
+        $destination ??= env('GSS_DATA_DIR')
+            ? rtrim((string) env('GSS_DATA_DIR'), '/\\').DIRECTORY_SEPARATOR.'backups'
+            : storage_path('app/gss-backups');
 
         return rtrim($destination, '/');
     }
