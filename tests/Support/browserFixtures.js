@@ -6,6 +6,8 @@ const browserFixtureEnvironment = [
     `DB_DATABASE=${process.env.GSS_E2E_DB_DATABASE ?? 'graduation_stage_system_testing'}`,
     '-e',
     `LARAVEL_STORAGE_PATH=${process.env.GSS_E2E_STORAGE_PATH ?? '/app/.browser-e2e-storage'}`,
+    '-e',
+    `GSS_BACKUP_PATH=${process.env.GSS_E2E_BACKUP_PATH ?? '/app/.browser-e2e-storage/app/gss-backups'}`,
 ];
 
 function runBrowserFixture(script) {

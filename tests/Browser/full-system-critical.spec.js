@@ -41,7 +41,12 @@ async function expectNoAxeViolations(page) {
         result.violations.map(({ id, impact, nodes }) => ({
             id,
             impact,
-            targets: nodes.map((node) => node.target),
+            nodes: nodes.map((node) => ({
+                target: node.target,
+                html: node.html,
+                failureSummary: node.failureSummary,
+                checks: node.any.map(({ data, message }) => ({ data, message })),
+            })),
         })),
     ).toEqual([]);
 }
@@ -111,9 +116,20 @@ async function clearStagePreflight(page) {
     });
 
     if (await preflightHeading.isVisible({ timeout: 500 }).catch(() => false)) {
-        // The audience screen now runs its guarded preflight automatically as
-        // soon as live state and audio are ready. Waiting for its completion
-        // avoids racing that safe automatic transition with a second click.
+        const preflightButton = page.getByRole('button', {
+            name: 'Test audio and start display',
+        });
+
+        // Autoplay may complete the guarded preflight. When the browser blocks
+        // it, use the visible fallback control to supply the required gesture.
+        await expect(page.getByText('Loaded')).toBeVisible();
+        await expect(page.getByText('Connected')).toBeVisible();
+
+        if (await preflightButton.isVisible().catch(() => false)) {
+            await expect(preflightButton).toBeEnabled();
+            await preflightButton.click();
+        }
+
         await expect(preflightHeading).toHaveCount(0, { timeout: 10_000 });
     }
 }
@@ -766,6 +782,7 @@ test('administrator admin-only workflows remain usable after the navigation refa
     prepareBrowserBackupFixture();
 
     await signIn(page, 'admin@example.test');
+    await page.getByRole('button', { name: 'Dismiss getting-started panel' }).click();
 
     await page.goto('/admin/students');
     await openFirstGraduateRecord(page);
@@ -774,8 +791,13 @@ test('administrator admin-only workflows remain usable after the navigation refa
     await page.getByLabel('Reviewer notes').fill(
         'Approved by the isolated Playwright rehearsal.',
     );
-    page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Approve audio' }).click();
+    await page
+        .getByRole('dialog', {
+            name: 'Approve announcement audio for Ana Marie dela Cruz?',
+        })
+        .getByRole('button', { name: 'Approve audio' })
+        .click();
     await expect(page.getByText('Announcement audio approved.', { exact: true })).toBeVisible();
 
     await page.goto('/admin/backups');
@@ -1077,7 +1099,7 @@ test('USB scan, queue, stage commands, realtime updates, and refresh recovery re
             .getByRole('button', { name: 'Return to queue' })
             .click();
 
-        await control.getByRole('button', { name: 'Present next graduate' }).click();
+        await control.getByRole('button', { name: 'Next', exact: true }).click();
         await expect(stage.getByRole('heading', { name: 'Ana Marie dela Cruz' })).toBeVisible();
 
         let replayPosts = 0;
@@ -1091,20 +1113,21 @@ test('USB scan, queue, stage commands, realtime updates, and refresh recovery re
                 (response) => response.request().method() === 'POST'
                     && response.url().endsWith('/stage/replay'),
             ),
-            control.getByRole('button', { name: 'Replay announcement' }).click(),
+            control.getByRole('button', { name: 'Replay', exact: true }).click(),
         ]);
         expect(replayPosts).toBe(1);
 
-        await control.getByRole('button', { name: 'Show holding screen' }).click();
+        await control.getByRole('button', { name: 'Pause', exact: true }).click();
         await expect(stage.getByRole('heading', { name: 'Ceremony program continues' })).toBeVisible();
         await stage.reload();
         await clearStagePreflight(stage);
         await expect(stage.getByRole('heading', { name: 'Ceremony program continues' })).toBeVisible();
-        await control.getByRole('button', { name: 'Restore live display' }).click();
+        await control.getByRole('button', { name: 'Resume', exact: true }).click();
         await expect(stage.getByRole('heading', { name: 'Ana Marie dela Cruz' })).toBeVisible();
 
         const correctionTrigger = control.getByRole('button', {
-            name: 'Correct wrong graduate',
+            name: 'Previous',
+            exact: true,
         });
         await correctionTrigger.focus();
         await correctionTrigger.click();
@@ -1130,7 +1153,7 @@ test('USB scan, queue, stage commands, realtime updates, and refresh recovery re
             }
         });
         await control
-            .getByRole('button', { name: 'Complete and present next' })
+            .getByRole('button', { name: 'Next', exact: true })
             .dblclick();
         await expect(
             stage.getByRole('heading', {
@@ -1192,9 +1215,9 @@ test('critical screens remain usable at supported desktop viewports', async ({ b
         await expect(
             control.getByText('Christopher Emmanuel Villanueva-Santos').first(),
         ).toBeVisible();
-        await control.getByRole('button', { name: 'Present next graduate' }).click();
+        await control.getByRole('button', { name: 'Next', exact: true }).click();
         await expect(
-            control.getByRole('button', { name: 'Complete and present next' }),
+            control.getByRole('button', { name: 'Next', exact: true }),
         ).toBeVisible();
 
         for (const viewport of [
@@ -1211,7 +1234,7 @@ test('critical screens remain usable at supported desktop viewports', async ({ b
             await expect(scanner.locator('#scan-token')).toBeInViewport();
             await expect(scanner.getByRole('button', { name: 'Process scan' })).toBeInViewport();
             await expect(
-                control.getByRole('button', { name: 'Complete and present next' }),
+                control.getByRole('button', { name: 'Next', exact: true }),
             ).toBeInViewport();
             await expect(stage.getByRole('heading').first()).toBeInViewport();
             expect(

@@ -35,6 +35,7 @@ const administratorAbilities = {
     manage_announcement_batches: true,
     generate_announcement_candidates: true,
     review_announcement_candidates: true,
+    view_pronunciation_rules: true,
 };
 
 test('administrator navigation uses the workflow-oriented group model', () => {
@@ -57,6 +58,7 @@ test('administrator navigation uses the workflow-oriented group model', () => {
                 'Import',
                 'QR & Media',
                 'Announcements',
+                'Pronunciation dictionary',
                 'Stage Design',
             ],
         },
@@ -111,6 +113,7 @@ test('data encoder navigation only shows permitted preparation destinations', ()
                 'Import',
                 'QR & Media',
                 'Announcements',
+                'Pronunciation dictionary',
             ],
         },
     ]);
@@ -142,6 +145,7 @@ test('restricted live operator does not receive workspace or system ceremony adm
             manage_announcement_batches: false,
             generate_announcement_candidates: false,
             review_announcement_candidates: false,
+            view_pronunciation_rules: false,
         },
         '/stage-control',
     );

@@ -14872,11 +14872,11 @@ body {
 }
 
 .media-btn:disabled {
-    opacity: 0.5;
     cursor: not-allowed;
     box-shadow: none;
     background: var(--color-surface-subtle, #f8fafc);
     border-color: var(--color-border, #e2e8f0);
+    color: var(--color-text-secondary, #475569);
 }
 
 .media-btn-next {
@@ -14891,6 +14891,12 @@ body {
 
 .media-btn-next:active:not(:disabled) {
     background: #064e3b;
+}
+
+.media-btn-next:disabled {
+    color: var(--color-text-secondary, #475569);
+    background: var(--color-surface-subtle, #f8fafc);
+    border-color: var(--color-border, #e2e8f0);
 }
 
 .media-btn-pause.is-active {
