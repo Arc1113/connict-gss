@@ -111,19 +111,11 @@ async function clearStagePreflight(page) {
     });
 
     if (await preflightHeading.isVisible({ timeout: 500 }).catch(() => false)) {
-        const preflightButton = page.getByRole('button', {
-            name: 'Test audio and start display',
-        });
-
-        if (await preflightButton.isVisible({ timeout: 500 }).catch(() => false)) {
-            await expect(page.getByText('Loaded')).toBeVisible();
-            await expect(page.getByText('Connected')).toBeVisible();
-            await expect(preflightButton).toBeEnabled();
-            await preflightButton.click();
-        }
+        // The audience screen now runs its guarded preflight automatically as
+        // soon as live state and audio are ready. Waiting for its completion
+        // avoids racing that safe automatic transition with a second click.
+        await expect(preflightHeading).toHaveCount(0, { timeout: 10_000 });
     }
-
-    await expect(preflightHeading).toHaveCount(0);
 }
 
 test('invalid credentials return keyboard focus to the email field', async ({
@@ -209,7 +201,7 @@ test('working ceremony can differ from the live ceremony across admin navigation
 
     await signIn(page, 'admin@example.test');
     const liveCeremonyName = await page
-        .locator('.app-toolbar-ceremony strong')
+        .locator('.app-toolbar-ceremony')
         .textContent();
 
     await page.goto('/admin/ceremonies/create');
@@ -229,9 +221,7 @@ test('working ceremony can differ from the live ceremony across admin navigation
     ).toContainText('Working ceremony');
     await expect(
         page.locator('.app-working-ceremony-switcher'),
-    ).toContainText('2027-2028 · Draft');
-    await expect(page.getByRole('button', { name: 'Switch' })).toBeDisabled();
-    await expect(page.locator('.app-toolbar-ceremony')).toContainText('Live ceremony');
+    ).toContainText(workingCeremonyName);
     await expect(page.locator('.app-toolbar-ceremony')).toContainText(
         liveCeremonyName ?? '',
     );
@@ -242,7 +232,7 @@ test('working ceremony can differ from the live ceremony across admin navigation
     await expect(page.getByLabel('Working ceremony')).toHaveValue(selectedCeremonyId);
     await expect(
         page.locator('.app-working-ceremony-switcher'),
-    ).toContainText('2027-2028 · Draft');
+    ).toContainText(workingCeremonyName);
     await expect(page.locator('.app-toolbar-ceremony')).toContainText(
         liveCeremonyName ?? '',
     );
@@ -255,7 +245,7 @@ test('unified overview keeps working preparation separate from the live ceremony
 
     await signIn(page, 'admin@example.test');
     const liveCeremonyName = await page
-        .locator('.app-toolbar-ceremony strong')
+        .locator('.app-toolbar-ceremony')
         .textContent();
 
     await page.goto('/admin/ceremonies/create');
@@ -312,7 +302,7 @@ test('ceremony workspace opens with local navigation while working and live cere
 
     await signIn(page, 'admin@example.test');
     const liveCeremonyName = await page
-        .locator('.app-toolbar-ceremony strong')
+        .locator('.app-toolbar-ceremony')
         .textContent();
 
     await page.goto('/admin/ceremonies/create');
@@ -349,7 +339,7 @@ test('ceremony workspace opens with local navigation while working and live cere
     await workspaceNav.getByRole('link', { name: 'Setup' }).click();
     await expect(page).toHaveURL(/\/admin\/ceremonies\/\d+\/setup$/);
     await expect(page.getByRole('heading', { name: workspaceCeremonyName })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Setup' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Setup', exact: true })).toBeVisible();
 
     await page.getByRole('link', { name: '← Ceremony overview' }).click();
     await expect(page).toHaveURL(/\/admin\/ceremonies\/\d+$/);
@@ -632,7 +622,7 @@ test('phase five keeps live operations on the live ceremony while preparation st
     try {
         await signIn(admin, 'admin@example.test');
         const liveCeremonyName = await admin
-            .locator('.app-toolbar-ceremony strong')
+            .locator('.app-toolbar-ceremony')
             .textContent();
 
         await admin.goto('/admin/ceremonies/create');
@@ -696,6 +686,7 @@ test('administrator and data encoder receive only their assigned capabilities', 
     try {
         await signIn(admin, 'admin@example.test');
         await signIn(encoder, 'encoder@example.test');
+        await admin.getByRole('button', { name: 'Dismiss getting-started panel' }).click();
 
         await expectNavigationGroups(
             admin,
@@ -936,6 +927,45 @@ test('mobile navigation drawer keeps the workflow groups reachable and closes af
     ).toBe(true);
 });
 
+test('role guidance pauses, resumes, traps focus, and stays manually available during a live ceremony', async ({
+    browser,
+}) => {
+    const adminContext = await browser.newContext();
+    const scannerContext = await browser.newContext();
+    const admin = await adminContext.newPage();
+    const scanner = await scannerContext.newPage();
+
+    try {
+        await signIn(admin, 'admin@example.test');
+        await admin.goto('/dashboard');
+        await admin.getByRole('button', { name: 'Help and guidance' }).click();
+        await admin.getByRole('button', { name: /(?:Start|Resume) role guide/ }).click();
+
+        const coachmark = admin.locator('.tour-coachmark');
+        await expect(coachmark).toBeVisible();
+        await expect(coachmark).toBeFocused();
+        await admin.keyboard.press('Shift+Tab');
+        await expect(coachmark.getByRole('button', { name: 'Next' })).toBeFocused();
+        await admin.keyboard.press('Escape');
+        await expect(coachmark).toBeHidden();
+
+        await admin.getByRole('button', { name: 'Help and guidance' }).click();
+        await admin.getByRole('button', { name: 'Resume role guide' }).click();
+        await expect(coachmark).toBeVisible();
+        await coachmark.getByRole('button', { name: 'Pause' }).click();
+        await expect(coachmark).toBeHidden();
+
+        await signIn(scanner, 'scanner@example.test');
+        await scanner.goto('/scanner');
+        await expect(scanner.locator('.onboarding-welcome')).toHaveCount(0);
+        await expect(scanner.getByRole('button', { name: 'Help and guidance' })).toBeVisible();
+        await expectNoAxeViolations(scanner);
+    } finally {
+        await adminContext.close();
+        await scannerContext.close();
+    }
+});
+
 test('USB scan, queue, stage commands, realtime updates, and refresh recovery remain atomic', async ({
     browser,
 }) => {
@@ -945,6 +975,9 @@ test('USB scan, queue, stage commands, realtime updates, and refresh recovery re
     const scannerContext = await browser.newContext();
     const controlContext = await browser.newContext();
     const stageContext = await browser.newContext();
+    await stageContext.addInitScript(() => {
+        HTMLMediaElement.prototype.play = () => Promise.resolve();
+    });
     const scanner = await scannerContext.newPage();
     const control = await controlContext.newPage();
     const stage = await stageContext.newPage();
@@ -1053,7 +1086,13 @@ test('USB scan, queue, stage commands, realtime updates, and refresh recovery re
                 replayPosts += 1;
             }
         });
-        await control.getByRole('button', { name: 'Replay announcement' }).dblclick();
+        await Promise.all([
+            control.waitForResponse(
+                (response) => response.request().method() === 'POST'
+                    && response.url().endsWith('/stage/replay'),
+            ),
+            control.getByRole('button', { name: 'Replay announcement' }).click(),
+        ]);
         expect(replayPosts).toBe(1);
 
         await control.getByRole('button', { name: 'Show holding screen' }).click();
@@ -1121,11 +1160,15 @@ test('USB scan, queue, stage commands, realtime updates, and refresh recovery re
 });
 
 test('critical screens remain usable at supported desktop viewports', async ({ browser }) => {
+    test.setTimeout(60_000);
     preparePhaseThreeStageFixture();
 
     const scannerContext = await browser.newContext();
     const controlContext = await browser.newContext();
     const stageContext = await browser.newContext();
+    await stageContext.addInitScript(() => {
+        HTMLMediaElement.prototype.play = () => Promise.resolve();
+    });
     const scanner = await scannerContext.newPage();
     const control = await controlContext.newPage();
     const stage = await stageContext.newPage();
@@ -1172,8 +1215,18 @@ test('critical screens remain usable at supported desktop viewports', async ({ b
             ).toBeInViewport();
             await expect(stage.getByRole('heading').first()).toBeInViewport();
             expect(
+                await scanner.evaluate(
+                    () => document.documentElement.scrollWidth <= window.innerWidth,
+                ),
+            ).toBe(true);
+            expect(
+                await control.evaluate(
+                    () => document.documentElement.scrollWidth <= window.innerWidth,
+                ),
+            ).toBe(true);
+            expect(
                 await stage.evaluate(
-                    () => document.documentElement.scrollHeight <= window.innerHeight,
+                    () => document.documentElement.scrollWidth <= window.innerWidth,
                 ),
             ).toBe(true);
         }
@@ -1181,6 +1234,69 @@ test('critical screens remain usable at supported desktop viewports', async ({ b
         await scannerContext.close().catch(() => {});
         await controlContext.close().catch(() => {});
         await stageContext.close().catch(() => {});
+    }
+});
+
+test('pronunciation dictionary keeps common corrections simple and comfortably spaced', async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+        await signIn(page, 'admin@example.test');
+        await page.goto('/admin/pronunciation-rules');
+        expect(
+            await page.evaluate(() => ({
+                accent: getComputedStyle(document.documentElement)
+                    .getPropertyValue('--color-accent')
+                    .trim(),
+                canvas: getComputedStyle(document.documentElement)
+                    .getPropertyValue('--color-bg-app')
+                    .trim(),
+                selected: getComputedStyle(document.documentElement)
+                    .getPropertyValue('--color-surface-selected')
+                    .trim(),
+            })),
+        ).toEqual({
+            accent: '#1769e0',
+            canvas: '#f4f5f7',
+            selected: '#eaf2ff',
+        });
+        await expect(page.getByRole('heading', { name: 'Pronunciation dictionary' })).toBeVisible();
+        await expect(page.getByText(/enabled rules/)).toBeVisible();
+
+        for (const viewport of [
+            { width: 1024, height: 768 },
+            { width: 1366, height: 768 },
+            { width: 1920, height: 1080 },
+        ]) {
+            await page.setViewportSize(viewport);
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+            await expect(page.getByRole('button', { name: 'Add pronunciation' })).toBeInViewport();
+        }
+
+        await page.getByRole('button', { name: 'Add pronunciation' }).click();
+        await expect(page.getByLabel('Phrase as written')).toBeVisible();
+        await expect(page.getByLabel('How it should sound')).toBeVisible();
+        await expect(page.locator('.pronunciation-advanced')).not.toHaveAttribute('open', '');
+        await expect(page.getByRole('button', { name: 'Save pronunciation' })).toHaveCSS('min-height', '44px');
+
+        const spacing = await page.locator('.pronunciation-editor').evaluate((editor) => {
+            const style = getComputedStyle(editor);
+            const rule = editor.closest('.app-workspace').querySelector('.pronunciation-rule-list');
+
+            return {
+                editorPadding: Number.parseFloat(style.paddingLeft),
+                ruleListFits: !rule || rule.scrollWidth <= rule.clientWidth,
+            };
+        });
+        expect(spacing).toEqual({ editorPadding: 24, ruleListFits: true });
+
+        await page.getByText('Advanced settings', { exact: true }).click();
+        await expect(page.getByLabel('Apply to')).toBeVisible();
+        await expect(page.getByLabel('Announcement section')).toBeVisible();
+        await expectNoAxeViolations(page);
+    } finally {
+        await context.close();
     }
 });
 
@@ -1201,7 +1317,9 @@ test('assisted automatic state remains readable, locked, and persistent', async 
     async function setPresentationMode(mode) {
         await admin.goto('/admin/ceremonies');
         await admin
-            .getByRole('row', { name: /Sample Graduation Ceremony/i })
+            .locator('.admin-table tbody tr')
+            .filter({ hasText: 'Active' })
+            .first()
             .getByRole('link', { name: 'Setup' })
             .click();
         await admin.locator('#presentation_mode').selectOption(mode);

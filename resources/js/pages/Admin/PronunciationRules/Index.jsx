@@ -16,12 +16,33 @@ function emptyVariants(providers) {
     }));
 }
 
+function hasAdvancedVariants(rule, providers) {
+    if (!rule) return false;
+
+    const enabled = rule.variants.filter((variant) => variant.is_enabled);
+
+    return enabled.length !== providers.length
+        || enabled.some((variant) => variant.locale || variant.voice)
+        || new Set(enabled.map((variant) => variant.replacement_text)).size > 1;
+}
+
+function sharedReplacement(rule) {
+    const enabled = rule?.variants?.filter((variant) => variant.is_enabled) ?? [];
+
+    return enabled.length > 0 && new Set(enabled.map((variant) => variant.replacement_text)).size === 1
+        ? enabled[0].replacement_text
+        : '';
+}
+
 function RuleEditor({ ceremonies, editing, onCancel, permissions, providers, sections }) {
     const canUseCommon = permissions.manage_common;
+    const startsAdvanced = hasAdvancedVariants(editing, providers);
+    const [advanced, setAdvanced] = useState(startsAdvanced);
     const form = useForm({
         ceremony_id: editing?.ceremony_id ?? (canUseCommon ? null : ceremonies[0]?.id ?? null),
-        section: editing?.section ?? 'honors',
+        section: editing?.section ?? 'any',
         match_text: editing?.match_text ?? '',
+        spoken_text: sharedReplacement(editing),
         is_enabled: editing?.is_enabled ?? true,
         variants: editing?.variants?.length ? editing.variants : emptyVariants(providers),
     });
@@ -39,15 +60,28 @@ function RuleEditor({ ceremonies, editing, onCancel, permissions, providers, sec
         )));
     }
 
+    function effectiveVariants() {
+        return advanced
+            ? form.data.variants
+            : providers.map((provider) => ({
+                provider: provider.value,
+                locale: '',
+                voice: '',
+                replacement_text: form.data.spoken_text,
+                is_enabled: true,
+            }));
+    }
+
     function submit(event) {
         event.preventDefault();
         const options = { preserveScroll: true, onSuccess: onCancel };
+        form.transform((data) => ({ ...data, variants: effectiveVariants() }));
         if (editing) form.put(`/admin/pronunciation-rules/${editing.id}`, options);
         else form.post('/admin/pronunciation-rules', options);
     }
 
     async function runPreview() {
-        const variant = form.data.variants.find((item) => item.is_enabled && item.replacement_text);
+        const variant = effectiveVariants().find((item) => item.is_enabled && item.replacement_text);
         if (!variant || !form.data.match_text) {
             setPreviewError('Enter a phrase and at least one replacement first.');
             return;
@@ -84,42 +118,49 @@ function RuleEditor({ ceremonies, editing, onCancel, permissions, providers, sec
         <form className="pronunciation-editor" onSubmit={submit} data-tour="pronunciation-editor">
             <div className="admin-section-heading">
                 <div>
-                    <p className="announcement-kicker">{editing ? `Revision ${editing.revision + 1}` : 'New rule'}</p>
+                    <p className="announcement-kicker">{editing ? `Revision ${editing.revision + 1}` : 'Simple pronunciation rule'}</p>
                     <h2>{editing ? 'Edit pronunciation' : 'Add pronunciation'}</h2>
-                    <p>Display spelling remains unchanged. Only generated speech uses the replacement.</p>
+                    <p>Keep the display spelling. Only generated speech uses your wording.</p>
                 </div>
             </div>
             <ValidationSummary errors={form.errors} />
             <div className="admin-form-grid">
-                <div className="admin-field">
-                    <label htmlFor="pronunciation_scope">Scope</label>
-                    <select
-                        id="pronunciation_scope"
-                        onChange={(event) => form.setData('ceremony_id', event.target.value === '' ? null : Number(event.target.value))}
-                        value={form.data.ceremony_id ?? ''}
-                    >
-                        {canUseCommon && <option value="">Common to every ceremony</option>}
-                        {ceremonies.map((ceremony) => <option key={ceremony.id} value={ceremony.id}>{ceremony.name}</option>)}
-                    </select>
-                    <FieldError message={form.errors.ceremony_id} />
-                </div>
-                <div className="admin-field">
-                    <label htmlFor="pronunciation_section">Announcement section</label>
-                    <select id="pronunciation_section" onChange={(event) => form.setData('section', event.target.value)} value={form.data.section}>
-                        {sections.map((section) => <option key={section.value} value={section.value}>{section.label}</option>)}
-                    </select>
-                </div>
                 <div className="admin-field admin-field-wide">
-                    <label htmlFor="pronunciation_match">Correctly spelled phrase</label>
+                    <label htmlFor="pronunciation_match">Phrase as written</label>
                     <input id="pronunciation_match" maxLength="255" onChange={(event) => form.setData('match_text', event.target.value)} required value={form.data.match_text} />
                     <small>Matching is case-insensitive and uses complete words or phrases.</small>
                     <FieldError message={form.errors.match_text} />
                 </div>
+                <div className="admin-field admin-field-wide">
+                    <label htmlFor="pronunciation_spoken">How it should sound</label>
+                    <input id="pronunciation_spoken" maxLength="255" onChange={(event) => form.setData('spoken_text', event.target.value)} required={!advanced} value={form.data.spoken_text} />
+                    <small>This is applied to Azure Speech and Local Kokoro unless you use Advanced settings.</small>
+                    <FieldError message={form.errors['variants.0.replacement_text']} />
+                </div>
             </div>
 
-            <fieldset className="pronunciation-variants">
-                <legend>Provider pronunciations</legend>
-                {form.data.variants.map((variant, index) => {
+            <details className="pronunciation-advanced" onToggle={(event) => setAdvanced(event.currentTarget.open)} open={advanced}>
+                <summary>Advanced settings</summary>
+                <p>Use these only when a rule should apply to one ceremony, section, provider, or voice.</p>
+                <div className="admin-form-grid pronunciation-advanced-scope">
+                    <div className="admin-field">
+                        <label htmlFor="pronunciation_scope">Apply to</label>
+                        <select id="pronunciation_scope" onChange={(event) => form.setData('ceremony_id', event.target.value === '' ? null : Number(event.target.value))} value={form.data.ceremony_id ?? ''}>
+                            {canUseCommon && <option value="">Every ceremony</option>}
+                            {ceremonies.map((ceremony) => <option key={ceremony.id} value={ceremony.id}>{ceremony.name}</option>)}
+                        </select>
+                        <FieldError message={form.errors.ceremony_id} />
+                    </div>
+                    <div className="admin-field">
+                        <label htmlFor="pronunciation_section">Announcement section</label>
+                        <select id="pronunciation_section" onChange={(event) => form.setData('section', event.target.value)} value={form.data.section}>
+                            {sections.map((section) => <option key={section.value} value={section.value}>{section.label}</option>)}
+                        </select>
+                    </div>
+                </div>
+                <fieldset className="pronunciation-variants">
+                    <legend>Provider-specific pronunciation</legend>
+                    {form.data.variants.map((variant, index) => {
                     const provider = providers.find((item) => item.value === variant.provider) ?? selectedProvider;
                     return (
                         <div className="pronunciation-variant" key={`${variant.provider}-${index}`}>
@@ -147,13 +188,14 @@ function RuleEditor({ ceremonies, editing, onCancel, permissions, providers, sec
                             </div>
                         </div>
                     );
-                })}
-            </fieldset>
+                    })}
+                </fieldset>
 
-            <label className="admin-checkbox-row">
-                <input checked={form.data.is_enabled} onChange={(event) => form.setData('is_enabled', event.target.checked)} type="checkbox" />
-                Apply this rule to new previews and generation
-            </label>
+                <label className="admin-checkbox-row">
+                    <input checked={form.data.is_enabled} onChange={(event) => form.setData('is_enabled', event.target.checked)} type="checkbox" />
+                    Apply this rule to new previews and generation
+                </label>
+            </details>
 
             {(preview || previewError) && (
                 <div className="pronunciation-before-after" aria-live="polite">

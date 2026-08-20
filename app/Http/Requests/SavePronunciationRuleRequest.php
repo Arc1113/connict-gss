@@ -41,6 +41,14 @@ class SavePronunciationRuleRequest extends FormRequest
     {
         return [function (Validator $validator): void {
             $seen = [];
+            $normalizer = app(NormalizePronunciationRule::class);
+
+            if ($normalizer->containsRegularExpressionSyntax($this->input('match_text'))) {
+                $validator->errors()->add(
+                    'match_text',
+                    'Enter a literal word or phrase, not a regular expression.',
+                );
+            }
 
             foreach ($this->input('variants', []) as $index => $variant) {
                 $key = strtolower(implode('|', [
@@ -59,7 +67,7 @@ class SavePronunciationRuleRequest extends FormRequest
                 $seen[$key] = true;
             }
 
-            $normalized = app(NormalizePronunciationRule::class)->matchText($this->input('match_text'));
+            $normalized = $normalizer->matchText($this->input('match_text'));
             $query = PronunciationRule::query()
                 ->where('section', $this->input('section'))
                 ->where('normalized_match', $normalized);

@@ -137,11 +137,16 @@ class PronunciationRuleController extends Controller
         if (filled($data['candidate_match_text'] ?? null)
             && filled($data['candidate_replacement_text'] ?? null)) {
             $pattern = '/(?<![\p{L}\p{N}\p{M}])'.preg_quote($data['candidate_match_text'], '/').'(?![\p{L}\p{N}\p{M}])/iu';
-            $speechText = preg_replace($pattern, $data['candidate_replacement_text'], $data['text']) ?? $data['text'];
+            $speechText = preg_replace_callback(
+                $pattern,
+                static fn (): string => $data['candidate_replacement_text'],
+                $data['text'],
+            ) ?? $data['text'];
             $appliedRules = [[
                 'rule_id' => null,
                 'revision' => null,
                 'variant_id' => null,
+                'variant_revision' => null,
                 'scope' => ($data['ceremony_id'] ?? null) === null ? 'common' : 'ceremony',
                 'section' => $data['section'],
                 'match_text' => $data['candidate_match_text'],
@@ -196,6 +201,7 @@ class PronunciationRuleController extends Controller
                 'voice' => $variant->voice,
                 'replacement_text' => $variant->replacement_text,
                 'is_enabled' => $variant->is_enabled,
+                'revision' => $variant->revision,
             ])->values(),
         ];
     }

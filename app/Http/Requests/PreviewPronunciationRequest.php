@@ -4,8 +4,10 @@ namespace App\Http\Requests;
 
 use App\Enums\AnnouncementProvider;
 use App\Enums\PronunciationRuleSection;
+use App\Services\NormalizePronunciationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class PreviewPronunciationRequest extends FormRequest
 {
@@ -26,5 +28,19 @@ class PreviewPronunciationRequest extends FormRequest
             'candidate_match_text' => ['nullable', 'string', 'max:255', 'not_regex:/[<>]/'],
             'candidate_replacement_text' => ['nullable', 'string', 'max:255', 'not_regex:/[<>]/'],
         ];
+    }
+
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            if (app(NormalizePronunciationRule::class)->containsRegularExpressionSyntax(
+                $this->input('candidate_match_text'),
+            )) {
+                $validator->errors()->add(
+                    'candidate_match_text',
+                    'Enter a literal word or phrase, not a regular expression.',
+                );
+            }
+        }];
     }
 }

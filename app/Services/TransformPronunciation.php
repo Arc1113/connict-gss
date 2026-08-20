@@ -106,6 +106,7 @@ final class TransformPronunciation
                 'rule_id' => $rule->id,
                 'revision' => $rule->revision,
                 'variant_id' => $variant->id,
+                'variant_revision' => $variant->revision,
                 'scope' => $rule->ceremony_id === null ? 'common' : 'ceremony',
                 'section' => $rule->section->value,
                 'match_text' => $rule->match_text,

@@ -22,4 +22,3 @@ class UpdateOnboardingProgressRequest extends FormRequest
         ];
     }
 }
-

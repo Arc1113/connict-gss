@@ -19,8 +19,7 @@ final class FormatAnnouncementAwardList
         array $awards,
         ?string $leadIn,
         ?string $displayLeadIn = null,
-    ): AnnouncementAwardListResult
-    {
+    ): AnnouncementAwardListResult {
         $warnings = [];
         $errors = [];
         $phrases = [];

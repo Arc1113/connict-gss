@@ -3,8 +3,8 @@
 namespace Tests\Feature\EnhancementTts;
 
 use App\Data\ComposedAnnouncement;
-use App\Enums\PronunciationRuleSection;
 use App\Enums\AnnouncementProvider;
+use App\Enums\PronunciationRuleSection;
 use App\Services\BuildAnnouncementSourceFingerprint;
 use App\Services\ComposeGraduationAnnouncement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -85,10 +85,10 @@ class AnnouncementComposerTest extends AnnouncementTestCase
 
     public function test_program_and_optional_sections_follow_flags_in_approved_order(): void
     {
-        $this->pronunciationRule('Magna Cum Laude', 'mag-na koom lau-deh');
+        $this->pronunciationRule('Academic Latin Distinction', 'academic latin distinction');
         $result = $this->compose([
             'major' => 'Creative Computing',
-            'honors' => 'Magna Cum Laude',
+            'honors' => 'Academic Latin Distinction',
             'announcementAdditionalText' => 'with an approved fictional distinction',
             'includeAdditionalText' => true,
             'closingText' => 'Congratulations!',
@@ -99,10 +99,10 @@ class AnnouncementComposerTest extends AnnouncementTestCase
             array_column($result->sections, 'code'),
         );
         $this->assertSame(
-            'We proudly present, Fictional Graduate, Bachelor of Science in Fictional Studies, Creative Computing, mag-na koom lau-deh, with an approved fictional distinction, Congratulations!',
+            'We proudly present, Fictional Graduate, Bachelor of Science in Fictional Studies, Creative Computing, academic latin distinction, with an approved fictional distinction, Congratulations!',
             $result->plainText,
         );
-        $this->assertStringContainsString('Magna Cum Laude', $result->displayText);
+        $this->assertStringContainsString('Academic Latin Distinction', $result->displayText);
         $this->assertCount(1, $result->appliedRules);
 
         $omitted = $this->compose([
@@ -167,7 +167,7 @@ class AnnouncementComposerTest extends AnnouncementTestCase
 
         $this->assertNotContains('honors', array_column($duplicate->sections, 'code'));
         $this->assertContains('honors_duplicates_section', $this->issueCodes($duplicate->warnings));
-        $this->assertStringContainsString('Mágna Cum Laude', $distinct->plainText);
+        $this->assertStringContainsString('Mágna koom low-day', $distinct->plainText);
     }
 
     public function test_terminal_punctuation_is_normalized_without_duplicate_marks(): void

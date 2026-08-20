@@ -110,6 +110,22 @@ class DatabaseConstraintTest extends TestCase
         ]);
     }
 
+    public function test_fully_automatic_presentation_mode_is_allowed(): void
+    {
+        DB::table('ceremonies')->insert([
+            'name' => 'Fully Automatic Ceremony',
+            'status' => 'draft',
+            'presentation_mode' => 'fully_automatic',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertDatabaseHas('ceremonies', [
+            'name' => 'Fully Automatic Ceremony',
+            'presentation_mode' => 'fully_automatic',
+        ]);
+    }
+
     public function test_invalid_queue_statuses_are_rejected(): void
     {
         $ceremony = Ceremony::factory()->create();

@@ -96,6 +96,7 @@ class CeremonyController extends Controller
     public function store(
         SaveCeremonyRequest $request,
         CeremonyAdministration $administration,
+        WorkingCeremonyResolver $workingCeremonies,
     ): RedirectResponse {
         $ceremony = $administration->create(
             $request->safe()->except(['stage_logo', 'stage_background']),
@@ -104,6 +105,8 @@ class CeremonyController extends Controller
             $request->user(),
             $request->ip(),
         );
+
+        $workingCeremonies->store($request, $ceremony);
 
         return redirect()
             ->route('admin.ceremonies.show', $ceremony)

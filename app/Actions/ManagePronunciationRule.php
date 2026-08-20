@@ -6,6 +6,7 @@ use App\Enums\AnnouncementProvider;
 use App\Enums\PronunciationRuleSection;
 use App\Models\Ceremony;
 use App\Models\PronunciationRule;
+use App\Models\PronunciationRuleVariant;
 use App\Models\User;
 use App\Services\InvalidateAnnouncementCandidates;
 use App\Services\NormalizePronunciationRule;
@@ -97,18 +98,31 @@ final class ManagePronunciationRule
         $kept = [];
 
         foreach ($variants as $variant) {
-            $model = $rule->variants()->updateOrCreate([
+            $model = $rule->variants()->firstOrNew([
                 'provider' => AnnouncementProvider::from($variant['provider'])->value,
                 'locale' => trim((string) ($variant['locale'] ?? '')),
                 'voice' => trim((string) ($variant['voice'] ?? '')),
-            ], [
+            ]);
+            $model->fill([
                 'replacement_text' => trim($variant['replacement_text']),
                 'is_enabled' => (bool) ($variant['is_enabled'] ?? true),
             ]);
+            $model->revision = $model->exists && $model->isDirty()
+                ? $model->revision + 1
+                : ($model->revision ?: 1);
+            $model->save();
             $kept[] = $model->id;
         }
 
-        $rule->variants()->whereNotIn('id', $kept)->update(['is_enabled' => false]);
+        $rule->variants()
+            ->whereNotIn('id', $kept)
+            ->where('is_enabled', true)
+            ->eachById(function (PronunciationRuleVariant $variant): void {
+                $variant->update([
+                    'is_enabled' => false,
+                    'revision' => $variant->revision + 1,
+                ]);
+            });
     }
 
     private function invalidate(?int $ceremonyId): void
@@ -138,6 +152,7 @@ final class ManagePronunciationRule
                 'voice' => $variant->voice,
                 'replacement_text' => $variant->replacement_text,
                 'is_enabled' => $variant->is_enabled,
+                'revision' => $variant->revision,
             ])->values()->all(),
         ];
     }

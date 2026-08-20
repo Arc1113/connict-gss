@@ -47,7 +47,6 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         $liveCeremonyContext = $this->liveCeremonyContext($request);
-        $workingCeremonyContext = $this->workingCeremonyContext($request);
 
         return [
             ...parent::share($request),
@@ -102,7 +101,10 @@ class HandleInertiaRequests extends Middleware
                 'commit' => config('connict.commit'),
             ],
             'liveCeremonyContext' => $liveCeremonyContext,
-            'workingCeremonyContext' => $workingCeremonyContext,
+            // A ceremony workspace request can deliberately change the working
+            // ceremony in its controller. Resolve this lazily so the shell and
+            // the page receive that final context in the same response.
+            'workingCeremonyContext' => fn (): array => $this->workingCeremonyContext($request),
             'ceremonyContext' => [
                 'state' => $liveCeremonyContext['state'],
                 'active' => $liveCeremonyContext['ceremony'],

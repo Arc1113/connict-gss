@@ -57,7 +57,11 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('new SetupWizard', $launcher);
         $this->assertStringContainsString('ProtectedData.Protect', $setupWizard);
         $this->assertStringContainsString('File.Delete(requestPath)', $setupWizard);
-        $this->assertStringContainsString('WaitForServices', $setupWizard);
+        $this->assertStringContainsString('WaitForReadiness', $setupWizard);
+        $this->assertStringContainsString('Test-ConnictGssHealth.ps1', $setupWizard);
+        foreach (['web', 'database', 'reverb', 'tts', 'certificate'] as $healthCheck) {
+            $this->assertStringContainsString("GetProperty(\"{$healthCheck}\")", $setupWizard);
+        }
         $this->assertStringContainsString('Open Connict GSS', $setupWizard);
         $this->assertStringNotContainsString('GSS_INITIAL_ADMIN_PASSWORD"]', $launcher.$setupWizard);
         $this->assertStringNotContainsString('static string? Prompt', $launcher);

@@ -12,4 +12,3 @@ final readonly class PronunciationTransformResult
         public array $appliedRules,
     ) {}
 }
-

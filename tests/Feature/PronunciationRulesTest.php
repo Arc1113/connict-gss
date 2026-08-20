@@ -26,11 +26,11 @@ class PronunciationRulesTest extends TestCase
     {
         $ceremony = Ceremony::factory()->create();
         $common = $this->rule(null, 'Laude', 'lau-deh');
-        $phrase = $this->rule(null, 'Magna Cum Laude', 'mag-na koom lau-deh');
+        $phrase = $this->rule(null, 'Academic Latin Distinction', 'academic latin distinction');
         $ceremonyRule = $this->rule($ceremony->id, 'Laude', 'law-deh');
 
         $result = app(TransformPronunciation::class)->transform(
-            'Maria Santos — Magna Cum Laude. Laude medal.',
+            'Maria Santos — Academic Latin Distinction. Laude medal.',
             'honors',
             $ceremony->id,
             AnnouncementProvider::Kokoro,
@@ -39,10 +39,11 @@ class PronunciationRulesTest extends TestCase
         );
 
         $this->assertSame(
-            'Maria Santos — mag-na koom lau-deh. law-deh medal.',
+            'Maria Santos — academic latin distinction. law-deh medal.',
             $result->text,
         );
         $this->assertSame([$phrase->id, $ceremonyRule->id], array_column($result->appliedRules, 'rule_id'));
+        $this->assertSame([1, 1], array_column($result->appliedRules, 'variant_revision'));
         $this->assertNotContains($common->id, array_column($result->appliedRules, 'rule_id'));
     }
 
@@ -62,6 +63,50 @@ class PronunciationRulesTest extends TestCase
         $this->assertSame('ho-say Josefine', $result->text);
         $this->assertSame([$first->id], array_column($result->appliedRules, 'rule_id'));
         $this->assertNotContains($second->id, array_column($result->appliedRules, 'rule_id'));
+    }
+
+    public function test_philippine_english_catalog_is_available_for_both_providers_and_respects_sections(): void
+    {
+        $this->assertGreaterThanOrEqual(58, PronunciationRule::query()->where('is_builtin', true)->count());
+
+        $summa = PronunciationRule::query()
+            ->where('section', PronunciationRuleSection::Honors)
+            ->where('match_text', 'Summa Cum Laude')
+            ->firstOrFail();
+        $this->assertSame(
+            ['azure', 'kokoro'],
+            $summa->variants()->orderBy('provider')->get()->map(fn ($variant) => $variant->provider->value)->all(),
+        );
+
+        $transformer = app(TransformPronunciation::class);
+        $honors = $transformer->transform(
+            'Summa Cum Laude',
+            'honors',
+            null,
+            AnnouncementProvider::Azure,
+            'en-PH',
+            'en-PH-RosaNeural',
+        );
+        $this->assertSame('soo-mah koom low-day', $honors->text);
+
+        $name = $transformer->transform(
+            'Ma Santos',
+            'name',
+            null,
+            AnnouncementProvider::Kokoro,
+            'en-US',
+            'af_heart',
+        );
+        $program = $transformer->transform(
+            'BS in Information Technology',
+            'program',
+            null,
+            AnnouncementProvider::Kokoro,
+            'en-US',
+            'af_heart',
+        );
+        $this->assertSame('Ma Santos', $name->text);
+        $this->assertSame('Bachelor of Science in Information Technology', $program->text);
     }
 
     public function test_administrator_manages_common_rules_and_encoder_is_limited_to_ceremony_rules(): void
@@ -113,6 +158,50 @@ class PronunciationRulesTest extends TestCase
                 'replacement_text' => '<phoneme>unsafe</phoneme>',
             ]],
         ])->assertSessionHasErrors(['match_text', 'variants.0.replacement_text']);
+    }
+
+    public function test_regular_expression_syntax_is_rejected_and_variant_changes_are_revisioned(): void
+    {
+        $administrator = User::factory()->create(['role' => UserRole::Administrator]);
+        $payload = [
+            'ceremony_id' => null,
+            'section' => 'name',
+            'match_text' => 'Jo.*',
+            'is_enabled' => true,
+            'variants' => [[
+                'provider' => 'kokoro',
+                'locale' => '',
+                'voice' => '',
+                'replacement_text' => 'Joe',
+                'is_enabled' => true,
+            ], [
+                'provider' => 'azure',
+                'locale' => 'en-PH',
+                'voice' => '',
+                'replacement_text' => 'Jose',
+                'is_enabled' => true,
+            ]],
+        ];
+
+        $this->actingAs($administrator)
+            ->post('/admin/pronunciation-rules', $payload)
+            ->assertSessionHasErrors(['match_text']);
+
+        $payload['match_text'] = 'José';
+        $this->actingAs($administrator)->post('/admin/pronunciation-rules', $payload)->assertRedirect();
+        $rule = PronunciationRule::query()->where('match_text', 'José')->firstOrFail();
+        $this->assertSame([1, 1], $rule->variants()->orderBy('id')->pluck('revision')->all());
+        $removedVariantId = $rule->variants()->where('provider', 'azure')->firstOrFail()->id;
+
+        $payload['variants'][0]['replacement_text'] = 'ho-say';
+        $payload['variants'] = [$payload['variants'][0]];
+        $this->actingAs($administrator)
+            ->put("/admin/pronunciation-rules/{$rule->id}", $payload)
+            ->assertRedirect();
+        $this->assertSame(2, $rule->variants()->where('provider', 'kokoro')->firstOrFail()->revision);
+        $removedVariant = $rule->variants()->findOrFail($removedVariantId);
+        $this->assertFalse($removedVariant->is_enabled);
+        $this->assertSame(2, $removedVariant->revision);
     }
 
     public function test_rule_change_invalidates_only_matching_generated_audio_and_not_human_recordings(): void
@@ -172,8 +261,7 @@ class PronunciationRulesTest extends TestCase
         string $match,
         string $replacement,
         PronunciationRuleSection $section = PronunciationRuleSection::Honors,
-    ): PronunciationRule
-    {
+    ): PronunciationRule {
         $rule = PronunciationRule::query()->create([
             'ceremony_id' => $ceremonyId,
             'section' => $section,

@@ -204,7 +204,7 @@ internal sealed class SetupWizard : Form
                 process.WaitForExit();
                 return process.ExitCode;
             });
-            installed = exitCode == 0 && IsInitialized() && await Task.Run(WaitForServices);
+            installed = exitCode == 0 && IsInitialized() && await Task.Run(WaitForReadiness);
         } catch {
             installed = false;
         } finally {
@@ -275,10 +275,41 @@ internal sealed class SetupWizard : Form
         } catch { return false; }
     }
 
-    private static bool WaitForServices()
+    private bool HealthReady()
+    {
+        try {
+            var start = new ProcessStartInfo("powershell.exe") {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            start.ArgumentList.Add("-NoProfile");
+            start.ArgumentList.Add("-ExecutionPolicy");
+            start.ArgumentList.Add("Bypass");
+            start.ArgumentList.Add("-File");
+            start.ArgumentList.Add(Path.Combine(installRoot, "scripts", "Test-ConnictGssHealth.ps1"));
+            start.ArgumentList.Add("-DataRoot");
+            start.ArgumentList.Add(dataRoot);
+            using var process = Process.Start(start);
+            if (process is null) return false;
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(10000);
+            if (process.ExitCode != 0) return false;
+            using var document = JsonDocument.Parse(output);
+            var health = document.RootElement;
+            return health.GetProperty("web").GetBoolean()
+                && health.GetProperty("database").GetBoolean()
+                && health.GetProperty("reverb").GetBoolean()
+                && health.GetProperty("tts").GetBoolean()
+                && health.GetProperty("certificate").GetBoolean();
+        } catch { return false; }
+    }
+
+    private bool WaitForReadiness()
     {
         for (var attempt = 0; attempt < 20; attempt++) {
-            if (ServiceNames.All(ServiceReady)) return true;
+            if (ServiceNames.All(ServiceReady) && HealthReady()) return true;
             Thread.Sleep(1000);
         }
         return false;
@@ -287,7 +318,8 @@ internal sealed class SetupWizard : Form
     private string BuildReadiness()
     {
         var ready = ServiceNames.Select(name => name.Replace("ConnictGSS-", "") + ": " + (ServiceReady(name) ? "Ready" : "Needs attention"));
-        return string.Join("  ·  ", ready) + Environment.NewLine + ServerAddress();
+        var endpoints = HealthReady() ? "Application endpoints: Ready" : "Application endpoints: Needs attention";
+        return string.Join("  ·  ", ready) + Environment.NewLine + endpoints + Environment.NewLine + ServerAddress();
     }
 
     private void ExportDiagnostics()

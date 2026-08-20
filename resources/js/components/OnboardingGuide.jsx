@@ -87,8 +87,8 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
 
         const target = document.querySelector(`[data-tour="${step.target}"]`);
         if (!target || target.getClientRects().length === 0 || window.getComputedStyle(target).visibility === 'hidden') {
-            void move(stepIndex + 1);
-            return undefined;
+            const frame = window.requestAnimationFrame(() => void move(stepIndex + 1));
+            return () => window.cancelAnimationFrame(frame);
         }
 
         previousFocusRef.current ??= document.activeElement;
@@ -106,7 +106,6 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
         updatePosition();
         window.addEventListener('resize', updatePosition);
         window.addEventListener('scroll', updatePosition, true);
-        window.requestAnimationFrame(() => dialogRef.current?.focus());
 
         return () => {
             target.classList.remove('tour-target-active');
@@ -116,14 +115,18 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
     }, [active, move, stepIndex, steps]);
 
     useEffect(() => {
+        if (!active || !position) return undefined;
+
+        const frame = window.requestAnimationFrame(() => dialogRef.current?.focus());
+        return () => window.cancelAnimationFrame(frame);
+    }, [active, position, stepIndex]);
+
+    useEffect(() => {
         if (!active) return undefined;
         const handleKey = (event) => {
             if (event.key === 'Escape') {
                 event.preventDefault();
-                setActive(false);
-                setPosition(null);
-                rememberActive(false);
-                previousFocusRef.current?.focus?.();
+                void stop('in_progress');
                 return;
             }
             if (event.key !== 'Tab' || !dialogRef.current) return;
@@ -131,7 +134,7 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
             if (!controls.length) return;
             const first = controls[0];
             const last = controls[controls.length - 1];
-            if (event.shiftKey && document.activeElement === first) {
+            if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
                 event.preventDefault(); last.focus();
             } else if (!event.shiftKey && document.activeElement === last) {
                 event.preventDefault(); first.focus();
@@ -139,7 +142,7 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-    }, [active, rememberActive]);
+    }, [active, stop]);
 
     if (!onboarding) return null;
     const step = steps[stepIndex];
@@ -162,7 +165,7 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
             <button aria-label="Dismiss getting-started panel" className="onboarding-close" onClick={() => void stop('skipped')} type="button"><AppIcon name="close" /></button>
             <p>First-time guide</p>
             <h2 id="onboarding-welcome-title">{onboarding.title}</h2>
-            <ul>{onboarding.checklist.map((item) => <li key={item.key} data-complete={item.complete ? 'true' : 'false'}><span aria-hidden="true">{item.complete ? '✓' : '○'}</span><Link href={item.href}>{item.label}</Link></li>)}</ul>
+            <ul>{onboarding.checklist.map((item) => <li key={item.key} data-complete={item.complete ? 'true' : 'false'}><span aria-hidden="true">{item.complete ? '✓' : '○'}</span><div><Link href={item.href}>{item.label}</Link>{item.training && <small>Rehearsal only</small>}</div></li>)}</ul>
             <div><button className="admin-button admin-button-primary" onClick={() => void start()} type="button">Show me around</button><button className="admin-button admin-button-text" onClick={() => void stop('skipped')} type="button">Skip guide</button></div>
         </aside>}
 
@@ -173,6 +176,7 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
                 <p>{step.body}</p>
                 <div>
                     <button className="admin-button admin-button-text" disabled={stepIndex === 0} onClick={() => void move(stepIndex - 1)} type="button">Back</button>
+                    <button className="admin-button admin-button-text" onClick={() => void stop('in_progress')} type="button">Pause</button>
                     <button className="admin-button admin-button-secondary" onClick={() => void stop('skipped')} type="button">Skip</button>
                     <button className="admin-button admin-button-primary" onClick={() => void move(stepIndex + 1)} type="button">{stepIndex === steps.length - 1 ? 'Finish' : 'Next'}</button>
                 </div>

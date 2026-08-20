@@ -11,6 +11,7 @@ use App\Models\StageQueueItem;
 use App\Models\StageState;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\WorkingCeremonyResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -46,6 +47,10 @@ class CeremonyAdministrationTest extends TestCase
         $ceremony = Ceremony::query()->sole();
 
         $response->assertRedirect("/admin/ceremonies/{$ceremony->id}");
+        $response->assertSessionHas(
+            WorkingCeremonyResolver::SESSION_KEY,
+            $ceremony->id,
+        );
         $this->assertSame(CeremonyStatus::Prepared, $ceremony->status);
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $this->administrator->id,

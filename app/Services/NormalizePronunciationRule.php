@@ -6,6 +6,13 @@ use Normalizer;
 
 final class NormalizePronunciationRule
 {
+    public function containsRegularExpressionSyntax(?string $value): bool
+    {
+        $value = (string) $value;
+
+        return preg_match('/(?:\\\\[AbBdDsSwWZzGQEpP]|\(\?[=!<:]|\[[^\]]*\]|\{\d+(?:,\d*)?\}|\.[*+?]|[\^$|])/u', $value) === 1;
+    }
+
     public function matchText(?string $value): string
     {
         $value = $this->sourceText($value);

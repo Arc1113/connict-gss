@@ -33,14 +33,14 @@ return new class extends Migration
             'ALTER TABLE pronunciation_rules ADD CONSTRAINT pronunciation_rules_revision_check CHECK (revision > 0)',
         );
         DB::statement(
-            "CREATE UNIQUE INDEX pronunciation_rules_common_unique
+            'CREATE UNIQUE INDEX pronunciation_rules_common_unique
              ON pronunciation_rules (section, normalized_match)
-             WHERE ceremony_id IS NULL",
+             WHERE ceremony_id IS NULL',
         );
         DB::statement(
-            "CREATE UNIQUE INDEX pronunciation_rules_ceremony_unique
+            'CREATE UNIQUE INDEX pronunciation_rules_ceremony_unique
              ON pronunciation_rules (ceremony_id, section, normalized_match)
-             WHERE ceremony_id IS NOT NULL",
+             WHERE ceremony_id IS NOT NULL',
         );
 
         Schema::create('pronunciation_rule_variants', function (Blueprint $table): void {

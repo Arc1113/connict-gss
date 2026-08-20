@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'voice',
     'replacement_text',
     'is_enabled',
+    'revision',
 ])]
 class PronunciationRuleVariant extends Model
 {
@@ -22,6 +23,7 @@ class PronunciationRuleVariant extends Model
         return [
             'provider' => AnnouncementProvider::class,
             'is_enabled' => 'boolean',
+            'revision' => 'integer',
         ];
     }
 
@@ -30,4 +32,3 @@ class PronunciationRuleVariant extends Model
         return $this->belongsTo(PronunciationRule::class, 'pronunciation_rule_id');
     }
 }
-
