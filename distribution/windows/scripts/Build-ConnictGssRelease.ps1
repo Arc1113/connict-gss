@@ -82,6 +82,7 @@ function Sign-ConnictGssBinary([string]$Path) {
 }
 
 function Assert-VerifiedRuntime([string]$Root, [string]$ManifestPath) {
+    $Root = (Resolve-Path -LiteralPath $Root).Path
     $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
     if ($manifest.schema_version -ne 1 -or $manifest.platform -ne 'windows-x64' -or $manifest.artifacts.Count -eq 0) {
         throw 'The runtime manifest is invalid or is not for Windows x64.'
