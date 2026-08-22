@@ -1,3 +1,4 @@
+import argparse
 from threading import Lock
 from typing import Literal
 
@@ -64,3 +65,13 @@ def synthesize(request: SynthesisRequest):
         raise HTTPException(status_code=500, detail="Local synthesis failed") from error
     finally:
         synthesis_lock.release()
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=18880)
+    arguments = parser.parse_args()
+    uvicorn.run(app, host=arguments.host, port=arguments.port)

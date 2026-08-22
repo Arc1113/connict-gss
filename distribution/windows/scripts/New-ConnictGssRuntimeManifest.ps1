@@ -7,6 +7,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if (-not (Test-Path -LiteralPath $ProvenancePath)) { throw 'runtime-provenance.json is required to generate a runtime manifest.' }
+$RuntimeInputDirectory = (Resolve-Path -LiteralPath $RuntimeInputDirectory).Path
 $provenance = Get-Content -LiteralPath $ProvenancePath -Raw | ConvertFrom-Json
 if ($provenance.schema_version -ne 1 -or $provenance.sources.Count -eq 0) { throw 'The runtime provenance file is invalid.' }
 

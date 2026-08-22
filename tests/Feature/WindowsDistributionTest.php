@@ -43,6 +43,7 @@ class WindowsDistributionTest extends TestCase
         $runtimeManifest = File::get(base_path('distribution/windows/scripts/New-ConnictGssRuntimeManifest.ps1'));
         $ttsRegistration = File::get(base_path('distribution/windows/scripts/Register-ConnictGssTtsRuntime.ps1'));
         $ttsBuild = File::get(base_path('distribution/windows/scripts/Build-ConnictGssOfflineTts.ps1'));
+        $ttsServer = File::get(base_path('docker/local-tts/server.py'));
         $ttsLicenseInventory = File::get(base_path('docker/local-tts/export_license_inventory.py'));
         $diagnostics = File::get(base_path('distribution/windows/scripts/Export-ConnictGssDiagnostics.ps1'));
         $cleanMachine = File::get(base_path('distribution/windows/scripts/Test-ConnictGssCleanMachine.ps1'));
@@ -79,13 +80,17 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('tts/licenses/license-inventory.json', $runtimeBuild);
         $this->assertStringContainsString('winsw/WinSW-x64.exe', $runtimeBuild);
         $this->assertStringContainsString('runtime-manifest.json', $runtimeBuild);
-        $this->assertStringContainsString('d01e39f9aec75cf9522830e424d9f76f081c1d8b5ec4cc0897a7fdccc8391bb7', $runtimeBootstrap);
+        $this->assertStringContainsString('c382cf6169d5175c30d918ba7a09d6eb8601c6c339470e7fbb87f0b40d9bf254', $runtimeBootstrap);
         $this->assertStringContainsString('25e6fcdfb8caec38691bf461125e7564508760666f7b8e5dc6a5f0818f58f81e', $runtimeBootstrap);
         $this->assertStringContainsString('runtime-provenance.json', $runtimeManifest);
         $this->assertStringContainsString('tts-server.exe', $ttsRegistration);
         $this->assertStringContainsString('HF_HUB_OFFLINE', $ttsBuild);
         $this->assertStringContainsString('--collect-all espeakng_loader', $ttsBuild);
         $this->assertStringContainsString('--collect-all lameenc', $ttsBuild);
+        $this->assertStringContainsString('--collect-all en_core_web_sm', $ttsBuild);
+        $this->assertStringContainsString('max_workers=1', $ttsBuild);
+        $this->assertStringContainsString('--distpath', $ttsBuild);
+        $this->assertStringContainsString('uvicorn.run(app', $ttsServer);
         $this->assertStringContainsString('license-inventory.json', $ttsLicenseInventory);
         $this->assertStringContainsString('af_bella', $ttsBuild);
         $this->assertStringContainsString('runtime.env', $diagnostics);

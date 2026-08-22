@@ -6,8 +6,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $frankenPhpVersion = '1.12.7'
 $frankenPhpArchive = 'frankenphp-windows-x86_64.zip'
-$frankenPhpHash = 'd01e39f9aec75cf9522830e424d9f76f081c1d8b5ec4cc0897a7fdccc8391bb7'
-$frankenPhpExecutableHash = 'd263d0c967434354ef79f1ea9642696a30ae13b9d7058e885c264502bcb01ea9'
+$frankenPhpHash = 'c382cf6169d5175c30d918ba7a09d6eb8601c6c339470e7fbb87f0b40d9bf254'
+$frankenPhpExecutableHash = '4b1584f3a1f5162c9fab5b7dc75ecdb59b16fb0ec3e4b5ed667d63474ce44783'
 $phpExecutableHash = '9151fca722979afbef1178adfdfee96f502fbc5f1c7e1227f42013c5dcd329ac'
 $winSwVersion = '2.12.0'
 $winSwHash = '05b82d46ad331cc16bdc00de5c6332c1ef818df8ceefcd49c726553209b3a0da'
@@ -25,7 +25,7 @@ function Get-VerifiedFile([string]$Uri, [string]$Destination, [string]$ExpectedH
 }
 
 New-Item -ItemType Directory -Path $RuntimeInputDirectory -Force | Out-Null
-$temporaryDirectory = Join-Path ([IO.Path]::GetTempPath()) ('connict-gss-runtime-' + [guid]::NewGuid().ToString('N'))
+$temporaryDirectory = Join-Path ([IO.Path]::GetTempPath()) ('cg-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Path $temporaryDirectory -Force | Out-Null
 
 try {

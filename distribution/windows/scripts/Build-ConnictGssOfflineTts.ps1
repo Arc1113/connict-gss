@@ -6,7 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$workspace = Join-Path ([IO.Path]::GetTempPath()) ('connict-gss-tts-build-' + [guid]::NewGuid().ToString('N'))
+$workspace = Join-Path ([IO.Path]::GetTempPath()) ('ct-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 $target = Join-Path $RuntimeInputDirectory 'tts'
 $modelRevision = 'f3ff3571791e39611d31c381e3a41a3af07b4987'
 New-Item -ItemType Directory -Path $workspace, $RuntimeInputDirectory -Force | Out-Null
@@ -25,7 +25,7 @@ try {
     $modelHome = Join-Path $workspace 'models'
     $env:HF_HOME = $modelHome
     $env:HF_HUB_DISABLE_TELEMETRY = '1'
-    & $python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='hexgrad/Kokoro-82M', revision='$modelRevision')"
+    & $python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='hexgrad/Kokoro-82M', revision='$modelRevision', max_workers=1)"
     if ($LASTEXITCODE -ne 0) { throw 'Could not download the pinned Kokoro model for the release bundle.' }
     $modelReferenceDirectory = Join-Path $modelHome 'hub\models--hexgrad--Kokoro-82M\refs'
     New-Item -ItemType Directory -Path $modelReferenceDirectory -Force | Out-Null
@@ -40,11 +40,19 @@ try {
         --clean `
         --onedir `
         --name tts-server `
+        --distpath (Join-Path $workspace 'dist') `
+        --workpath (Join-Path $workspace 'build') `
+        --specpath $workspace `
         --collect-all kokoro `
         --collect-all misaki `
         --collect-all spacy `
+        --collect-all en_core_web_sm `
         --collect-all espeakng_loader `
         --collect-all lameenc `
+        --collect-all phonemizer `
+        --collect-all segments `
+        --collect-all csvw `
+        --collect-all language_tags `
         (Join-Path $application 'server.py')
     if ($LASTEXITCODE -ne 0) { throw 'PyInstaller could not create the offline TTS executable.' }
 
