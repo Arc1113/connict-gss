@@ -89,9 +89,12 @@ function Assert-VerifiedRuntime([string]$Root, [string]$ManifestPath) {
 
     foreach ($artifact in $manifest.artifacts) {
         $pathSegments = @($artifact.path -split '/')
-        $pathIsSafe = $artifact.path -match '^[A-Za-z0-9._ /-]+$' -and
-            -not $artifact.path.StartsWith('/') -and
-            $pathSegments -notcontains '..'
+        $invalidPathSegments = @($pathSegments | Where-Object {
+            [string]::IsNullOrWhiteSpace($_) -or
+            $_ -eq '..' -or
+            $_.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0
+        })
+        $pathIsSafe = -not $artifact.path.StartsWith('/') -and $invalidPathSegments.Count -eq 0
         if (-not $pathIsSafe -or $artifact.sha256 -notmatch '^[a-f0-9]{64}$' -or $artifact.source_url -notmatch '^https://') {
             throw "Runtime manifest entry '$($artifact.path)' is incomplete or unsafe."
         }
