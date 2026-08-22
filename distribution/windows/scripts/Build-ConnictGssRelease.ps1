@@ -77,7 +77,7 @@ function Sign-ConnictGssBinary([string]$Path) {
 
     $signature = Get-AuthenticodeSignature -FilePath $Path
     if ($signature.Status -ne 'Valid') {
-        throw "The Authenticode signature is invalid for $Path: $($signature.Status)"
+        throw "The Authenticode signature is invalid for ${Path}: $($signature.Status)"
     }
 }
 
