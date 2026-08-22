@@ -53,6 +53,9 @@ try {
     $postgresTarget = Join-Path $RuntimeInputDirectory 'postgres'
     if (Test-Path -LiteralPath $postgresTarget) { Remove-Item -LiteralPath $postgresTarget -Recurse -Force }
     Move-Item -LiteralPath (Join-Path $temporaryDirectory 'pgsql') -Destination $postgresTarget
+    foreach ($optionalComponent in 'pgAdmin 4', 'StackBuilder') {
+        Remove-Item -LiteralPath (Join-Path $postgresTarget $optionalComponent) -Recurse -Force -ErrorAction SilentlyContinue
+    }
     foreach ($binary in 'createdb.exe', 'initdb.exe', 'pg_ctl.exe', 'pg_dump.exe', 'postgres.exe', 'psql.exe') {
         if (-not (Test-Path -LiteralPath (Join-Path $postgresTarget "bin\\$binary") -PathType Leaf)) { throw "PostgreSQL archive is missing expected binary: $binary" }
     }

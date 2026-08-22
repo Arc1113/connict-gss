@@ -72,6 +72,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('REVERB_ALLOWED_ORIGINS', $network);
         $this->assertStringContainsString('Write-ConnictGssRuntimeConfiguration.ps1', $network);
         $this->assertStringContainsString('Assert-VerifiedRuntime', $runtimeBuild);
+        $this->assertStringContainsString("'pgAdmin 4', 'StackBuilder'", $runtimeBootstrap);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $runtimeBuild);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $ttsBuild);
         $this->assertStringNotContainsString("Join-Path \$PSScriptRoot '..\\..\\..\\..'", $runtimeBuild.$ttsBuild);
