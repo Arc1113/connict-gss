@@ -48,6 +48,8 @@ Thumbs.db
 /distribution/windows/payload/
 /distribution/windows/runtime-input/
 /distribution/windows/launcher/publish/
+/distribution/windows/launcher/bin/
+/distribution/windows/launcher/obj/
 /distribution/windows/installer/Output/
 /distribution/windows/runtime-input.zip
 /distribution/windows/validation-evidence/

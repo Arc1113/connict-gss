@@ -37,6 +37,7 @@ class WindowsDistributionTest extends TestCase
         $snapshot = File::get(base_path('distribution/windows/scripts/Snapshot-ConnictGssRuntime.ps1'));
         $launcher = File::get(base_path('distribution/windows/launcher/Program.cs'));
         $setupWizard = File::get(base_path('distribution/windows/launcher/SetupWizard.cs'));
+        $launcherProject = File::get(base_path('distribution/windows/launcher/ConnictGSS.csproj'));
         $network = File::get(base_path('distribution/windows/scripts/Update-ConnictGssNetworkConfiguration.ps1'));
         $runtimeBuild = File::get(base_path('distribution/windows/scripts/Build-ConnictGssRelease.ps1'));
         $runtimeBootstrap = File::get(base_path('distribution/windows/scripts/Get-ConnictGssRuntimeInputs.ps1'));
@@ -57,6 +58,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringNotContainsString('migrate:fresh', $setup.$upgrade);
         $this->assertStringContainsString('ProtectedData]::Unprotect', $setup);
         $this->assertStringContainsString('new SetupWizard', $launcher);
+        $this->assertStringContainsString('<ImplicitUsings>enable</ImplicitUsings>', $launcherProject);
         $this->assertStringContainsString('ProtectedData.Protect', $setupWizard);
         $this->assertStringContainsString('File.Delete(requestPath)', $setupWizard);
         $this->assertStringContainsString('WaitForReadiness', $setupWizard);

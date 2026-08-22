@@ -194,6 +194,7 @@ Assert-NativeCommandSucceeded 'dotnet publish'
 Sign-ConnictGssBinary (Join-Path $RepositoryRoot 'distribution\windows\launcher\publish\ConnictGSS.exe')
 $env:CONNICT_GSS_VERSION = $Version
 $innoCompiler = Resolve-WindowsExecutable 'iscc.exe' @(
+    (Join-Path $env:LocalAppData 'Programs\Inno Setup 6\ISCC.exe'),
     (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
     (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe')
 )
