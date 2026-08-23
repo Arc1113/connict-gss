@@ -31,10 +31,10 @@ release builder. It validates the application on Ubuntu, then builds and signs
 the installer on `windows-2022` behind the protected `windows-release`
 environment.
 
-Manual test builds require no private runtime bundle and no signing secrets.
-They use an ephemeral self-signed certificate that is trusted only on the CI
-validation runner; Windows will correctly show an unknown-publisher warning
-when that test artifact is installed elsewhere.
+Pull-request and manually dispatched test builds require no private runtime
+bundle and no signing secrets. They use an ephemeral self-signed certificate
+that is trusted only on the CI validation runner; Windows will correctly show
+an unknown-publisher warning when that test artifact is installed elsewhere.
 
 Configure these environment values before selecting `trusted` signing or
 pushing a `vX.Y.Z` production tag:

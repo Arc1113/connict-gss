@@ -1,6 +1,7 @@
 name: Windows release
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       version:
@@ -74,16 +75,26 @@ jobs:
         env:
           DISPATCH_VERSION: ${{ inputs.version }}
           DISPATCH_SIGNING_MODE: ${{ inputs.signing_mode }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           $version = $env:DISPATCH_VERSION
           if ([string]::IsNullOrWhiteSpace($version) -and $env:GITHUB_REF_TYPE -eq 'tag') {
             $version = $env:GITHUB_REF_NAME -replace '^v', ''
           }
+          if ([string]::IsNullOrWhiteSpace($version) -and $env:GITHUB_EVENT_NAME -eq 'pull_request') {
+            $version = "0.0.$env:GITHUB_RUN_NUMBER-pr$env:PULL_REQUEST_NUMBER"
+          }
           if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') {
             throw 'A semantic release version is required. Tags must use vX.Y.Z.'
           }
 
-          $signingMode = if ($env:GITHUB_REF_TYPE -eq 'tag') { 'trusted' } else { $env:DISPATCH_SIGNING_MODE }
+          $signingMode = if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            'trusted'
+          } elseif ([string]::IsNullOrWhiteSpace($env:DISPATCH_SIGNING_MODE)) {
+            'test'
+          } else {
+            $env:DISPATCH_SIGNING_MODE
+          }
           if ($signingMode -notin @('test', 'trusted')) {
             throw 'Signing mode must be test or trusted.'
           }
