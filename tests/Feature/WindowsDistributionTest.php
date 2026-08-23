@@ -41,6 +41,7 @@ class WindowsDistributionTest extends TestCase
         $network = File::get(base_path('distribution/windows/scripts/Update-ConnictGssNetworkConfiguration.ps1'));
         $installer = File::get(base_path('distribution/windows/installer/connict-gss.iss'));
         $runtimeBuild = File::get(base_path('distribution/windows/scripts/Build-ConnictGssRelease.ps1'));
+        $releaseWorkflow = File::get(base_path('.github/workflows/windows-release.yml'));
         $runtimeBootstrap = File::get(base_path('distribution/windows/scripts/Get-ConnictGssRuntimeInputs.ps1'));
         $phpConfiguration = File::get(base_path('distribution/windows/config/php.ini'));
         $runtimeManifest = File::get(base_path('distribution/windows/scripts/New-ConnictGssRuntimeManifest.ps1'));
@@ -89,6 +90,9 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('REVERB_ALLOWED_ORIGINS', $network);
         $this->assertStringContainsString('Write-ConnictGssRuntimeConfiguration.ps1', $network);
         $this->assertStringContainsString('Assert-VerifiedRuntime', $runtimeBuild);
+        $this->assertStringContainsString('$releaseParameters = @{', $releaseWorkflow);
+        $this->assertStringContainsString('Build-ConnictGssRelease.ps1 @releaseParameters', $releaseWorkflow);
+        $this->assertStringNotContainsString("@('-Version', \$env:RELEASE_VERSION)", $releaseWorkflow);
         $this->assertStringContainsString("'pgAdmin 4', 'StackBuilder'", $runtimeBootstrap);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $runtimeBuild);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $ttsBuild);

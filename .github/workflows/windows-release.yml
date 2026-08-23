@@ -156,11 +156,13 @@ jobs:
           RELEASE_VERSION: ${{ steps.release-inputs.outputs.version }}
           SIGNING_MODE: ${{ steps.release-inputs.outputs.signing_mode }}
         run: |
-          $arguments = @('-Version', $env:RELEASE_VERSION)
-          if ($env:SIGNING_MODE -eq 'trusted') {
-            $arguments += '-RequireCodeSigning'
+          $releaseParameters = @{
+            Version = $env:RELEASE_VERSION
           }
-          ./distribution/windows/scripts/Build-ConnictGssRelease.ps1 @arguments
+          if ($env:SIGNING_MODE -eq 'trusted') {
+            $releaseParameters.RequireCodeSigning = $true
+          }
+          ./distribution/windows/scripts/Build-ConnictGssRelease.ps1 @releaseParameters
       - name: Install and initialize release candidate
         shell: pwsh
         env:
