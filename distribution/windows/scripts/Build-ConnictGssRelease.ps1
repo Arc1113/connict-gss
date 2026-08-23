@@ -9,6 +9,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$Version = $Version.Trim()
 if ($Version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') { throw 'Version must be semantic, for example 1.0.0.' }
 if (-not (Test-Path -LiteralPath $RuntimeInputDirectory) -or -not (Test-Path -LiteralPath $RuntimeManifest)) {
     throw 'Windows runtime inputs and a verified runtime-manifest.json are required before packaging.'

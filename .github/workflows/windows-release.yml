@@ -84,6 +84,7 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($version) -and $env:GITHUB_EVENT_NAME -eq 'pull_request') {
             $version = "0.0.$env:GITHUB_RUN_NUMBER-pr$env:PULL_REQUEST_NUMBER"
           }
+          $version = $version.Trim()
           if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') {
             throw 'A semantic release version is required. Tags must use vX.Y.Z.'
           }
