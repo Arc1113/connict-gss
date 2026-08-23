@@ -60,6 +60,11 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('new SetupWizard', $launcher);
         $this->assertStringContainsString('<ImplicitUsings>enable</ImplicitUsings>', $launcherProject);
         $this->assertStringNotContainsString("password= ''", File::get(base_path('distribution/windows/scripts/Install-ConnictGssServices.ps1')));
+        $this->assertStringNotContainsString("password= ''", $setup);
+        $this->assertStringContainsString('runtime\\vclibs', $setup);
+        $this->assertStringContainsString('PostgreSQL cluster initialization failed', $setup);
+        $this->assertStringContainsString('setup-error.json', $setup.$diagnostics);
+        $this->assertStringContainsString('Microsoft.VCLibs.x64.14.00.Desktop.appx', $runtimeBootstrap);
         foreach (['reverb', 'queue', 'tts'] as $service) {
             $this->assertStringContainsString('<description>', File::get(base_path("distribution/windows/services/connict-gss-{$service}.xml")));
         }

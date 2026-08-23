@@ -31,6 +31,7 @@ try {
     Copy-SafeTextFile (Join-Path $DataRoot 'status.json') (Join-Path $workspace 'status.json')
     Copy-SafeTextFile (Join-Path $InstallRoot 'release-manifest.json') (Join-Path $workspace 'release-manifest.json')
     Copy-SafeTextFile (Join-Path $InstallRoot 'runtime-manifest.json') (Join-Path $workspace 'runtime-manifest.json')
+    Copy-SafeTextFile (Join-Path $DataRoot 'logs\setup-error.json') (Join-Path $workspace 'setup-error.json')
 
     # Do not include runtime.env, database/media/backup contents, QR values, or
     # raw logs. Their presence could disclose institutional or credential data.

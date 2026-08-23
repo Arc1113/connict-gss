@@ -4,5 +4,6 @@
   <executable>%BASE%\..\runtime\frankenphp\php.exe</executable>
   <arguments>%BASE%\..\app\artisan reverb:start --host=127.0.0.1 --port=8080</arguments>
   <env name="GSS_DATA_DIR" value="C:\ProgramData\ConnictGSS" /><env name="GSS_ENV_FILE" value="C:\ProgramData\ConnictGSS\configuration\runtime.env" />
+  <env name="PATH" value="%BASE%\..\runtime\vclibs;%PATH%" />
   <onfailure action="restart" delay="10 sec" />
 </service>

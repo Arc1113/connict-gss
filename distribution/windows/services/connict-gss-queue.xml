@@ -4,5 +4,6 @@
   <executable>%BASE%\..\runtime\frankenphp\php.exe</executable>
   <arguments>%BASE%\..\app\artisan queue:work database --queue=tts-preparation --sleep=1 --tries=1 --timeout=180</arguments>
   <env name="GSS_DATA_DIR" value="C:\ProgramData\ConnictGSS" /><env name="GSS_ENV_FILE" value="C:\ProgramData\ConnictGSS\configuration\runtime.env" />
+  <env name="PATH" value="%BASE%\..\runtime\vclibs;%PATH%" />
   <onfailure action="restart" delay="10 sec" />
 </service>

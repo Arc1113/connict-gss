@@ -10,6 +10,19 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+trap {
+    try {
+        $setupLogDirectory = Join-Path $DataRoot 'logs'
+        New-Item -ItemType Directory -Path $setupLogDirectory -Force | Out-Null
+        [ordered]@{
+            failed_at = [DateTime]::UtcNow.ToString('o')
+            message = $_.Exception.Message
+            position = $_.InvocationInfo.PositionMessage
+            stack = $_.ScriptStackTrace
+        } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $setupLogDirectory 'setup-error.json') -NoNewline
+    } catch { }
+    exit 1
+}
 if ($SetupRequest) {
     try {
         $encrypted = [IO.File]::ReadAllBytes($SetupRequest)
@@ -35,6 +48,7 @@ foreach ($directory in 'database', 'storage', 'backups', 'certificates', 'config
     New-Item -ItemType Directory -Path (Join-Path $DataRoot $directory) -Force | Out-Null
 }
 & (Join-Path $InstallRoot 'scripts\Protect-ConnictGssData.ps1') -DataRoot $DataRoot
+Remove-Item -LiteralPath (Join-Path $DataRoot 'logs\setup-error.json') -Force -ErrorAction SilentlyContinue
 
 function New-Secret([int]$Bytes = 32) {
     $buffer = New-Object byte[] $Bytes
@@ -43,6 +57,7 @@ function New-Secret([int]$Bytes = 32) {
 }
 
 $postgres = Join-Path $InstallRoot 'runtime\postgres\bin'
+$env:Path = (Join-Path $InstallRoot 'runtime\vclibs') + [IO.Path]::PathSeparator + $env:Path
 $php = Join-Path $InstallRoot 'runtime\frankenphp\php.exe'
 $artisan = Join-Path $InstallRoot 'app\artisan'
 $environmentFile = Join-Path $DataRoot 'configuration\runtime.env'
@@ -78,16 +93,19 @@ if (-not (Test-Path -LiteralPath (Join-Path $cluster 'PG_VERSION'))) {
     try {
         [IO.File]::WriteAllText($passwordFile, $databasePassword, [Text.UTF8Encoding]::new($false))
         & (Join-Path $postgres 'initdb.exe') -D $cluster -U postgres --pwfile=$passwordFile --auth-host=scram-sha-256 --auth-local=scram-sha-256 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL cluster initialization failed. Verify the bundled native runtime.' }
     } finally { Remove-Item -LiteralPath $passwordFile -Force -ErrorAction SilentlyContinue }
     Add-Content -LiteralPath (Join-Path $cluster 'postgresql.conf') "listen_addresses = '127.0.0.1'`nport = 5432"
     & (Join-Path $postgres 'pg_ctl.exe') register -N ConnictGSS-PostgreSQL -D $cluster -o '-h 127.0.0.1 -p 5432' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not register the Connict GSS PostgreSQL service.' }
-    & sc.exe config ConnictGSS-PostgreSQL obj= 'NT AUTHORITY\LocalService' password= '' | Out-Null
+    & sc.exe config ConnictGSS-PostgreSQL obj= 'NT AUTHORITY\LocalService' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not restrict the Connict GSS PostgreSQL service identity.' }
     Start-Service ConnictGSS-PostgreSQL
     $env:PGPASSWORD = $databasePassword
     & (Join-Path $postgres 'psql.exe') -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE USER connict_gss WITH PASSWORD '$databasePassword';" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Could not create the Connict GSS PostgreSQL role.' }
     & (Join-Path $postgres 'createdb.exe') -h 127.0.0.1 -U postgres -O connict_gss connict_gss | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Could not create the Connict GSS PostgreSQL database.' }
     Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
 }
 
