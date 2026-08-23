@@ -60,6 +60,9 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('new SetupWizard', $launcher);
         $this->assertStringContainsString('<ImplicitUsings>enable</ImplicitUsings>', $launcherProject);
         $this->assertStringNotContainsString("password= ''", File::get(base_path('distribution/windows/scripts/Install-ConnictGssServices.ps1')));
+        foreach (['reverb', 'queue', 'tts'] as $service) {
+            $this->assertStringContainsString('<description>', File::get(base_path("distribution/windows/services/connict-gss-{$service}.xml")));
+        }
         $this->assertStringContainsString('ProtectedData.Protect', $setupWizard);
         $this->assertStringContainsString('File.Delete(requestPath)', $setupWizard);
         $this->assertStringContainsString('WaitForReadiness', $setupWizard);

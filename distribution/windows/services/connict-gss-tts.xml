@@ -1,5 +1,6 @@
 <service>
   <id>ConnictGSS-TTS</id><name>Connict GSS Offline TTS</name>
+  <description>Connict GSS local offline text-to-speech service.</description>
   <executable>%BASE%\..\runtime\tts\tts-server.exe</executable>
   <arguments>--host 127.0.0.1 --port 8880</arguments>
   <workingdirectory>%BASE%\..\runtime\tts</workingdirectory>
