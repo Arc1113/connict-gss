@@ -54,8 +54,13 @@ Remove-Item -LiteralPath (Join-Path $DataRoot 'logs\setup-error.json') -Force -E
 
 function New-Secret([int]$Bytes = 32) {
     $buffer = New-Object byte[] $Bytes
-    [Security.Cryptography.RandomNumberGenerator]::Fill($buffer)
-    return [Convert]::ToHexString($buffer).ToLowerInvariant()
+    $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $generator.GetBytes($buffer)
+    } finally {
+        $generator.Dispose()
+    }
+    return ([BitConverter]::ToString($buffer) -replace '-', '').ToLowerInvariant()
 }
 
 $postgres = Join-Path $InstallRoot 'runtime\postgres\bin'
@@ -66,7 +71,12 @@ $databasePassword = New-Secret
 $reverbKey = New-Secret 16
 $reverbSecret = New-Secret
 $appKeyBytes = New-Object byte[] 32
-[Security.Cryptography.RandomNumberGenerator]::Fill($appKeyBytes)
+$appKeyGenerator = [Security.Cryptography.RandomNumberGenerator]::Create()
+try {
+    $appKeyGenerator.GetBytes($appKeyBytes)
+} finally {
+    $appKeyGenerator.Dispose()
+}
 $appKey = 'base64:' + [Convert]::ToBase64String($appKeyBytes)
 $lanAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -match '^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)' -and $_.PrefixOrigin -ne 'WellKnown' } | Select-Object -First 1 -ExpandProperty IPAddress)
 if (-not $lanAddress) { throw 'No private LAN IPv4 address was detected. Connect the server laptop to the ceremony network and try again.' }
