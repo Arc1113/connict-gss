@@ -194,7 +194,13 @@ jobs:
 
           $installRoot = Join-Path $env:ProgramFiles 'Connict GSS'
           & (Join-Path $installRoot 'scripts/Initialize-ConnictGss.ps1') -InstallRoot $installRoot
-          if ($LASTEXITCODE -ne 0) { throw 'First-run initialization failed.' }
+          if ($LASTEXITCODE -ne 0) {
+            $setupError = Join-Path $env:ProgramData 'ConnictGSS/logs/setup-error.json'
+            if (Test-Path -LiteralPath $setupError) {
+              Get-Content -LiteralPath $setupError -Raw | Write-Error
+            }
+            throw 'First-run initialization failed.'
+          }
 
           & (Join-Path $installRoot 'scripts/Invoke-ConnictGssBackup.ps1') -InstallRoot $installRoot
           if ($LASTEXITCODE -ne 0) { throw 'Release validation backup failed.' }
@@ -224,7 +230,7 @@ jobs:
             Copy-Item -LiteralPath $installLog -Destination $evidence -Force
           }
           $dataRoot = Join-Path $env:ProgramData 'ConnictGSS'
-          foreach ($relative in 'status.json', 'diagnostics') {
+          foreach ($relative in 'status.json', 'logs', 'diagnostics') {
             $source = Join-Path $dataRoot $relative
             if (Test-Path -LiteralPath $source) {
               Copy-Item -LiteralPath $source -Destination $evidence -Recurse -Force

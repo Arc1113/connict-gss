@@ -67,6 +67,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringNotContainsString('runtime\\vclibs', $setup);
         $this->assertStringContainsString('PostgreSQL cluster initialization failed', $setup);
         $this->assertStringContainsString('setup-error.json', $setup.$diagnostics);
+        $this->assertStringContainsString('Connict GSS initialization failed:', $setup);
         $this->assertStringContainsString('vc_redist.x64.exe', $runtimeBootstrap);
         $this->assertStringContainsString('14.44.35211.0', $runtimeBootstrap);
         $this->assertStringContainsString('vc_redist.x64.exe', $installer);
@@ -96,6 +97,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertSame(2, substr_count($releaseWorkflow, "extensions: 'fileinfo, pgsql, mbstring, intl, zip, bcmath'"));
         $this->assertStringContainsString('Verify PHP packaging extensions', $releaseWorkflow);
         $this->assertStringContainsString('Required PHP extension is unavailable', $releaseWorkflow);
+        $this->assertStringContainsString("foreach (\$relative in 'status.json', 'logs', 'diagnostics')", $releaseWorkflow);
         $this->assertStringContainsString("'pgAdmin 4', 'StackBuilder'", $runtimeBootstrap);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $runtimeBuild);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $ttsBuild);

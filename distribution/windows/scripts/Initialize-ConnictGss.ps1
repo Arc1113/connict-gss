@@ -11,16 +11,18 @@ param(
 
 $ErrorActionPreference = 'Stop'
 trap {
+    $initializationError = $_
     try {
         $setupLogDirectory = Join-Path $DataRoot 'logs'
         New-Item -ItemType Directory -Path $setupLogDirectory -Force | Out-Null
         [ordered]@{
             failed_at = [DateTime]::UtcNow.ToString('o')
-            message = $_.Exception.Message
-            position = $_.InvocationInfo.PositionMessage
-            stack = $_.ScriptStackTrace
+            message = $initializationError.Exception.Message
+            position = $initializationError.InvocationInfo.PositionMessage
+            stack = $initializationError.ScriptStackTrace
         } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $setupLogDirectory 'setup-error.json') -NoNewline
     } catch { }
+    [Console]::Error.WriteLine("Connict GSS initialization failed: $($initializationError.Exception.Message)")
     exit 1
 }
 if ($SetupRequest) {
