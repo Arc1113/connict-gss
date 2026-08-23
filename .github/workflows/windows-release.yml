@@ -9,7 +9,7 @@ on:
         required: true
         type: string
       signing_mode:
-        description: Test uses a temporary self-signed certificate; trusted requires configured signing secrets
+        description: Test builds an explicitly unsigned preview; trusted requires configured signing secrets
         required: true
         default: test
         type: choice
@@ -115,45 +115,24 @@ jobs:
           cache-dependency-path: docker/local-tts/requirements.txt
       - name: Install Inno Setup
         run: choco install innosetup --no-progress --yes
-      - name: Prepare code-signing certificate
+      - name: Prepare trusted code-signing certificate
+        if: steps.release-inputs.outputs.signing_mode == 'trusted'
         shell: pwsh
         env:
           SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
           SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
           SIGNING_TIMESTAMP_URL: ${{ vars.WINDOWS_SIGNING_TIMESTAMP_URL }}
-          SIGNING_MODE: ${{ steps.release-inputs.outputs.signing_mode }}
         run: |
           $certificatePath = Join-Path $env:RUNNER_TEMP 'connict-gss-signing.pfx'
-          if ($env:SIGNING_MODE -eq 'trusted') {
-            if ([string]::IsNullOrWhiteSpace($env:SIGNING_CERTIFICATE_BASE64) -or [string]::IsNullOrWhiteSpace($env:SIGNING_CERTIFICATE_PASSWORD)) {
-              throw 'Trusted Windows builds require the code-signing certificate secrets.'
-            }
-            if ($env:SIGNING_TIMESTAMP_URL -notmatch '^https://') {
-              throw 'WINDOWS_SIGNING_TIMESTAMP_URL must be an HTTPS URL for trusted builds.'
-            }
-            [System.IO.File]::WriteAllBytes($certificatePath, [System.Convert]::FromBase64String($env:SIGNING_CERTIFICATE_BASE64))
-            $certificatePassword = $env:SIGNING_CERTIFICATE_PASSWORD
-            "CONNICT_GSS_SIGNING_TIMESTAMP_URL=$env:SIGNING_TIMESTAMP_URL" | Add-Content -Path $env:GITHUB_ENV
-          } else {
-            $certificatePassword = [guid]::NewGuid().ToString('N')
-            $securePassword = ConvertTo-SecureString $certificatePassword -AsPlainText -Force
-            $certificate = New-SelfSignedCertificate `
-              -Type CodeSigningCert `
-              -Subject 'CN=Connict GSS Test Build' `
-              -CertStoreLocation 'Cert:\CurrentUser\My' `
-              -KeyAlgorithm RSA `
-              -KeyLength 3072 `
-              -HashAlgorithm SHA256 `
-              -KeyExportPolicy Exportable `
-              -NotAfter (Get-Date).AddDays(7)
-            Export-PfxCertificate -Cert $certificate -FilePath $certificatePath -Password $securePassword | Out-Null
-            $publicCertificate = Join-Path $env:RUNNER_TEMP 'connict-gss-test-signing.cer'
-            Export-Certificate -Cert $certificate -FilePath $publicCertificate | Out-Null
-            Import-Certificate -FilePath $publicCertificate -CertStoreLocation 'Cert:\CurrentUser\Root' | Out-Null
-            "CONNICT_GSS_ALLOW_UNTIMESTAMPED_SIGNING=1" | Add-Content -Path $env:GITHUB_ENV
-            "CONNICT_GSS_TEST_CERTIFICATE_THUMBPRINT=$($certificate.Thumbprint)" | Add-Content -Path $env:GITHUB_ENV
+          if ([string]::IsNullOrWhiteSpace($env:SIGNING_CERTIFICATE_BASE64) -or [string]::IsNullOrWhiteSpace($env:SIGNING_CERTIFICATE_PASSWORD)) {
+            throw 'Trusted Windows builds require the code-signing certificate secrets.'
           }
-
+          if ($env:SIGNING_TIMESTAMP_URL -notmatch '^https://') {
+            throw 'WINDOWS_SIGNING_TIMESTAMP_URL must be an HTTPS URL for trusted builds.'
+          }
+          [System.IO.File]::WriteAllBytes($certificatePath, [System.Convert]::FromBase64String($env:SIGNING_CERTIFICATE_BASE64))
+          $certificatePassword = $env:SIGNING_CERTIFICATE_PASSWORD
+          "CONNICT_GSS_SIGNING_TIMESTAMP_URL=$env:SIGNING_TIMESTAMP_URL" | Add-Content -Path $env:GITHUB_ENV
           "CONNICT_GSS_SIGNING_CERTIFICATE_PATH=$certificatePath" | Add-Content -Path $env:GITHUB_ENV
           "CONNICT_GSS_SIGNING_CERTIFICATE_PASSWORD=$certificatePassword" | Add-Content -Path $env:GITHUB_ENV
       - name: Build verified Windows runtime
@@ -174,10 +153,11 @@ jobs:
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ steps.release-inputs.outputs.version }}
+          SIGNING_MODE: ${{ steps.release-inputs.outputs.signing_mode }}
         run: |
-          $arguments = @('-Version', $env:RELEASE_VERSION, '-RequireCodeSigning')
-          if ($env:CONNICT_GSS_ALLOW_UNTIMESTAMPED_SIGNING -eq '1') {
-            $arguments += '-AllowUntimestampedCodeSigning'
+          $arguments = @('-Version', $env:RELEASE_VERSION)
+          if ($env:SIGNING_MODE -eq 'trusted') {
+            $arguments += '-RequireCodeSigning'
           }
           ./distribution/windows/scripts/Build-ConnictGssRelease.ps1 @arguments
       - name: Install and initialize release candidate
@@ -264,10 +244,6 @@ jobs:
           if (Test-Path -LiteralPath $stopScript) { & $stopScript }
           if ($env:CONNICT_GSS_SIGNING_CERTIFICATE_PATH) {
             Remove-Item -LiteralPath $env:CONNICT_GSS_SIGNING_CERTIFICATE_PATH -Force -ErrorAction SilentlyContinue
-          }
-          if ($env:CONNICT_GSS_TEST_CERTIFICATE_THUMBPRINT) {
-            Remove-Item -LiteralPath "Cert:\CurrentUser\Root\$env:CONNICT_GSS_TEST_CERTIFICATE_THUMBPRINT" -Force -ErrorAction SilentlyContinue
-            Remove-Item -LiteralPath "Cert:\CurrentUser\My\$env:CONNICT_GSS_TEST_CERTIFICATE_THUMBPRINT" -Force -ErrorAction SilentlyContinue
           }
       - name: Write installer checksum
         shell: pwsh
