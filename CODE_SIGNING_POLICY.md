@@ -26,7 +26,7 @@ accompanied by a SHA-256 checksum.
 
 ## Build and approval controls
 
-- Source and builds originate from `Aracena18/connict-gss-release` on GitHub.
+- Source and builds originate from `Aracena18/connict-gss` on GitHub.
 - GitHub-hosted runners build the complete artifact from the referenced commit.
 - Third-party runtime inputs are pinned and checksum-verified before signing.
 - Pull requests from contributors who cannot commit directly require review.

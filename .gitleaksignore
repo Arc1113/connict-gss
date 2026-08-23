@@ -1,13 +1,13 @@
 # Historical false positives: deterministic, non-secret QR fixture tokens and a
 # prose line whose character-count wording matched the generic API-key rule.
-7e4ef314b07d4f7f4dad029f8ae74604e44c5d11:tests/Support/browser-phase3-fixture.php:generic-api-key:72
-7e4ef314b07d4f7f4dad029f8ae74604e44c5d11:tests/Support/browser-phase3-fixture.php:generic-api-key:105
-7e4ef314b07d4f7f4dad029f8ae74604e44c5d11:tests/Support/browser-phase3-fixture.php:generic-api-key:138
-7e4ef314b07d4f7f4dad029f8ae74604e44c5d11:tests/Support/browser-phase3-fixture.php:generic-api-key:171
-7e4ef314b07d4f7f4dad029f8ae74604e44c5d11:tests/Support/browser-phase3-fixture.php:generic-api-key:204
-1977733bc1e95fddf19fed12cf086166669fd7ea:docs/automated-announcements.md:generic-api-key:48
-5b726a421667cf362c576bd2994e634a21497ba5:database/seeders/DatabaseSeeder.php:generic-api-key:75
-5b726a421667cf362c576bd2994e634a21497ba5:database/seeders/DatabaseSeeder.php:generic-api-key:85
-5b726a421667cf362c576bd2994e634a21497ba5:database/seeders/DatabaseSeeder.php:generic-api-key:95
-5b726a421667cf362c576bd2994e634a21497ba5:database/seeders/DatabaseSeeder.php:generic-api-key:105
-5b726a421667cf362c576bd2994e634a21497ba5:database/seeders/DatabaseSeeder.php:generic-api-key:115
+c1a2e1ef7d241e9596e16db2471d549bf3edd162:tests/Support/browser-phase3-fixture.php:generic-api-key:72
+c1a2e1ef7d241e9596e16db2471d549bf3edd162:tests/Support/browser-phase3-fixture.php:generic-api-key:105
+c1a2e1ef7d241e9596e16db2471d549bf3edd162:tests/Support/browser-phase3-fixture.php:generic-api-key:138
+c1a2e1ef7d241e9596e16db2471d549bf3edd162:tests/Support/browser-phase3-fixture.php:generic-api-key:171
+c1a2e1ef7d241e9596e16db2471d549bf3edd162:tests/Support/browser-phase3-fixture.php:generic-api-key:204
+d38a3c67589c6e912201cc5f1046db80612c30e2:docs/automated-announcements.md:generic-api-key:48
+becdf5136618841bc443ce79443c0bd42df3050d:database/seeders/DatabaseSeeder.php:generic-api-key:75
+becdf5136618841bc443ce79443c0bd42df3050d:database/seeders/DatabaseSeeder.php:generic-api-key:85
+becdf5136618841bc443ce79443c0bd42df3050d:database/seeders/DatabaseSeeder.php:generic-api-key:95
+becdf5136618841bc443ce79443c0bd42df3050d:database/seeders/DatabaseSeeder.php:generic-api-key:105
+becdf5136618841bc443ce79443c0bd42df3050d:database/seeders/DatabaseSeeder.php:generic-api-key:115
