@@ -4,7 +4,8 @@ param(
     [string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path,
     [string]$RuntimeInputDirectory = (Join-Path $PSScriptRoot '..\runtime-input'),
     [string]$RuntimeManifest = (Join-Path $PSScriptRoot '..\runtime-input\runtime-manifest.json'),
-    [switch]$RequireCodeSigning
+    [switch]$RequireCodeSigning,
+    [switch]$AllowUntimestampedCodeSigning
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,6 +20,21 @@ function Assert-NativeCommandSucceeded([string]$Command) {
     }
 }
 
+function Resolve-WindowsExecutable([string]$Name, [string[]]$FallbackPaths) {
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($null -ne $command) {
+        return $command.Source
+    }
+
+    foreach ($fallbackPath in $FallbackPaths) {
+        if (Test-Path -LiteralPath $fallbackPath -PathType Leaf) {
+            return $fallbackPath
+        }
+    }
+
+    return $null
+}
+
 function Sign-ConnictGssBinary([string]$Path) {
     if (-not $RequireCodeSigning) {
         return
@@ -27,19 +43,36 @@ function Sign-ConnictGssBinary([string]$Path) {
     $certificatePath = $env:CONNICT_GSS_SIGNING_CERTIFICATE_PATH
     $certificatePassword = $env:CONNICT_GSS_SIGNING_CERTIFICATE_PASSWORD
     $timestampUrl = $env:CONNICT_GSS_SIGNING_TIMESTAMP_URL
-    if (-not $certificatePath -or -not $certificatePassword -or $timestampUrl -notmatch '^https://') {
-        throw 'Code signing requires a certificate path, certificate password, and HTTPS timestamp URL.'
+    if (-not $certificatePath -or -not $certificatePassword) {
+        throw 'Code signing requires a certificate path and certificate password.'
+    }
+    if (-not $AllowUntimestampedCodeSigning -and $timestampUrl -notmatch '^https://') {
+        throw 'Trusted code signing requires an HTTPS timestamp URL.'
     }
     if (-not (Test-Path -LiteralPath $certificatePath -PathType Leaf)) {
         throw 'The configured code-signing certificate does not exist.'
     }
 
-    $signTool = Get-Command signtool.exe -ErrorAction SilentlyContinue
-    if ($null -eq $signTool) {
+    $sdkRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
+    $sdkSignTools = if (Test-Path -LiteralPath $sdkRoot -PathType Container) {
+        @(Get-ChildItem -LiteralPath $sdkRoot -Filter signtool.exe -File -Recurse |
+            Where-Object { $_.DirectoryName -match '\\x64$' } |
+            Sort-Object FullName -Descending |
+            ForEach-Object FullName)
+    } else {
+        @()
+    }
+    $signTool = Resolve-WindowsExecutable 'signtool.exe' $sdkSignTools
+    if (-not $signTool) {
         throw 'signtool.exe is required to sign the Windows release.'
     }
 
-    & $signTool.Source sign /fd SHA256 /f $certificatePath /p $certificatePassword /tr $timestampUrl /td SHA256 $Path
+    $arguments = @('sign', '/fd', 'SHA256', '/f', $certificatePath, '/p', $certificatePassword)
+    if ($timestampUrl -match '^https://') {
+        $arguments += @('/tr', $timestampUrl, '/td', 'SHA256')
+    }
+    $arguments += $Path
+    & $signTool @arguments
     Assert-NativeCommandSucceeded "Signing $Path"
 
     $signature = Get-AuthenticodeSignature -FilePath $Path
@@ -91,7 +124,7 @@ function Assert-VerifiedRuntime([string]$Root, [string]$ManifestPath) {
         'tts/tts-server.exe',
         'tts/bundle-manifest.json',
         'tts/THIRD_PARTY_NOTICES.txt',
-        'tts/tools/lame.exe',
+        'tts/licenses/license-inventory.json',
         'winsw/WinSW-x64.exe'
     )
     $missingArtifacts = @($requiredArtifacts | Where-Object { $_ -notin $manifestPaths })
@@ -99,7 +132,7 @@ function Assert-VerifiedRuntime([string]$Root, [string]$ManifestPath) {
         throw "The verified runtime is incomplete. Missing: $($missingArtifacts -join ', ')"
     }
 
-    $requiredDirectories = @('tts/models', 'tts/tools/espeak-ng', 'tts/licenses')
+    $requiredDirectories = @('tts/models', 'tts/licenses')
     $missingDirectories = @($requiredDirectories | Where-Object {
         -not (Test-Path -LiteralPath (Join-Path $Root ($_ -replace '/', '\')) -PathType Container)
     })
@@ -152,7 +185,12 @@ dotnet publish distribution\windows\launcher\ConnictGSS.csproj -c Release -o dis
 Assert-NativeCommandSucceeded 'dotnet publish'
 Sign-ConnictGssBinary (Join-Path $RepositoryRoot 'distribution\windows\launcher\publish\ConnictGSS.exe')
 $env:CONNICT_GSS_VERSION = $Version
-& iscc distribution\windows\installer\connict-gss.iss
+$innoCompiler = Resolve-WindowsExecutable 'iscc.exe' @(
+    (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
+    (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe')
+)
+if (-not $innoCompiler) { throw 'Inno Setup 6 is required to build the Windows installer.' }
+& $innoCompiler distribution\windows\installer\connict-gss.iss
 Assert-NativeCommandSucceeded 'iscc'
 $installer = Join-Path $RepositoryRoot "distribution\windows\installer\Output\ConnictGSS-Setup-$Version.exe"
 if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {

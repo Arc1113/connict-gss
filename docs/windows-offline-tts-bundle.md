@@ -8,31 +8,30 @@ Minimum contents:
 tts/
 ├── tts-server.exe
 ├── models/                 # Kokoro model revision f3ff3571791e39611d31c381e3a41a3af07b4987
-├── tools/                  # bundled LAME and eSpeak-NG runtime
 ├── licenses/
+│   └── license-inventory.json
 ├── THIRD_PARTY_NOTICES.txt
 └── bundle-manifest.json
 ```
 
-The executable must listen only on `127.0.0.1:8880`, implement `/health` and `/v1/synthesize`, and never attempt a package installation or network/model download. It must preserve the current request limits and MP3 output behavior in `docker/local-tts/server.py`.
+The executable must listen only on `127.0.0.1:8880`, implement `/health` and `/v1/synthesize`, and never attempt a package installation or network/model download. It must preserve the current request limits and MP3 output behavior in `docker/local-tts/server.py`. MP3 encoding is provided by the pinned `lameenc` Python extension, and English phonemization is provided by the pinned `espeakng-loader` extension, so no separately downloaded Windows executables are required.
 
-`Build-ConnictGssOfflineTts.ps1` creates this bundle on the Windows release runner. It uses the pinned Python/Torch/Kokoro versions, validates the service with `HF_HUB_OFFLINE=1`, performs MP3 synthesis with both supported voices, and writes `bundle-manifest.json`. Supply checksum-verified Windows x64 LAME and eSpeak-NG inputs plus a reviewed license directory (including `THIRD_PARTY_NOTICES.txt`).
+`Build-ConnictGssOfflineTts.ps1` creates this bundle on the GitHub Windows runner. It uses pinned Python, Torch, Kokoro, LAME, and phonemizer packages, validates the service with `HF_HUB_OFFLINE=1`, performs MP3 synthesis with both supported voices, writes `bundle-manifest.json`, and generates the dependency/model license inventory.
 
 Before release:
 
-1. Build the bundle on Windows x64 from the pinned Python/Torch/Kokoro dependency set used by `docker/local-tts/requirements.txt`.
+1. Build the bundle on the GitHub Windows x64 runner from the pinned dependency set in `docker/local-tts/requirements.txt`.
 2. Run it with outbound network access disabled and verify `/health` reports the pinned model revision.
 3. Synthesize both supported voices and validate MP3 output.
-4. Review licenses for Python, PyTorch, Kokoro, model assets, eSpeak, LAME, and any bundled DLLs.
-5. Stage it below `distribution/windows/runtime-input/tts/`.
-6. Register its immutable build source, version, license record, and SHA-256/attestation:
+4. Review the generated `licenses/license-inventory.json`, copied license files, and `THIRD_PARTY_NOTICES.txt` before production distribution.
+5. Register the workflow run, source commit, version, and build attestation in `runtime-provenance.json`.
 
 ```powershell
 ./distribution/windows/scripts/Register-ConnictGssTtsRuntime.ps1 `
-  -Version '1.0.0' `
-  -SourceUrl 'https://your-internal-release-registry/connict-gss-tts-1.0.0.zip' `
-  -LicenseRecord 'licenses reviewed in release record GSS-TTS-1.0.0' `
-  -Verification 'archive-sha256:...; release-attestation:...'
+  -Version 'kokoro-0.9.4-f3ff3571' `
+  -SourceUrl 'https://github.com/OWNER/REPOSITORY/actions/runs/RUN_ID' `
+  -LicenseRecord 'generated inventory reviewed for production release' `
+  -Verification 'GitHub-Actions-attestation:RUN_ID; source-commit:COMMIT_SHA'
 ./distribution/windows/scripts/New-ConnictGssRuntimeManifest.ps1
 ```
 

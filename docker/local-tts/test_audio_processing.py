@@ -2,10 +2,62 @@ import unittest
 
 import numpy as np
 
-from audio_processing import SAMPLE_RATE, join_sections, normalize_silence
+from audio_processing import SAMPLE_RATE, encode_mp3, join_sections, normalize_silence
 
 
 class AudioProcessingTest(unittest.TestCase):
+    def test_mp3_encoder_receives_clipped_mono_pcm(self):
+        class FakeEncoder:
+            instance = None
+
+            def __init__(self):
+                self.settings = {}
+                self.pcm = b""
+                FakeEncoder.instance = self
+
+            def set_bit_rate(self, value):
+                self.settings["bit_rate"] = value
+
+            def set_in_sample_rate(self, value):
+                self.settings["sample_rate"] = value
+
+            def set_channels(self, value):
+                self.settings["channels"] = value
+
+            def set_quality(self, value):
+                self.settings["quality"] = value
+
+            def silence(self):
+                self.settings["silent"] = True
+
+            def encode(self, pcm):
+                self.pcm = pcm
+                return b"encoded"
+
+            def flush(self):
+                return b"-flushed"
+
+        result = encode_mp3(
+            np.array([-2.0, 0.5, 2.0], dtype=np.float32),
+            encoder_factory=FakeEncoder,
+        )
+
+        self.assertEqual(b"encoded-flushed", result)
+        self.assertEqual(
+            {
+                "bit_rate": 48,
+                "sample_rate": SAMPLE_RATE,
+                "channels": 1,
+                "quality": 2,
+                "silent": True,
+            },
+            FakeEncoder.instance.settings,
+        )
+        self.assertEqual(
+            [-32767, 16383, 32767],
+            np.frombuffer(FakeEncoder.instance.pcm, dtype="<i2").tolist(),
+        )
+
     def test_sections_are_joined_for_one_contextual_utterance(self):
         self.assertEqual(
             "We proudly present, Maria Santos, magna cum laude.",

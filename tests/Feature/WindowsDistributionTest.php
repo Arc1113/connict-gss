@@ -43,6 +43,7 @@ class WindowsDistributionTest extends TestCase
         $runtimeManifest = File::get(base_path('distribution/windows/scripts/New-ConnictGssRuntimeManifest.ps1'));
         $ttsRegistration = File::get(base_path('distribution/windows/scripts/Register-ConnictGssTtsRuntime.ps1'));
         $ttsBuild = File::get(base_path('distribution/windows/scripts/Build-ConnictGssOfflineTts.ps1'));
+        $ttsLicenseInventory = File::get(base_path('docker/local-tts/export_license_inventory.py'));
         $diagnostics = File::get(base_path('distribution/windows/scripts/Export-ConnictGssDiagnostics.ps1'));
         $cleanMachine = File::get(base_path('distribution/windows/scripts/Test-ConnictGssCleanMachine.ps1'));
 
@@ -75,7 +76,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('git status --porcelain --untracked-files=all', $runtimeBuild);
         $this->assertStringContainsString('tts/tts-server.exe', $runtimeBuild);
         $this->assertStringContainsString('tts/models', $runtimeBuild);
-        $this->assertStringContainsString('tts/tools/espeak-ng', $runtimeBuild);
+        $this->assertStringContainsString('tts/licenses/license-inventory.json', $runtimeBuild);
         $this->assertStringContainsString('winsw/WinSW-x64.exe', $runtimeBuild);
         $this->assertStringContainsString('runtime-manifest.json', $runtimeBuild);
         $this->assertStringContainsString('d01e39f9aec75cf9522830e424d9f76f081c1d8b5ec4cc0897a7fdccc8391bb7', $runtimeBootstrap);
@@ -83,7 +84,9 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('runtime-provenance.json', $runtimeManifest);
         $this->assertStringContainsString('tts-server.exe', $ttsRegistration);
         $this->assertStringContainsString('HF_HUB_OFFLINE', $ttsBuild);
-        $this->assertStringContainsString('LicenseDirectory', $ttsBuild);
+        $this->assertStringContainsString('--collect-all espeakng_loader', $ttsBuild);
+        $this->assertStringContainsString('--collect-all lameenc', $ttsBuild);
+        $this->assertStringContainsString('license-inventory.json', $ttsLicenseInventory);
         $this->assertStringContainsString('af_bella', $ttsBuild);
         $this->assertStringContainsString('runtime.env', $diagnostics);
         $this->assertStringContainsString('Do not include runtime.env', $diagnostics);

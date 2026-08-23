@@ -1,41 +1,38 @@
 # Windows Release Pipeline
 
-The Windows installer is built from an exact, clean Git commit, never by copying a developer workstation. Use a dedicated Windows 10/11 x64 release runner with Git, PHP 8.3 and Composer, Node.js 22, the .NET 8 SDK, Python 3.12 x64, and Inno Setup (`iscc.exe` on `PATH`). These are release-runner dependencies only and are not required on the client laptop.
+The Windows installer is built from an exact, clean Git commit, never by copying a developer workstation. Development can remain entirely on Ubuntu: GitHub Actions supplies the Windows 2022 runner, PHP 8.3, Node.js 22, .NET 8, Python 3.12 x64, and Inno Setup. None of those build tools are required on the client laptop.
 
 ## Prepare the verified runtime
 
-From PowerShell at the repository root, download the pinned FrankenPHP, PostgreSQL, and WinSW inputs:
+The workflow downloads and checksum-verifies the pinned FrankenPHP, PostgreSQL, and WinSW inputs:
 
 ```powershell
 ./distribution/windows/scripts/Get-ConnictGssRuntimeInputs.ps1
 ```
 
-Build the offline TTS runtime using separately verified Windows x64 LAME, eSpeak-NG, and license inputs:
+It then builds the offline TTS runtime from pinned Python packages and the pinned Kokoro model revision:
 
 ```powershell
-./distribution/windows/scripts/Build-ConnictGssOfflineTts.ps1 `
-  -LameExecutable 'C:\verified-runtime\lame.exe' `
-  -EspeakDirectory 'C:\verified-runtime\espeak-ng' `
-  -LicenseDirectory 'C:\verified-runtime\licenses'
+./distribution/windows/scripts/Build-ConnictGssOfflineTts.ps1 -PythonCommand python
 ```
 
-Publish the TTS bundle to the approved internal release registry, record its immutable SHA-256/attestation, and register that truthful provenance:
+The workflow generates a license inventory, records the workflow run and source commit as provenance, and generates the per-file runtime manifest. Review the generated license evidence before distributing a production build.
 
 ```powershell
 ./distribution/windows/scripts/Register-ConnictGssTtsRuntime.ps1 `
-  -Version '1.0.0' `
-  -SourceUrl 'https://release-registry.example/connict-gss-tts-1.0.0.zip' `
-  -LicenseRecord 'licenses reviewed in release record GSS-TTS-1.0.0' `
-  -Verification 'archive-sha256:REPLACE_WITH_APPROVED_HASH; release-attestation:GSS-TTS-1.0.0'
+  -Version 'kokoro-0.9.4-f3ff3571' `
+  -SourceUrl 'https://github.com/OWNER/REPOSITORY/actions/runs/RUN_ID' `
+  -LicenseRecord 'generated inventory reviewed for production release' `
+  -Verification 'GitHub-Actions-attestation:RUN_ID; source-commit:COMMIT_SHA'
 
 ./distribution/windows/scripts/New-ConnictGssRuntimeManifest.ps1
 ```
 
-Do not use the example URL or placeholder verification text in a real release. The builder verifies every staged file against the manifest and refuses a runtime missing FrankenPHP, PHP, PostgreSQL, WinSW, or offline TTS.
+The builder verifies every staged file against the manifest and refuses a runtime missing FrankenPHP, PHP, PostgreSQL, WinSW, the generated license inventory, or offline TTS.
 
 ## Validate and package
 
-Run the full repository-prescribed PHP tests, Pint check, frontend lint, production build, and browser rehearsal before packaging. Use a clean checkout for the packaging step because the production Composer install removes development packages from that checkout:
+The workflow runs the repository-prescribed PHP tests, Pint check, frontend lint, and production build before packaging. It uses a clean checkout because the production Composer install removes development packages from that checkout.
 
 ```powershell
 pwsh distribution/windows/scripts/Build-ConnictGssRelease.ps1 -Version 1.0.0
@@ -47,6 +44,6 @@ The expected artifact is:
 distribution\windows\installer\Output\ConnictGSS-Setup-1.0.0.exe
 ```
 
-The manually dispatched [Windows release workflow](../.github/workflows/windows-release.yml) validates the application on Linux, then packages on Windows only after the caller provides an HTTPS URL and SHA-256 for an approved `runtime-input` ZIP. The ZIP must place `runtime-manifest.json`, `runtime-provenance.json`, and the `frankenphp/`, `postgres/`, `tts/`, and `winsw/` directories at its root. The workflow uploads an artifact for QA; it does not publish an unsigned installer.
+The manually dispatched [Windows release workflow](../.github/workflows/windows-release.yml) validates the application on Linux and creates the complete runtime and installer on Windows. Select `test` signing for the first candidate; it uses an ephemeral self-signed certificate and does not require private secrets. Select `trusted` only after the environment contains an exportable Authenticode PFX, its password, and an RFC 3161 timestamp URL. A `vX.Y.Z` tag always requires trusted signing and publishes the GitHub Release only after all clean-machine checks pass.
 
 Install only the generated setup executable on a separate clean Windows VM and complete the [clean-machine acceptance procedure](windows-clean-machine-qa.md). Record the installer SHA-256 and source commit with the release artifact. Code-sign the launcher and installer before broad distribution.

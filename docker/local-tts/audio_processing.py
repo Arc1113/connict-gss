@@ -8,6 +8,25 @@ LONG_SILENCE_MS = 500
 TARGET_SILENCE_MS = 250
 
 
+def encode_mp3(audio: np.ndarray, encoder_factory=None) -> bytes:
+    """Encode mono float audio without relying on an external executable."""
+    if encoder_factory is None:
+        import lameenc
+
+        encoder_factory = lameenc.Encoder
+
+    samples = np.asarray(audio, dtype=np.float32).reshape(-1)
+    pcm = (np.clip(samples, -1.0, 1.0) * 32767).astype("<i2", copy=False)
+    encoder = encoder_factory()
+    encoder.set_bit_rate(48)
+    encoder.set_in_sample_rate(SAMPLE_RATE)
+    encoder.set_channels(1)
+    encoder.set_quality(2)
+    encoder.silence()
+
+    return bytes(encoder.encode(pcm.tobytes()) + encoder.flush())
+
+
 def join_sections(section_texts: list[str], fallback_text: str) -> str:
     parts = [text.strip() for text in section_texts if text.strip()]
     return " ".join(parts) if parts else fallback_text.strip()

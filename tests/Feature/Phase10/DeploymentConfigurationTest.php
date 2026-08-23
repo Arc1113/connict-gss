@@ -94,9 +94,10 @@ class DeploymentConfigurationTest extends TestCase
     public function test_offline_tts_temp_mount_allows_the_bundled_espeak_fallback(): void
     {
         $compose = $this->readProjectFile('compose.yaml');
-        $localImage = $this->readProjectFile('docker/local-tts/Dockerfile');
+        $requirements = $this->readProjectFile('docker/local-tts/requirements.txt');
 
-        $this->assertStringContainsString('espeak-ng', $localImage);
+        $this->assertStringContainsString('espeakng-loader==0.2.4', $requirements);
+        $this->assertStringContainsString('lameenc==1.8.1', $requirements);
         $this->assertStringContainsString('/tmp:size=256m,mode=1777,exec', $compose);
         $this->assertStringContainsString('read_only: true', $compose);
         $this->assertStringContainsString('HF_HUB_OFFLINE: "1"', $compose);

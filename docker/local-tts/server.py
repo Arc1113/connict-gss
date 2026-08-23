@@ -1,21 +1,15 @@
-import os
-import subprocess
-import tempfile
 from threading import Lock
 from typing import Literal
 
 import numpy as np
-import soundfile as sf
 from fastapi import FastAPI, HTTPException, Response
 from kokoro import KPipeline
 from pydantic import BaseModel, Field
 
-from audio_processing import SAMPLE_RATE, join_sections, normalize_silence
+from audio_processing import encode_mp3, join_sections, normalize_silence
 
 ALLOWED_VOICES = {"am_michael", "am_fenrir", "af_heart", "af_bella"}
 MODEL_REVISION = "f3ff3571791e39611d31c381e3a41a3af07b4987"
-LAME_BINARY = os.environ.get("LAME_BINARY", "lame")
-
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 pipeline = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
 synthesis_lock = Lock()
@@ -65,17 +59,8 @@ def synthesize(request: SynthesisRequest):
             render_text(contextual_text, request.voice, request.speed),
         )
 
-        with tempfile.TemporaryDirectory(prefix="kokoro-") as directory:
-            wav_path = os.path.join(directory, "announcement.wav")
-            mp3_path = os.path.join(directory, "announcement.mp3")
-            sf.write(wav_path, audio, SAMPLE_RATE, subtype="PCM_16")
-            subprocess.run([
-                LAME_BINARY, "--silent", "-m", "m", "-b", "48", "--resample", "24",
-                wav_path, mp3_path,
-            ], check=True, timeout=30)
-            with open(mp3_path, "rb") as generated:
-                return Response(generated.read(), media_type="audio/mpeg")
-    except (ValueError, subprocess.SubprocessError, OSError) as error:
+        return Response(encode_mp3(audio), media_type="audio/mpeg")
+    except (ValueError, OSError) as error:
         raise HTTPException(status_code=500, detail="Local synthesis failed") from error
     finally:
         synthesis_lock.release()

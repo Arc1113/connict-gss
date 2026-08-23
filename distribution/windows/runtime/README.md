@@ -12,9 +12,13 @@ runtime/
 ├── postgres/
 │   └── bin/          # initdb, pg_ctl, psql, createdb, pg_dump
 ├── tts/
-│   └── tts-server.exe # offline models and dependencies already bundled
+│   ├── tts-server.exe # PyInstaller bundle with MP3 and phonemizer extensions
+│   ├── models/        # pinned Kokoro model cache
+│   └── licenses/      # generated dependency and model license inventory
 └── winsw/
     └── WinSW-x64.exe
 ```
 
-The TTS payload must be fully offline: no package installation, model download, or cloud credential is permitted at client installation or ceremony time.
+The GitHub Windows runner creates this entire tree before packaging. The TTS
+payload must be fully offline: no package installation, model download, or
+cloud credential is permitted at client installation or ceremony time.

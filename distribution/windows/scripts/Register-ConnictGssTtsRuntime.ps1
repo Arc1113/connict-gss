@@ -14,9 +14,8 @@ $ttsDirectory = Join-Path $RuntimeInputDirectory 'tts'
 if (-not (Test-Path -LiteralPath $ttsDirectory -PathType Container)) { throw 'Stage the complete offline TTS bundle in runtime-input\tts before registering it.' }
 if (-not (Test-Path -LiteralPath (Join-Path $ttsDirectory 'tts-server.exe') -PathType Leaf)) { throw 'The offline TTS bundle must contain tts-server.exe.' }
 if (-not (Test-Path -LiteralPath (Join-Path $ttsDirectory 'models') -PathType Container)) { throw 'The offline TTS bundle must contain its model cache.' }
-if (-not (Test-Path -LiteralPath (Join-Path $ttsDirectory 'tools\lame.exe') -PathType Leaf)) { throw 'The offline TTS bundle must contain LAME.' }
-if (-not (Test-Path -LiteralPath (Join-Path $ttsDirectory 'tools\espeak-ng') -PathType Container)) { throw 'The offline TTS bundle must contain eSpeak-NG.' }
 if (-not (Test-Path -LiteralPath (Join-Path $ttsDirectory 'licenses') -PathType Container)) { throw 'The offline TTS bundle must contain third-party licenses.' }
+if (-not (Test-Path -LiteralPath (Join-Path $ttsDirectory 'licenses\license-inventory.json') -PathType Leaf)) { throw 'The offline TTS bundle must contain its generated license inventory.' }
 if (-not (Test-Path -LiteralPath (Join-Path $ttsDirectory 'THIRD_PARTY_NOTICES.txt') -PathType Leaf)) { throw 'The offline TTS bundle must contain THIRD_PARTY_NOTICES.txt.' }
 if (-not (Test-Path -LiteralPath (Join-Path $ttsDirectory 'bundle-manifest.json') -PathType Leaf)) { throw 'The offline TTS bundle must contain its build manifest.' }
 

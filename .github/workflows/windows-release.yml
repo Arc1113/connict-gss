@@ -7,14 +7,14 @@ on:
         description: Semantic version to package, for example 1.0.0
         required: true
         type: string
-      runtime_bundle_url:
-        description: Optional HTTPS override for the approved Windows runtime-input ZIP
-        required: false
-        type: string
-      runtime_bundle_sha256:
-        description: Optional SHA-256 override for the approved Windows runtime-input ZIP
-        required: false
-        type: string
+      signing_mode:
+        description: Test uses a temporary self-signed certificate; trusted requires configured signing secrets
+        required: true
+        default: test
+        type: choice
+        options:
+          - test
+          - trusted
   push:
     tags: ['v*.*.*']
 
@@ -73,10 +73,7 @@ jobs:
         shell: pwsh
         env:
           DISPATCH_VERSION: ${{ inputs.version }}
-          DISPATCH_RUNTIME_BUNDLE_URL: ${{ inputs.runtime_bundle_url }}
-          DISPATCH_RUNTIME_BUNDLE_SHA256: ${{ inputs.runtime_bundle_sha256 }}
-          APPROVED_RUNTIME_BUNDLE_URL: ${{ vars.WINDOWS_RUNTIME_BUNDLE_URL }}
-          APPROVED_RUNTIME_BUNDLE_SHA256: ${{ vars.WINDOWS_RUNTIME_BUNDLE_SHA256 }}
+          DISPATCH_SIGNING_MODE: ${{ inputs.signing_mode }}
         run: |
           $version = $env:DISPATCH_VERSION
           if ([string]::IsNullOrWhiteSpace($version) -and $env:GITHUB_REF_TYPE -eq 'tag') {
@@ -86,20 +83,25 @@ jobs:
             throw 'A semantic release version is required. Tags must use vX.Y.Z.'
           }
 
-          $runtimeUrl = if ($env:DISPATCH_RUNTIME_BUNDLE_URL) { $env:DISPATCH_RUNTIME_BUNDLE_URL } else { $env:APPROVED_RUNTIME_BUNDLE_URL }
-          $runtimeHash = if ($env:DISPATCH_RUNTIME_BUNDLE_SHA256) { $env:DISPATCH_RUNTIME_BUNDLE_SHA256 } else { $env:APPROVED_RUNTIME_BUNDLE_SHA256 }
-          if ($runtimeUrl -notmatch '^https://') { throw 'The runtime bundle URL must use HTTPS.' }
-          if ($runtimeHash -notmatch '^[a-fA-F0-9]{64}$') { throw 'The runtime bundle SHA-256 is invalid.' }
+          $signingMode = if ($env:GITHUB_REF_TYPE -eq 'tag') { 'trusted' } else { $env:DISPATCH_SIGNING_MODE }
+          if ($signingMode -notin @('test', 'trusted')) {
+            throw 'Signing mode must be test or trusted.'
+          }
 
           "version=$version" | Add-Content -Path $env:GITHUB_OUTPUT
-          "runtime_url=$runtimeUrl" | Add-Content -Path $env:GITHUB_OUTPUT
-          "runtime_sha256=$runtimeHash" | Add-Content -Path $env:GITHUB_OUTPUT
+          "signing_mode=$signingMode" | Add-Content -Path $env:GITHUB_OUTPUT
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.3', extensions: 'pgsql, mbstring, intl, zip, bcmath' }
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: 'npm' }
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '8.0.x' }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: 'x64'
+          cache: pip
+          cache-dependency-path: docker/local-tts/requirements.txt
       - name: Install Inno Setup
         run: choco install innosetup --no-progress --yes
       - name: Prepare code-signing certificate
@@ -108,39 +110,65 @@ jobs:
           SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
           SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
           SIGNING_TIMESTAMP_URL: ${{ vars.WINDOWS_SIGNING_TIMESTAMP_URL }}
+          SIGNING_MODE: ${{ steps.release-inputs.outputs.signing_mode }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:SIGNING_CERTIFICATE_BASE64) -or [string]::IsNullOrWhiteSpace($env:SIGNING_CERTIFICATE_PASSWORD)) {
-            throw 'Windows code-signing certificate secrets are required for every release build.'
-          }
-          if ($env:SIGNING_TIMESTAMP_URL -notmatch '^https://') {
-            throw 'WINDOWS_SIGNING_TIMESTAMP_URL must be an HTTPS URL.'
+          $certificatePath = Join-Path $env:RUNNER_TEMP 'connict-gss-signing.pfx'
+          if ($env:SIGNING_MODE -eq 'trusted') {
+            if ([string]::IsNullOrWhiteSpace($env:SIGNING_CERTIFICATE_BASE64) -or [string]::IsNullOrWhiteSpace($env:SIGNING_CERTIFICATE_PASSWORD)) {
+              throw 'Trusted Windows builds require the code-signing certificate secrets.'
+            }
+            if ($env:SIGNING_TIMESTAMP_URL -notmatch '^https://') {
+              throw 'WINDOWS_SIGNING_TIMESTAMP_URL must be an HTTPS URL for trusted builds.'
+            }
+            [System.IO.File]::WriteAllBytes($certificatePath, [System.Convert]::FromBase64String($env:SIGNING_CERTIFICATE_BASE64))
+            $certificatePassword = $env:SIGNING_CERTIFICATE_PASSWORD
+            "CONNICT_GSS_SIGNING_TIMESTAMP_URL=$env:SIGNING_TIMESTAMP_URL" | Add-Content -Path $env:GITHUB_ENV
+          } else {
+            $certificatePassword = [guid]::NewGuid().ToString('N')
+            $securePassword = ConvertTo-SecureString $certificatePassword -AsPlainText -Force
+            $certificate = New-SelfSignedCertificate `
+              -Type CodeSigningCert `
+              -Subject 'CN=Connict GSS Test Build' `
+              -CertStoreLocation 'Cert:\CurrentUser\My' `
+              -KeyAlgorithm RSA `
+              -KeyLength 3072 `
+              -HashAlgorithm SHA256 `
+              -KeyExportPolicy Exportable `
+              -NotAfter (Get-Date).AddDays(7)
+            Export-PfxCertificate -Cert $certificate -FilePath $certificatePath -Password $securePassword | Out-Null
+            $publicCertificate = Join-Path $env:RUNNER_TEMP 'connict-gss-test-signing.cer'
+            Export-Certificate -Cert $certificate -FilePath $publicCertificate | Out-Null
+            Import-Certificate -FilePath $publicCertificate -CertStoreLocation 'Cert:\CurrentUser\Root' | Out-Null
+            "CONNICT_GSS_ALLOW_UNTIMESTAMPED_SIGNING=1" | Add-Content -Path $env:GITHUB_ENV
+            "CONNICT_GSS_TEST_CERTIFICATE_THUMBPRINT=$($certificate.Thumbprint)" | Add-Content -Path $env:GITHUB_ENV
           }
 
-          $certificatePath = Join-Path $env:RUNNER_TEMP 'connict-gss-signing.pfx'
-          [System.IO.File]::WriteAllBytes($certificatePath, [System.Convert]::FromBase64String($env:SIGNING_CERTIFICATE_BASE64))
           "CONNICT_GSS_SIGNING_CERTIFICATE_PATH=$certificatePath" | Add-Content -Path $env:GITHUB_ENV
-          "CONNICT_GSS_SIGNING_CERTIFICATE_PASSWORD=$env:SIGNING_CERTIFICATE_PASSWORD" | Add-Content -Path $env:GITHUB_ENV
-          "CONNICT_GSS_SIGNING_TIMESTAMP_URL=$env:SIGNING_TIMESTAMP_URL" | Add-Content -Path $env:GITHUB_ENV
-      - name: Download approved runtime bundle
+          "CONNICT_GSS_SIGNING_CERTIFICATE_PASSWORD=$certificatePassword" | Add-Content -Path $env:GITHUB_ENV
+      - name: Build verified Windows runtime
         shell: pwsh
         env:
-          RUNTIME_BUNDLE_URL: ${{ steps.release-inputs.outputs.runtime_url }}
-          RUNTIME_BUNDLE_SHA256: ${{ steps.release-inputs.outputs.runtime_sha256 }}
-          RUNTIME_BUNDLE_AUTH_TOKEN: ${{ secrets.WINDOWS_RUNTIME_BUNDLE_TOKEN }}
+          RELEASE_SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RELEASE_SOURCE_COMMIT: ${{ github.sha }}
         run: |
-          $target = 'distribution/windows/runtime-input.zip'
-          $headers = @{}
-          if (-not [string]::IsNullOrWhiteSpace($env:RUNTIME_BUNDLE_AUTH_TOKEN)) {
-            $headers.Authorization = "Bearer $env:RUNTIME_BUNDLE_AUTH_TOKEN"
-          }
-          Invoke-WebRequest -Uri $env:RUNTIME_BUNDLE_URL -OutFile $target -Headers $headers
-          if ((Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:RUNTIME_BUNDLE_SHA256.ToLowerInvariant()) { throw 'Runtime bundle checksum mismatch.' }
-          Expand-Archive -LiteralPath $target -DestinationPath 'distribution/windows/runtime-input' -Force
+          ./distribution/windows/scripts/Get-ConnictGssRuntimeInputs.ps1
+          ./distribution/windows/scripts/Build-ConnictGssOfflineTts.ps1 -PythonCommand python
+          ./distribution/windows/scripts/Register-ConnictGssTtsRuntime.ps1 `
+            -Version 'kokoro-0.9.4-f3ff3571' `
+            -SourceUrl $env:RELEASE_SOURCE_URL `
+            -LicenseRecord 'Generated license inventory included; release-owner approval required for production distribution' `
+            -Verification "GitHub-Actions-attestation:$env:GITHUB_RUN_ID; source-commit:$env:RELEASE_SOURCE_COMMIT"
+          ./distribution/windows/scripts/New-ConnictGssRuntimeManifest.ps1
       - name: Build and sign installer
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ steps.release-inputs.outputs.version }}
-        run: ./distribution/windows/scripts/Build-ConnictGssRelease.ps1 -Version $env:RELEASE_VERSION -RequireCodeSigning
+        run: |
+          $arguments = @('-Version', $env:RELEASE_VERSION, '-RequireCodeSigning')
+          if ($env:CONNICT_GSS_ALLOW_UNTIMESTAMPED_SIGNING -eq '1') {
+            $arguments += '-AllowUntimestampedCodeSigning'
+          }
+          ./distribution/windows/scripts/Build-ConnictGssRelease.ps1 @arguments
       - name: Install and initialize release candidate
         shell: pwsh
         env:
@@ -199,11 +227,22 @@ jobs:
               Copy-Item -LiteralPath $source -Destination $evidence -Recurse -Force
             }
           }
+          foreach ($source in @(
+            'distribution/windows/runtime-input/runtime-manifest.json',
+            'distribution/windows/runtime-input/runtime-provenance.json',
+            'distribution/windows/runtime-input/tts/bundle-manifest.json',
+            'distribution/windows/runtime-input/tts/THIRD_PARTY_NOTICES.txt',
+            'distribution/windows/runtime-input/tts/licenses/license-inventory.json'
+          )) {
+            if (Test-Path -LiteralPath $source -PathType Leaf) {
+              Copy-Item -LiteralPath $source -Destination $evidence -Force
+            }
+          }
       - name: Upload Windows validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ConnictGSS-Windows-validation-${{ steps.release-inputs.outputs.version }}
+          name: ConnictGSS-Windows-validation-${{ steps.release-inputs.outputs.version }}-${{ steps.release-inputs.outputs.signing_mode }}
           path: distribution/windows/validation-evidence
           if-no-files-found: warn
       - name: Stop validation services
@@ -215,6 +254,10 @@ jobs:
           if ($env:CONNICT_GSS_SIGNING_CERTIFICATE_PATH) {
             Remove-Item -LiteralPath $env:CONNICT_GSS_SIGNING_CERTIFICATE_PATH -Force -ErrorAction SilentlyContinue
           }
+          if ($env:CONNICT_GSS_TEST_CERTIFICATE_THUMBPRINT) {
+            Remove-Item -LiteralPath "Cert:\CurrentUser\Root\$env:CONNICT_GSS_TEST_CERTIFICATE_THUMBPRINT" -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath "Cert:\CurrentUser\My\$env:CONNICT_GSS_TEST_CERTIFICATE_THUMBPRINT" -Force -ErrorAction SilentlyContinue
+          }
       - name: Write installer checksum
         shell: pwsh
         env:
@@ -225,7 +268,7 @@ jobs:
           "$checksum *$(Split-Path -Leaf $installer)" | Set-Content -LiteralPath "$installer.sha256" -NoNewline
       - uses: actions/upload-artifact@v4
         with:
-          name: ConnictGSS-Setup-${{ steps.release-inputs.outputs.version }}
+          name: ConnictGSS-Setup-${{ steps.release-inputs.outputs.version }}-${{ steps.release-inputs.outputs.signing_mode }}
           path: |
             distribution/windows/installer/Output/ConnictGSS-Setup-${{ steps.release-inputs.outputs.version }}.exe
             distribution/windows/installer/Output/ConnictGSS-Setup-${{ steps.release-inputs.outputs.version }}.exe.sha256
