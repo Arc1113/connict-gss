@@ -93,6 +93,9 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('$releaseParameters = @{', $releaseWorkflow);
         $this->assertStringContainsString('Build-ConnictGssRelease.ps1 @releaseParameters', $releaseWorkflow);
         $this->assertStringNotContainsString("@('-Version', \$env:RELEASE_VERSION)", $releaseWorkflow);
+        $this->assertSame(2, substr_count($releaseWorkflow, "extensions: 'fileinfo, pgsql, mbstring, intl, zip, bcmath'"));
+        $this->assertStringContainsString('Verify PHP packaging extensions', $releaseWorkflow);
+        $this->assertStringContainsString('Required PHP extension is unavailable', $releaseWorkflow);
         $this->assertStringContainsString("'pgAdmin 4', 'StackBuilder'", $runtimeBootstrap);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $runtimeBuild);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $ttsBuild);

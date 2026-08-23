@@ -40,7 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.3', extensions: 'pgsql, mbstring, intl, zip, bcmath' }
+        with: { php-version: '8.3', extensions: 'fileinfo, pgsql, mbstring, intl, zip, bcmath' }
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: 'npm' }
       - run: composer install --no-interaction --prefer-dist
@@ -103,7 +103,16 @@ jobs:
           "version=$version" | Add-Content -Path $env:GITHUB_OUTPUT
           "signing_mode=$signingMode" | Add-Content -Path $env:GITHUB_OUTPUT
       - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.3', extensions: 'pgsql, mbstring, intl, zip, bcmath' }
+        with: { php-version: '8.3', extensions: 'fileinfo, pgsql, mbstring, intl, zip, bcmath' }
+      - name: Verify PHP packaging extensions
+        shell: pwsh
+        run: |
+          $loadedExtensions = @(php -r "echo implode(PHP_EOL, get_loaded_extensions());")
+          foreach ($extension in @('fileinfo', 'pgsql', 'mbstring', 'intl', 'zip', 'bcmath')) {
+            if ($extension -notin $loadedExtensions) {
+              throw "Required PHP extension is unavailable: $extension"
+            }
+          }
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: 'npm' }
       - uses: actions/setup-dotnet@v4
