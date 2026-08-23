@@ -88,6 +88,7 @@ $values = @{
     'APP_URL=https://127.0.0.1' = "APP_URL=https://$lanAddress"
     'GSS_DATA_DIR=C:\ProgramData\ConnictGSS' = "GSS_DATA_DIR=$DataRoot"
     'DB_PASSWORD=' = "DB_PASSWORD=$databasePassword"
+    'GSS_POSTGRES_BIN=' = "GSS_POSTGRES_BIN=$postgres"
     'REVERB_APP_KEY=' = "REVERB_APP_KEY=$reverbKey"
     'REVERB_APP_SECRET=' = "REVERB_APP_SECRET=$reverbSecret"
     'REVERB_ALLOWED_ORIGINS=localhost,127.0.0.1' = "REVERB_ALLOWED_ORIGINS=localhost,127.0.0.1,$lanAddress"

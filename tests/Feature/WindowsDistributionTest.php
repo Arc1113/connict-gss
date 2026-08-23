@@ -22,6 +22,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('{app}\\app', $installer);
         $this->assertStringNotContainsString('[UninstallDelete]', $installer);
         $this->assertStringContainsString('DB_HOST=127.0.0.1', $runtime);
+        $this->assertStringContainsString('GSS_POSTGRES_BIN=', $runtime);
         $this->assertStringContainsString('REVERB_SERVER_HOST=127.0.0.1', $runtime);
         $this->assertStringContainsString('LOCAL_TTS_URL=http://127.0.0.1:8880', $runtime);
         $this->assertStringContainsString('__GSS_HTTPS_HOST__', $caddy);
@@ -58,6 +59,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('gss:bootstrap-install', $setup);
         $this->assertStringContainsString('migrate --force', $setup);
         $this->assertStringContainsString('GSS_INITIAL_ADMIN_PASSWORD', $setup);
+        $this->assertStringContainsString("'GSS_POSTGRES_BIN=' = \"GSS_POSTGRES_BIN=\$postgres\"", $setup);
         $this->assertStringContainsString('RandomNumberGenerator]::Create()', $setup);
         $this->assertStringNotContainsString('RandomNumberGenerator]::Fill', $setup);
         $this->assertStringNotContainsString('[Convert]::ToHexString', $setup);

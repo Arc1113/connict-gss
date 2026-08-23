@@ -145,7 +145,7 @@ final class BackupManager
         $path = $directory.'/'.basename($path);
         $connection = PostgresConnection::configured();
         $process = new Process(array_merge([
-            'pg_dump',
+            $this->postgresExecutable('pg_dump'),
         ], $connection->arguments($connection->database), [
             '--file='.$path,
             '--format=plain',
@@ -227,11 +227,24 @@ final class BackupManager
 
     private function postgresVersion(): ?string
     {
-        $process = new Process(['psql', '--version'], base_path());
+        $process = new Process([$this->postgresExecutable('psql'), '--version'], base_path());
         $process->setTimeout(20);
         $process->run();
 
         return $process->isSuccessful() ? trim($process->getOutput()) : null;
+    }
+
+    private function postgresExecutable(string $name): string
+    {
+        $directory = trim((string) env('GSS_POSTGRES_BIN'));
+
+        if ($directory === '') {
+            return $name;
+        }
+
+        $suffix = PHP_OS_FAMILY === 'Windows' ? '.exe' : '';
+
+        return rtrim($directory, '/\\').DIRECTORY_SEPARATOR.$name.$suffix;
     }
 
     private function copyMedia(string $target): void
