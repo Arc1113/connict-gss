@@ -26,7 +26,7 @@ accompanied by a SHA-256 checksum.
 
 ## Build and approval controls
 
-- Source and builds originate from `Aracena18/connict-gss` on GitHub.
+- Source and builds originate from `Arc1113/connict-gss` on GitHub.
 - GitHub-hosted runners build the complete artifact from the referenced commit.
 - Third-party runtime inputs are pinned and checksum-verified before signing.
 - Pull requests from contributors who cannot commit directly require review.
@@ -38,8 +38,8 @@ accompanied by a SHA-256 checksum.
 
 ## Team roles
 
-- Committer and reviewer: [@Aracena18](https://github.com/Aracena18)
-- Signing approver: [@Aracena18](https://github.com/Aracena18)
+- Committer and reviewer: [@Arc1113](https://github.com/Arc1113)
+- Signing approver: [@Arc1113](https://github.com/Arc1113)
 
 Additional maintainers must be listed here before receiving a signing role.
 The author of a change should not approve its production signing request when
