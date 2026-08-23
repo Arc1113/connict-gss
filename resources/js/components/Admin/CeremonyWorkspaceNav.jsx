@@ -15,6 +15,12 @@ function sectionsFor(ceremonyId, abilities) {
             visible: abilities.manage_ceremonies,
         },
         {
+            href: `/admin/ceremonies/${ceremonyId}/preparation`,
+            key: 'preparation',
+            label: 'Preparation',
+            visible: abilities.view_ceremonies,
+        },
+        {
             href: `/admin/ceremonies/${ceremonyId}/graduates`,
             key: 'graduates',
             label: 'Graduates',
@@ -67,6 +73,10 @@ function activeSection(url, ceremonyId) {
 
     if (path === `${base}/setup`) {
         return 'setup';
+    }
+
+    if (path === `${base}/preparation`) {
+        return 'preparation';
     }
 
     if (

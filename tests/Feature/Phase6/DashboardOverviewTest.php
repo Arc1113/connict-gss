@@ -36,6 +36,8 @@ class DashboardOverviewTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Dashboard')
                 ->where('overview.working_ceremony.name', 'Working Ceremony')
+                ->where('overview.preparation_checklist.0.key', 'graduate_data')
+                ->where('overview.preparation_checklist.0.status', 'warning')
                 ->where('overview.primary_action.href', url("/admin/ceremonies/{$ceremony->id}/import")));
     }
 

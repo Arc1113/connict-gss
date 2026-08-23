@@ -1,8 +1,8 @@
 const steps = [
-    { number: 1, label: 'Upload CSV' },
-    { number: 2, label: 'Map columns' },
-    { number: 3, label: 'Review rows' },
-    { number: 4, label: 'Import summary' },
+    { number: 1, label: 'Upload' },
+    { number: 2, label: 'Map' },
+    { number: 3, label: 'Review' },
+    { number: 4, label: 'Done' },
 ];
 
 export default function ImportProgress({ currentStep }) {

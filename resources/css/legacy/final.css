@@ -1,0 +1,179 @@
+/* ==========================================================================
+   Stage Media Control Deck & Topbar UI Adjustments
+   ========================================================================== */
+.stage-control-media-deck {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--gss-radius-lg, 0.75rem);
+    box-shadow: var(--gss-shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+    color: var(--color-text-primary, #0f172a);
+}
+
+.media-deck-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.media-deck-title {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted, #64748b);
+    text-transform: uppercase;
+}
+
+.media-deck-status {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.6rem;
+    border-radius: 9999px;
+    background: var(--color-surface-hover, #f1f5f9);
+    color: var(--color-text-secondary, #475569);
+    letter-spacing: 0.04em;
+}
+
+.media-deck-controls {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.media-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.6rem 0.8rem;
+    flex: 1;
+    border: 1px solid var(--color-border-strong, #cbd5e1);
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text-primary, #0f172a);
+    border-radius: var(--gss-radius-md, 0.5rem);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    user-select: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.media-btn:hover:not(:disabled) {
+    background: var(--color-surface-hover, #f1f5f9);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.06);
+}
+
+.media-btn:active:not(:disabled) {
+    transform: translateY(0);
+    background: var(--color-border, #e2e8f0);
+}
+
+.media-btn:disabled {
+    cursor: not-allowed;
+    box-shadow: none;
+    background: var(--color-surface-subtle, #f8fafc);
+    border-color: var(--color-border, #e2e8f0);
+    color: var(--color-text-secondary, #475569);
+}
+
+.media-btn-next {
+    background: var(--color-success, #059669);
+    color: #ffffff;
+    border-color: var(--color-success, #059669);
+}
+
+.media-btn-next:hover:not(:disabled) {
+    background: #047857;
+}
+
+.media-btn-next:active:not(:disabled) {
+    background: #064e3b;
+}
+
+.media-btn-next:disabled {
+    color: var(--color-text-secondary, #475569);
+    background: var(--color-surface-subtle, #f8fafc);
+    border-color: var(--color-border, #e2e8f0);
+}
+
+.media-btn-pause.is-active {
+    background: var(--color-warning-bg, #fffbeb);
+    color: #92400e;
+    border-color: #b45309;
+}
+
+.media-btn-correct {
+    color: var(--color-danger, #dc2626);
+    border-color: var(--color-danger-bg, #fef2f2);
+}
+
+.media-btn-correct:hover:not(:disabled) {
+    background: var(--color-danger-bg, #fef2f2);
+    border-color: var(--color-danger, #dc2626);
+}
+
+.app-working-ceremony-pill {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    gap: 0.4rem;
+    padding: 0.2rem 0.5rem;
+    background: var(--gss-surface-muted, #f1f5f9);
+    border: 1px solid var(--gss-border, #e2e8f0);
+    border-radius: 0.4rem;
+}
+
+.app-working-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--gss-ink-muted, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.app-working-ceremony-pill select {
+    min-width: 0;
+    max-width: 16rem;
+    background: transparent;
+    border: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--gss-ink, #0f172a);
+    cursor: pointer;
+    outline: none;
+    padding: 0.15rem 0.3rem;
+}
+
+@media (max-width: 75rem) {
+    .app-working-label {
+        display: none;
+    }
+
+    .app-working-ceremony-pill select {
+        max-width: 12rem;
+    }
+}
+
+.admin-page-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stage-design-preview-container {
+    margin-bottom: 1.25rem;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}

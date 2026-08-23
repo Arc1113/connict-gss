@@ -68,7 +68,7 @@ export default function StudentImportPreview({ ceremonies, preview, studentImpor
 
     return (
         <AdminLayout>
-            <Head title="Review graduate import" />
+            <Head title="Review import" />
             <PageHeader
                 backHref={workspace?.urls.mapping ?? `/admin/students/import/${studentImport.token}/mapping`}
                 backLabel="Mapping"
@@ -85,7 +85,7 @@ export default function StudentImportPreview({ ceremonies, preview, studentImpor
                 }
                 description="Resolve every blocked row before creating graduate records."
                 eyebrow="Graduate import"
-                title="Review imported rows"
+                title="Review import"
             />
             <ImportProgress currentStep={3} />
 

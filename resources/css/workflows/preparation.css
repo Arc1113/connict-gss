@@ -1,0 +1,277 @@
+.preparation-hub {
+    display: grid;
+    gap: 1.5rem;
+    width: min(100%, 74rem);
+    margin: 1.5rem 0 0;
+    padding: clamp(1.25rem, 2.5vw, 2rem);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    box-shadow: 0 0.75rem 1.75rem rgb(26 39 53 / 0.05);
+}
+
+.preparation-hub-heading {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) 5rem 4.15rem;
+    align-items: center;
+    gap: 1rem;
+}
+
+.preparation-hub-heading h2,
+.preparation-hub-heading p {
+    margin: 0;
+}
+
+.preparation-hub-heading h2 {
+    color: var(--color-text-primary);
+    font-size: clamp(1.3rem, 2vw, 1.55rem);
+    letter-spacing: -0.025em;
+}
+
+.preparation-hub-heading > div:first-child {
+    grid-column: 2;
+}
+
+.preparation-hub-heading p {
+    margin-top: 0.25rem;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.preparation-hub-kicker {
+    margin: 0 0 0.35rem !important;
+    color: var(--color-text-muted) !important;
+    font-size: 0.68rem !important;
+    font-weight: 750;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.preparation-hub-progress {
+    display: grid;
+    flex: 0 0 auto;
+    grid-column: 4;
+    min-width: 0;
+    gap: 0.05rem;
+    padding: 0.7rem 0.85rem;
+    color: var(--color-success);
+    background: var(--color-success-bg);
+    border: 1px solid color-mix(in srgb, var(--color-success) 20%, var(--color-success-bg));
+    border-radius: var(--radius-control);
+    text-align: center;
+}
+
+.preparation-hub-progress strong {
+    font-size: 1.15rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.preparation-hub-progress strong span {
+    color: color-mix(in srgb, var(--color-success) 68%, var(--color-text-secondary));
+    font-size: 0.8rem;
+}
+
+.preparation-hub-progress > span {
+    font-size: 0.69rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.preparation-hub-priority {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1rem 1.1rem;
+    color: var(--color-text-primary);
+    background: var(--color-surface-subtle);
+    border: 1px solid var(--color-border);
+    border-left: 0.25rem solid var(--color-warning);
+    border-radius: var(--radius-control);
+}
+
+.preparation-hub-priority.is-complete {
+    border-left-color: var(--color-success);
+}
+
+.preparation-hub-priority > div {
+    min-width: 0;
+}
+
+.preparation-hub-priority span,
+.preparation-hub-priority strong,
+.preparation-hub-priority p {
+    display: block;
+    margin: 0;
+}
+
+.preparation-hub-priority span {
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    font-weight: 750;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.preparation-hub-priority strong {
+    margin-top: 0.2rem;
+    font-size: 1rem;
+}
+
+.preparation-hub-priority p {
+    margin-top: 0.2rem;
+    color: var(--color-text-secondary);
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.preparation-hub-priority .admin-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.preparation-hub-rows {
+    display: grid;
+    border-top: 1px solid var(--color-border);
+}
+
+.preparation-hub-row {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) 5rem 4.15rem;
+    align-items: center;
+    gap: 1rem;
+    min-height: 4.75rem;
+    padding: 0.85rem 0.15rem;
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color var(--motion-hover);
+}
+
+.preparation-hub-row:hover {
+    background: linear-gradient(90deg, var(--color-surface-subtle), transparent 82%);
+}
+
+.preparation-hub-marker {
+    display: grid;
+    width: 1.5rem;
+    height: 1.5rem;
+    place-items: center;
+    color: var(--color-success);
+    background: var(--color-success-bg);
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.preparation-hub-row.is-needs_attention .preparation-hub-marker,
+.preparation-hub-row.is-not_started .preparation-hub-marker {
+    color: var(--color-warning);
+    background: var(--color-warning-bg);
+}
+
+.preparation-hub-row h3,
+.preparation-hub-row p {
+    margin: 0;
+}
+
+.preparation-hub-row h3 {
+    color: var(--color-text-primary);
+    font-size: 0.98rem;
+}
+
+.preparation-hub-row p {
+    margin-top: 0.25rem;
+    color: var(--color-text-secondary);
+    font-size: 0.84rem;
+    line-height: 1.4;
+}
+
+.preparation-hub-row-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.preparation-hub-row-title > span {
+    padding: 0.15rem 0.35rem;
+    color: var(--color-success);
+    background: var(--color-success-bg);
+    border-radius: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 750;
+    letter-spacing: 0.03em;
+}
+
+.preparation-hub-row.is-needs_attention .preparation-hub-row-title > span,
+.preparation-hub-row.is-not_started .preparation-hub-row-title > span {
+    color: var(--color-warning);
+    background: var(--color-warning-bg);
+}
+
+.preparation-hub-issues {
+    min-width: 0;
+    color: var(--color-warning);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.preparation-hub-row .admin-row-action {
+    min-width: 4.15rem;
+    justify-content: center;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-control);
+    color: var(--color-text-primary);
+}
+
+.preparation-hub-row.is-needs_attention .admin-row-action,
+.preparation-hub-row.is-not_started .admin-row-action {
+    border-color: color-mix(in srgb, var(--color-warning) 38%, var(--color-border));
+    color: var(--color-warning);
+}
+
+.preparation-hub-row .admin-row-action:hover {
+    background: var(--color-surface-hover);
+}
+
+@media (max-width: 48rem) {
+    .preparation-hub-heading {
+        grid-template-columns: 1fr auto;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .preparation-hub-heading > div:first-child {
+        grid-column: 1;
+    }
+
+    .preparation-hub-progress {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .preparation-hub-priority {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .preparation-hub-priority .admin-button {
+        width: 100%;
+    }
+
+    .preparation-hub-row {
+        grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+    }
+
+    .preparation-hub-issues {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .preparation-hub-row .admin-row-action {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+    }
+}

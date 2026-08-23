@@ -1,4 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import PreparationChecklist from '../components/Admin/PreparationChecklist';
 import AppShell from '../components/AppShell';
 
 function ceremonyMeta(ceremony) {
@@ -15,6 +16,12 @@ export default function Dashboard() {
     const primary = overview.primary_action;
     const attention = overview.attention ?? [];
     const actions = overview.relevant_actions ?? [];
+    const checklist = overview.preparation_checklist ?? [];
+    const shellMode = {
+        scanner_operator: 'operational',
+        stage_operator: 'operational',
+        technical_operator: 'technical',
+    }[auth.user.role.value] ?? 'preparation';
     const liveCopy = {
         ready: ['Active', ceremonyMeta(liveCeremony)],
         none: ['No live ceremony', 'Scanner and stage operations are unavailable until a ceremony is active.'],
@@ -23,7 +30,7 @@ export default function Dashboard() {
     }[live.state];
 
     return (
-        <AppShell>
+        <AppShell mode={shellMode}>
             <Head title="Overview">
                 <meta
                     name="description"
@@ -101,6 +108,8 @@ export default function Dashboard() {
                     </Link>
                 </section>
             )}
+
+            <PreparationChecklist checklist={checklist} compact />
 
             <section className="overview-ceremony-panel overview-live-ceremony" aria-labelledby="live-ceremony">
                 <div>

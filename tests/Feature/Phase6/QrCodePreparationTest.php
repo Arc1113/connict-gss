@@ -216,6 +216,7 @@ class QrCodePreparationTest extends TestCase
             ->assertOk()
             ->assertSee('Graduate QR batch')
             ->assertSee('3 graduates')
+            ->assertSee(route('admin.students.qr-codes.index', [], false), false)
             ->assertDontSee($this->student->qr_token)
             ->assertDontSee($second->qr_token)
             ->assertDontSee($third->qr_token);

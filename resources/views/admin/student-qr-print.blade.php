@@ -40,16 +40,31 @@
             font-size: 14px;
         }
 
+        .print-toolbar-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .print-toolbar a,
         .print-toolbar button {
+            display: inline-flex;
+            align-items: center;
             min-height: 44px;
             padding: 10px 18px;
             border: 1px solid #0a2036;
             border-radius: 6px;
-            color: #fff;
-            background: #0a2036;
+            color: #0a2036;
+            background: #fff;
             font: inherit;
             font-weight: 700;
             cursor: pointer;
+            text-decoration: none;
+        }
+
+        .print-toolbar button {
+            color: #fff;
+            background: #0a2036;
         }
 
         .print-document {
@@ -205,7 +220,10 @@
             <strong>{{ $title }}</strong>
             <p>A4 portrait · 100% scale · disable Fit to page and browser headers/footers.</p>
         </div>
-        <button type="button" onclick="window.print()">Open print dialog</button>
+        <div class="print-toolbar-actions">
+            <a href="{{ $backUrl }}">Back to QR preparation</a>
+            <button type="button" onclick="window.print()">Open print dialog</button>
+        </div>
     </aside>
 
     <main class="print-document {{ $mode }}">

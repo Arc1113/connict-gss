@@ -24,6 +24,7 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
     const [progressStatus, setProgressStatus] = useState(onboarding?.status ?? null);
     const dialogRef = useRef(null);
     const previousFocusRef = useRef(null);
+    const pendingNavigationRef = useRef(null);
 
     const persist = useCallback(async (status, currentStep = stepIndex) => {
         if (!onboarding) return;
@@ -42,10 +43,38 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
         }
     }, [onboarding]);
 
+    const prepareStepNavigation = useCallback((nextStep) => {
+        const step = steps[nextStep];
+
+        if (!step) return false;
+
+        const expectedPath = step.href.split('?')[0].split('#')[0];
+
+        if (window.location.pathname === expectedPath) {
+            pendingNavigationRef.current = null;
+
+            return false;
+        }
+
+        pendingNavigationRef.current = expectedPath;
+
+        return true;
+    }, [steps]);
+
+    const navigateToStep = useCallback((nextStep) => {
+        const step = steps[nextStep];
+
+        if (!step || !prepareStepNavigation(nextStep)) return;
+
+        setPosition(null);
+        router.visit(step.href, { preserveState: true });
+    }, [prepareStepNavigation, steps]);
+
     async function start(reset = false) {
         const savedStep = progressStatus === 'in_progress' ? stepIndex : onboarding?.current_step ?? 0;
         const next = reset ? 0 : Math.min(savedStep, Math.max(steps.length - 1, 0));
         if (reset) await requestJson(`/onboarding/${onboarding.key}/reset`, { method: 'POST' });
+        prepareStepNavigation(next);
         setStepIndex(next);
         setOffered(false);
         setHelpOpen(false);
@@ -53,6 +82,7 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
         setProgressStatus('in_progress');
         rememberActive(true);
         await persist('in_progress', next);
+        navigateToStep(next);
     }
 
     const stop = useCallback(async (status) => {
@@ -70,10 +100,12 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
             await stop('completed');
             return;
         }
+        prepareStepNavigation(next);
         setStepIndex(next);
         setProgressStatus('in_progress');
         await persist('in_progress', next);
-    }, [persist, steps.length, stop]);
+        navigateToStep(next);
+    }, [navigateToStep, persist, prepareStepNavigation, steps.length, stop]);
 
     useEffect(() => {
         if (!active || !steps[stepIndex]) return undefined;
@@ -81,9 +113,14 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
         const expectedPath = step.href.split('?')[0].split('#')[0];
 
         if (window.location.pathname !== expectedPath) {
-            router.visit(step.href, { preserveState: true });
+            if (pendingNavigationRef.current !== expectedPath) {
+                void stop('in_progress');
+            }
+
             return undefined;
         }
+
+        pendingNavigationRef.current = null;
 
         const target = document.querySelector(`[data-tour="${step.target}"]`);
         if (!target || target.getClientRects().length === 0 || window.getComputedStyle(target).visibility === 'hidden') {
@@ -112,7 +149,7 @@ export default function OnboardingGuide({ onboarding, onShowShortcuts, standalon
             window.removeEventListener('resize', updatePosition);
             window.removeEventListener('scroll', updatePosition, true);
         };
-    }, [active, move, stepIndex, steps]);
+    }, [active, move, stepIndex, steps, stop]);
 
     useEffect(() => {
         if (!active || !position) return undefined;

@@ -1,0 +1,247 @@
+/* design.md page redesign: operational evidence and ceremony reports ----- */
+
+.app-workspace .admin-table td:first-child,
+.app-workspace .admin-table th:first-child {
+    font-variant-numeric: tabular-nums;
+}
+
+.app-workspace .admin-table td:first-child {
+    white-space: nowrap;
+}
+
+.app-workspace .admin-table code {
+    display: inline-block;
+    max-width: 18rem;
+    overflow: hidden;
+    padding: 0.18rem 0.32rem;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-hover);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-sm);
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font-size: 0.63rem;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.admin-table-note {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--color-text-tertiary);
+    font-size: 0.62rem;
+}
+
+.admin-audit-details {
+    min-width: 11rem;
+    margin: 0;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-sm);
+}
+
+.admin-audit-details summary {
+    min-height: 2rem;
+    padding: 0.4rem 0.5rem;
+    color: var(--color-accent);
+    font-size: 0.66rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.admin-audit-details[open] summary {
+    color: var(--color-text-primary);
+    background: var(--color-bg-hover);
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.admin-audit-details dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin: 0;
+    padding: 0.55rem;
+}
+
+.admin-audit-details dt {
+    color: var(--color-text-secondary);
+    font-size: 0.6rem;
+    font-weight: 680;
+    text-transform: none;
+}
+
+.admin-audit-details dd {
+    margin-top: 0.2rem;
+    color: var(--color-text-primary);
+    font-size: 0.64rem;
+}
+
+.admin-audit-value {
+    gap: 0.1rem;
+    margin-bottom: 0.35rem;
+}
+
+.admin-audit-value strong {
+    color: var(--color-text-secondary);
+    font-size: 0.58rem;
+    font-weight: 650;
+}
+
+.admin-detail-section.admin-danger-zone {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.55fr);
+    align-items: start;
+    gap: 0.65rem 1rem;
+    padding: 0.9rem;
+}
+
+.admin-detail-section.admin-danger-zone > h2,
+.admin-detail-section.admin-danger-zone > p,
+.admin-detail-section.admin-danger-zone > a {
+    grid-column: 1;
+}
+
+.admin-detail-section.admin-danger-zone > h2 {
+    margin: -0.9rem -0.9rem 0;
+}
+
+.admin-detail-section.admin-danger-zone > p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
+.admin-detail-section.admin-danger-zone > form {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+}
+
+.admin-detail-section.admin-danger-zone > a {
+    color: var(--color-accent);
+    font-size: 0.7rem;
+    font-weight: 650;
+}
+
+.admin-inline-form label {
+    color: var(--color-text-primary);
+    font-size: 0.68rem;
+    font-weight: 650;
+}
+
+.admin-inline-form input {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.65rem;
+    color: var(--color-text-primary);
+    background: #ffffff;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+}
+
+.admin-inline-form small {
+    color: var(--color-text-secondary);
+    font-size: 0.64rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 64rem) {
+    .admin-detail-section.admin-danger-zone {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-detail-section.admin-danger-zone > form {
+        grid-column: 1;
+        grid-row: auto;
+    }
+}
+
+/* design.md page redesign: backups and operator accounts ---------------- */
+
+.admin-backup-status {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+}
+
+.admin-backup-status > div {
+    display: grid;
+    align-content: center;
+    min-height: 3.75rem;
+    gap: 0.25rem;
+    padding: 0.65rem 0.8rem;
+    border-right: 1px solid var(--color-border-default);
+}
+
+.admin-backup-status > div:last-child {
+    border-right: 0;
+}
+
+.admin-backup-status > div > span {
+    color: var(--color-text-secondary);
+    font-size: 0.62rem;
+    font-weight: 650;
+}
+
+.admin-backup-status > div > strong {
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: 0.76rem;
+    font-weight: 680;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-backup-status + .admin-detail-section {
+    margin-top: 0;
+    padding-bottom: 0.8rem;
+}
+
+.admin-backup-status + .admin-detail-section > p {
+    margin: 0.65rem 0.9rem 0;
+    color: var(--color-text-secondary);
+    font-size: 0.7rem;
+    line-height: 1.45;
+}
+
+.admin-backup-status + .admin-detail-section code {
+    color: var(--color-text-primary);
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font-size: 0.66rem;
+}
+
+.app-workspace .admin-table td .admin-button {
+    min-height: 2.15rem;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.66rem;
+}
+
+.admin-user-table tbody tr.is-current-user {
+    background: var(--color-bg-selected);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.admin-user-table tbody tr.is-current-user small {
+    color: var(--color-accent);
+    font-weight: 650;
+}
+
+@media (max-width: 48rem) {
+    .admin-backup-status {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-backup-status > div {
+        border-right: 0;
+        border-bottom: 1px solid var(--color-border-default);
+    }
+
+    .admin-backup-status > div:last-child {
+        border-bottom: 0;
+    }
+}

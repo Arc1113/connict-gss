@@ -1,0 +1,17 @@
+/* Base Typography & Tabular Figures Utility */
+h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.022em;
+}
+
+.tabular-nums,
+[data-tabular] {
+    font-variant-numeric: tabular-nums;
+}
+
+.kicker-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}

@@ -244,16 +244,11 @@ export default function PronunciationRuleIndex({ ceremonies, filters, permission
             <Head title="Pronunciation dictionary" />
             <PageHeader
                 actions={(permissions.manage_common || (permissions.manage_ceremony && ceremonies.length > 0)) && <button className="admin-button admin-button-primary" onClick={() => { setEditing(null); setAdding(true); }} type="button">Add pronunciation</button>}
-                description="Control how ceremony terms are spoken without changing names, honors, awards, or exports."
                 eyebrow="Voice preparation"
                 title="Pronunciation dictionary"
             />
 
-            <section className="pronunciation-summary" aria-label="Dictionary status">
-                <div><strong>{enabledCount}</strong><span>enabled rules</span></div>
-                <div><strong>{rules.length - enabledCount}</strong><span>disabled rules</span></div>
-                <p>Longer phrases win. Ceremony-specific corrections win ties with common rules.</p>
-            </section>
+            <p className="pronunciation-count">{enabledCount} active rules</p>
 
             {(adding || editing) && <RuleEditor ceremonies={ceremonies} editing={editing} key={editing?.id ?? 'new'} onCancel={() => { setAdding(false); setEditing(null); }} permissions={permissions} providers={providers} sections={sections} />}
 
@@ -270,33 +265,38 @@ export default function PronunciationRuleIndex({ ceremonies, filters, permission
                             {ceremonies.map((ceremony) => <option key={ceremony.id} value={ceremony.id}>{ceremony.name}</option>)}
                         </select>
                     </div>
-                    <div className="admin-field">
-                        <label htmlFor="pronunciation_section_filter">Section</label>
-                        <select id="pronunciation_section_filter" onChange={(event) => filter('section', event.target.value)} value={filters.section ?? ''}>
-                            <option value="">All sections</option>
-                            {sections.map((section) => <option key={section.value} value={section.value}>{section.label}</option>)}
-                        </select>
-                    </div>
-                    <div className="admin-field">
-                        <label htmlFor="pronunciation_provider_filter">Provider</label>
-                        <select id="pronunciation_provider_filter" onChange={(event) => filter('provider', event.target.value)} value={filters.provider ?? ''}>
-                            <option value="">All providers</option>
-                            {providers.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
-                        </select>
-                    </div>
-                    <div className="admin-field">
-                        <label htmlFor="pronunciation_voice_filter">Voice</label>
-                        <select id="pronunciation_voice_filter" onChange={(event) => filter('voice', event.target.value)} value={filters.voice ?? ''}>
-                            <option value="">All voice restrictions</option>
-                            {filterVoices.map((voice) => <option key={`${voice.provider}-${voice.value}`} value={voice.value}>{voice.value}</option>)}
-                        </select>
-                    </div>
-                    <div className="admin-field">
-                        <label htmlFor="pronunciation_status_filter">Status</label>
-                        <select id="pronunciation_status_filter" onChange={(event) => filter('status', event.target.value)} value={filters.status ?? ''}>
-                            <option value="">All statuses</option><option value="enabled">Enabled</option><option value="disabled">Disabled</option>
-                        </select>
-                    </div>
+                    <details className="pronunciation-filter-more">
+                        <summary>More filters</summary>
+                        <div>
+                            <div className="admin-field">
+                                <label htmlFor="pronunciation_section_filter">Section</label>
+                                <select id="pronunciation_section_filter" onChange={(event) => filter('section', event.target.value)} value={filters.section ?? ''}>
+                                    <option value="">All sections</option>
+                                    {sections.map((section) => <option key={section.value} value={section.value}>{section.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="admin-field">
+                                <label htmlFor="pronunciation_provider_filter">Provider</label>
+                                <select id="pronunciation_provider_filter" onChange={(event) => filter('provider', event.target.value)} value={filters.provider ?? ''}>
+                                    <option value="">All providers</option>
+                                    {providers.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="admin-field">
+                                <label htmlFor="pronunciation_voice_filter">Voice</label>
+                                <select id="pronunciation_voice_filter" onChange={(event) => filter('voice', event.target.value)} value={filters.voice ?? ''}>
+                                    <option value="">All voice restrictions</option>
+                                    {filterVoices.map((voice) => <option key={`${voice.provider}-${voice.value}`} value={voice.value}>{voice.value}</option>)}
+                                </select>
+                            </div>
+                            <div className="admin-field">
+                                <label htmlFor="pronunciation_status_filter">Status</label>
+                                <select id="pronunciation_status_filter" onChange={(event) => filter('status', event.target.value)} value={filters.status ?? ''}>
+                                    <option value="">All statuses</option><option value="enabled">Enabled</option><option value="disabled">Disabled</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
                 </div>
 
                 {rules.length === 0 ? (
@@ -305,18 +305,17 @@ export default function PronunciationRuleIndex({ ceremonies, filters, permission
                     <div className="pronunciation-rule-list">
                         {rules.map((rule) => {
                             const canEdit = rule.scope === 'common' ? permissions.manage_common : permissions.manage_ceremony;
+                            const replacement = sharedReplacement(rule);
                             return (
                                 <article className="pronunciation-rule-row" key={rule.id}>
                                     <div className="pronunciation-rule-copy">
                                         <span>{rule.scope === 'common' ? 'Common' : rule.ceremony} · {sections.find((section) => section.value === rule.section)?.label}</span>
                                         <h2>{rule.match_text}</h2>
-                                        <p>{rule.variants.filter((variant) => variant.is_enabled).map((variant) => `${variant.provider}: ${variant.replacement_text}`).join(' · ')}</p>
+                                        <p>{replacement ? `Speaks as ${replacement}` : rule.variants.filter((variant) => variant.is_enabled).map((variant) => `${variant.provider}: ${variant.replacement_text}`).join(' · ')}</p>
                                     </div>
                                     <div className="pronunciation-rule-state">
-                                        {rule.is_builtin && <small>Built in</small>}
                                         <StatusText label={rule.is_enabled ? 'Enabled' : 'Disabled'} value={rule.is_enabled ? 'approved' : 'outdated'} />
-                                        <small>Revision {rule.revision}</small>
-                                        <small>{rule.usage_count} generated candidate{rule.usage_count === 1 ? '' : 's'} used this rule</small>
+                                        {rule.usage_count > 0 && <small>{rule.usage_count} used</small>}
                                     </div>
                                     {canEdit && <button className="admin-button admin-button-secondary" onClick={() => { setAdding(false); setEditing(rule); window.scrollTo({ top: 0, behavior: 'smooth' }); }} type="button">Edit</button>}
                                 </article>

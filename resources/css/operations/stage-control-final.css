@@ -1,0 +1,531 @@
+/* design.md page redesign: stage-control workstation -------------------- */
+
+.stage-control-page {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    padding: 0 0 1.25rem;
+    background: var(--color-bg-app);
+}
+
+.stage-control-header {
+    min-height: 4rem;
+    padding: 0.65rem 1.25rem;
+    background: var(--color-bg-surface);
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.stage-control-header h1 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: clamp(1.25rem, 2vw, 1.55rem);
+    font-weight: 680;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+}
+
+.stage-control-header p:last-child {
+    margin-top: 0.25rem;
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+}
+
+.stage-control-header p strong {
+    color: var(--color-text-primary);
+}
+
+.stage-control-header nav .secondary-action,
+.stage-control-header .operation-command-trigger {
+    min-height: 2.5rem;
+}
+
+.stage-control-status {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-height: 3.5rem;
+    background: var(--color-bg-surface);
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.stage-control-status.stage-control-status-automatic {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.stage-control-status p {
+    min-height: 3.5rem;
+    padding: 0.55rem 1.25rem;
+}
+
+.stage-control-status p + p {
+    border-left: 1px solid var(--color-border-default);
+}
+
+.stage-control-status strong {
+    color: var(--color-text-tertiary);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+}
+
+.stage-control-status span {
+    margin-top: 0.12rem;
+    color: var(--color-text-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.stage-control-status .secondary-action {
+    justify-self: start;
+    min-height: 1.85rem;
+    margin-top: 0.15rem;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.68rem;
+}
+
+.stage-control-feedback,
+.stage-control-confirmation,
+.stage-control-loading,
+.stage-control-empty {
+    width: min(calc(100% - 2.5rem), 96rem);
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.stage-control-feedback {
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+    padding: 0.7rem 0.9rem;
+    border-width: 1px 1px 1px 4px;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+}
+
+.stage-control-feedback-neutral {
+    color: #075985;
+    background: var(--color-status-info-bg);
+    border-color: #0369a1;
+}
+
+.stage-control-feedback-success {
+    color: #065f46;
+    background: var(--color-status-success-bg);
+    border-color: #047857;
+}
+
+.stage-control-feedback-error {
+    color: #991b1b;
+    background: var(--color-status-error-bg);
+    border-color: #b91c1c;
+}
+
+.stage-control-confirmation {
+    top: 0.75rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+    padding: 0.8rem 0.9rem;
+    border-left: 4px solid var(--color-status-error);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 0.5rem 1.25rem rgb(23 25 28 / 0.12);
+}
+
+.stage-control-confirmation:focus-within {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+}
+
+.stage-control-layout {
+    grid-template-columns: minmax(21rem, 0.72fr) minmax(31rem, 1.45fr);
+    align-items: start;
+    width: min(calc(100% - 2.5rem), 96rem);
+    gap: 0.75rem;
+    margin: 0.75rem auto 0;
+}
+
+.stage-control-current,
+.stage-control-queue,
+.stage-control-support,
+.stage-control-loading,
+.stage-control-empty {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    box-shadow: none;
+}
+
+.stage-control-current,
+.stage-control-queue {
+    padding: 0;
+    overflow: hidden;
+}
+
+.stage-control-current {
+    top: 0.75rem;
+}
+
+.stage-control-section-heading {
+    min-height: 3.25rem;
+    align-items: center;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.stage-control-section-heading h2 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 0.95rem;
+    font-weight: 680;
+}
+
+.stage-control-section-heading > span {
+    color: var(--color-text-secondary);
+    background: var(--color-bg-hover);
+    border: 0;
+    border-radius: var(--radius-sm);
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.stage-control-current-identity,
+.stage-control-current-empty {
+    min-height: 8.5rem;
+    margin: 0 1rem;
+    padding: 1.25rem 0;
+}
+
+.stage-control-current-identity h3,
+.stage-control-current-empty h3 {
+    max-width: 21ch;
+    color: var(--color-text-primary);
+    font-size: clamp(1.45rem, 2.5vw, 2.15rem);
+    font-weight: 680;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    text-wrap: balance;
+}
+
+.stage-control-current-identity p,
+.stage-control-current-empty p {
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
+.stage-control-next {
+    margin: 0 1rem;
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--color-border-default);
+}
+
+.stage-control-next > span {
+    color: var(--color-text-tertiary);
+    font-size: 0.64rem;
+}
+
+.stage-control-next > strong {
+    color: var(--color-text-primary);
+    font-size: 0.8rem;
+}
+
+.stage-control-next small {
+    color: var(--color-text-secondary);
+    font-size: 0.66rem;
+}
+
+.stage-control-primary-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    padding: 0.9rem 1rem 1rem;
+    background: var(--color-bg-hover);
+    border-top: 1px solid var(--color-border-default);
+}
+
+.stage-control-action-label {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--color-text-tertiary);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+}
+
+.stage-control-primary-actions > .primary-action {
+    grid-column: 1 / -1;
+    min-height: 3rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+}
+
+.stage-control-primary-actions > button:not(.primary-action) {
+    min-height: 2.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.76rem;
+}
+
+.stage-control-danger-action {
+    min-height: 2.5rem;
+    color: var(--color-status-error);
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--color-status-error) 44%, white);
+    border-radius: var(--radius-sm);
+    font-size: 0.76rem;
+}
+
+.stage-control-danger-action:hover:not(:disabled) {
+    color: #ffffff;
+    background: var(--color-status-error);
+    border-color: var(--color-status-error);
+}
+
+.stage-control-automatic {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    color: var(--color-text-secondary);
+    background: var(--color-status-info-bg);
+    border: 0;
+    border-top: 1px solid var(--color-border-default);
+    border-radius: 0;
+}
+
+.stage-control-automatic span,
+.stage-control-automatic strong,
+.stage-control-automatic small {
+    display: block;
+}
+
+.stage-control-automatic strong {
+    color: var(--color-text-primary);
+    font-size: 0.74rem;
+}
+
+.stage-control-automatic small {
+    max-width: 48ch;
+    margin-top: 0.18rem;
+    color: var(--color-text-secondary);
+    font-size: 0.64rem;
+    line-height: 1.4;
+}
+
+.stage-control-automatic .secondary-action {
+    min-height: 2.4rem;
+    white-space: nowrap;
+}
+
+.stage-control-table-wrap {
+    max-height: min(30rem, calc(100dvh - 17rem));
+    border: 0;
+    border-radius: 0;
+}
+
+.stage-control-table-wrap table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.stage-control-table-wrap thead th {
+    top: 0;
+    height: 2.35rem;
+    padding: 0.45rem 0.55rem;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-hover);
+    border-bottom: 1px solid var(--color-border-strong);
+    font-size: 0.64rem;
+}
+
+.stage-control-table-wrap th,
+.stage-control-table-wrap td {
+    height: 2.75rem;
+    padding: 0.5rem 0.55rem;
+    border-bottom-color: var(--color-border-default);
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.stage-control-table-wrap tbody tr:hover {
+    background: var(--color-bg-hover);
+}
+
+.stage-control-table-wrap tbody tr:has(input:checked) {
+    background: var(--color-bg-selected);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.stage-control-table-wrap tbody th strong {
+    color: var(--color-text-primary);
+    font-size: 0.8rem;
+}
+
+.stage-control-table-wrap tbody th span {
+    color: var(--color-text-secondary);
+    font-size: 0.64rem;
+}
+
+.stage-control-text-action {
+    color: var(--color-accent);
+    font-size: 0.7rem;
+    font-weight: 650;
+}
+
+.stage-control-selected-action {
+    min-height: 3.75rem;
+    padding: 0.65rem 0.8rem;
+    background: var(--color-bg-surface);
+    border-top: 1px solid var(--color-border-default);
+}
+
+.stage-control-selected-action p {
+    color: var(--color-text-secondary);
+    font-size: 0.7rem;
+}
+
+.stage-control-queue-empty {
+    min-height: 18rem;
+    padding: 4.5rem 1.25rem;
+}
+
+.stage-control-queue-empty h3 {
+    color: var(--color-text-primary);
+    font-size: 0.95rem;
+}
+
+.stage-control-queue-empty p {
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+}
+
+.stage-control-support {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+}
+
+.stage-control-support > div {
+    padding: 0;
+}
+
+.stage-control-support > div + div {
+    border-top: 0;
+    border-left: 1px solid var(--color-border-default);
+}
+
+.stage-control-support h2 {
+    min-height: 2.85rem;
+    margin: 0;
+    padding: 0.8rem 1rem;
+    color: var(--color-text-primary);
+    border-bottom: 1px solid var(--color-border-default);
+    font-size: 0.82rem;
+    font-weight: 680;
+}
+
+.stage-control-support p {
+    padding: 1rem;
+    color: var(--color-text-secondary);
+    font-size: 0.74rem;
+}
+
+.stage-control-support ul,
+.stage-control-support ol {
+    padding: 0 1rem;
+}
+
+.stage-control-support li {
+    min-height: 2.6rem;
+    padding: 0.5rem 0;
+    color: var(--color-text-secondary);
+    border-bottom-color: var(--color-border-default);
+    font-size: 0.72rem;
+}
+
+.stage-control-loading,
+.stage-control-empty {
+    margin-top: 0.75rem;
+    padding: 2rem;
+}
+
+@media (max-width: 60rem) {
+    .stage-control-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stage-control-current {
+        position: static;
+    }
+
+    .stage-control-support {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 48rem) {
+    .stage-control-header {
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .stage-control-status,
+    .stage-control-status.stage-control-status-automatic {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stage-control-status p + p {
+        border-top: 1px solid var(--color-border-default);
+        border-left: 0;
+    }
+
+    .stage-control-layout,
+    .stage-control-feedback,
+    .stage-control-confirmation,
+    .stage-control-loading,
+    .stage-control-empty {
+        width: calc(100% - 1.5rem);
+    }
+
+    .stage-control-support {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stage-control-support > div + div {
+        border-top: 1px solid var(--color-border-default);
+        border-left: 0;
+    }
+}
+
+@media (max-width: 36rem) {
+    .stage-control-layout,
+    .stage-control-feedback,
+    .stage-control-confirmation,
+    .stage-control-loading,
+    .stage-control-empty {
+        width: 100%;
+    }
+
+    .stage-control-layout {
+        gap: 0.75rem;
+    }
+
+    .stage-control-current,
+    .stage-control-queue,
+    .stage-control-support,
+    .stage-control-loading,
+    .stage-control-empty {
+        border-right: 0;
+        border-left: 0;
+        border-radius: 0;
+    }
+
+    .stage-control-primary-actions,
+    .stage-control-automatic {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stage-control-primary-actions > button,
+    .stage-control-automatic button {
+        width: 100%;
+    }
+}

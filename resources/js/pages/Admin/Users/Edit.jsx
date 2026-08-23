@@ -5,7 +5,7 @@ import UserForm from '../../../components/Admin/UserForm';
 
 export default function UserEdit({ managedUser, roleOptions }) {
     return (
-        <AdminLayout>
+        <AdminLayout mode="technical">
             <Head title={`Edit ${managedUser.name}`} />
             <PageHeader
                 backHref="/admin/users"

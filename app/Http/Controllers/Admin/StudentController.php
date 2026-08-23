@@ -38,6 +38,7 @@ class StudentController extends Controller
             'ceremony_id' => $this->resolvedCeremonyFilter($request, $workspaceCeremony),
             'college' => $request->string('college')->toString(),
             'program' => $request->string('program')->toString(),
+            'preparation_status' => $request->string('preparation_status')->toString(),
             'eligibility_status' => $request->string('eligibility_status')->toString(),
             'media' => $request->string('media')->toString(),
             'stage_status' => $request->string('stage_status')->toString(),
@@ -79,6 +80,13 @@ class StudentController extends Controller
             ->when(
                 $filters['program'] !== '',
                 fn (Builder $query) => $query->where('program', $filters['program']),
+            )
+            ->when(
+                $filters['preparation_status'] !== '',
+                fn (Builder $query) => $this->applyPreparationStatusFilter(
+                    $query,
+                    $filters['preparation_status'],
+                ),
             )
             ->when(
                 $filters['eligibility_status'] !== '',
@@ -409,6 +417,25 @@ class StudentController extends Controller
         };
     }
 
+    private function applyPreparationStatusFilter(Builder $query, string $filter): void
+    {
+        match ($filter) {
+            'ready' => $query
+                ->where('eligibility_status', EligibilityStatus::Eligible)
+                ->whereNotNull('photo_path')
+                ->where('audio_readiness_status', AudioReadinessStatus::Approved),
+            'eligibility_review' => $query->where('eligibility_status', '!=', EligibilityStatus::Eligible),
+            'photo_missing' => $query->whereNull('photo_path'),
+            'announcement_missing' => $query->where('audio_readiness_status', AudioReadinessStatus::Missing),
+            'announcement_review' => $query->whereIn('audio_readiness_status', [
+                AudioReadinessStatus::Uploaded,
+                AudioReadinessStatus::NeedsReview,
+                AudioReadinessStatus::Rejected,
+            ]),
+            default => null,
+        };
+    }
+
     private function applyStageStatusFilter(Builder $query, string $filter): void
     {
         match ($filter) {
@@ -455,6 +482,8 @@ class StudentController extends Controller
      */
     private function serializeListItem(Student $student): array
     {
+        $preparationStatus = $this->preparationStatus($student);
+
         return [
             'id' => $student->id,
             'student_number' => $student->student_number,
@@ -479,6 +508,49 @@ class StudentController extends Controller
                 ],
             ],
             'stage_status' => $this->stageStatus($student),
+            'preparation_status' => $preparationStatus,
+        ];
+    }
+
+    /** @return array{value: string, label: string, detail: string} */
+    private function preparationStatus(Student $student): array
+    {
+        if ($student->eligibility_status !== EligibilityStatus::Eligible) {
+            return [
+                'value' => 'eligibility_review',
+                'label' => 'Needs eligibility review',
+                'detail' => 'Confirm eligibility before the ceremony.',
+            ];
+        }
+
+        if ($student->photo_path === null) {
+            return [
+                'value' => 'photo_missing',
+                'label' => 'Photo missing',
+                'detail' => 'Add a graduate photo before QR preparation.',
+            ];
+        }
+
+        if ($student->audio_readiness_status === AudioReadinessStatus::Missing) {
+            return [
+                'value' => 'announcement_missing',
+                'label' => 'Announcement missing',
+                'detail' => 'Prepare or record the announcement.',
+            ];
+        }
+
+        if ($student->audio_readiness_status !== AudioReadinessStatus::Approved) {
+            return [
+                'value' => 'announcement_review',
+                'label' => 'Announcement needs review',
+                'detail' => 'Review the announcement before stage use.',
+            ];
+        }
+
+        return [
+            'value' => 'ready',
+            'label' => 'Ready',
+            'detail' => 'Graduate is ready for ceremony preparation.',
         ];
     }
 

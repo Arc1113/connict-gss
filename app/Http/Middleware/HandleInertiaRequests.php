@@ -95,6 +95,7 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'warning' => fn () => $request->session()->get('warning'),
+                'ceremony_created' => fn () => $request->session()->get('ceremony_created', false),
             ],
             'application' => [
                 'version' => config('connict.version'),

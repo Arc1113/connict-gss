@@ -45,11 +45,7 @@ export default function CeremonySetup({
             <section className="ceremony-workspace-panel">
                 <div className="admin-section-heading">
                     <div>
-                        <h2>Setup</h2>
-                        <p>
-                            Ceremony identity, lifecycle status, presentation mode, and stage appearance remain
-                            audited and protected by the existing ceremony rules.
-                        </p>
+                        <h2>Ceremony settings</h2>
                     </div>
                 </div>
 

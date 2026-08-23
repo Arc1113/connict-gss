@@ -1,0 +1,138 @@
+html {
+    scroll-behavior: smooth;
+}
+
+:root {
+    /* Restored application theme: the pre-recovery visual baseline. */
+    --color-bg-app: #f4f5f7;
+    --color-bg-sidebar: #eceef1;
+    --color-surface: #ffffff;
+    --color-surface-subtle: #f8f9fa;
+    --color-surface-selected: #eaf2ff;
+    --color-surface-hover: #f0f2f5;
+    --color-text-primary: #17191c;
+    --color-text-secondary: #5e6670;
+    --color-text-muted: #5e6670;
+    --color-text-inverse: #ffffff;
+    --color-border: #d9dde3;
+    --color-border-strong: #bbc2cc;
+    --color-accent: #1769e0;
+    --color-accent-hover: #1259c5;
+    --color-accent-subtle: #e8f1ff;
+    --color-success: #16794a;
+    --color-success-bg: #e8f6ef;
+    --color-warning: #9a5b00;
+    --color-warning-bg: #fff3d6;
+    --color-danger: #c73737;
+    --color-danger-bg: #fdecec;
+    --color-info: #1769e0;
+    --color-info-bg: #e8f1ff;
+    --color-focus: #1769e0;
+    --color-overlay: rgb(18 22 28 / 0.42);
+
+    /* Operational component aliases */
+    --color-bg-surface: var(--color-surface);
+    --color-bg-hover: var(--color-surface-hover);
+    --color-bg-selected: var(--color-surface-selected);
+    --color-text-tertiary: var(--color-text-muted);
+    --color-border-default: var(--color-border);
+    --color-status-success: var(--color-success);
+    --color-status-success-bg: var(--color-success-bg);
+    --color-status-warning: var(--color-warning);
+    --color-status-warning-bg: var(--color-warning-bg);
+    --color-status-error: var(--color-danger);
+    --color-status-error-bg: var(--color-danger-bg);
+    --color-status-info: var(--color-info);
+    --color-status-info-bg: var(--color-info-bg);
+    --color-focus-ring: var(--color-focus);
+
+    /* Spacing, shape, motion, and layout */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --radius-control: 0.375rem;
+    --radius-panel: 0.625rem;
+    --radius-dialog: 0.875rem;
+    --radius-sm: var(--radius-control);
+    --radius-md: var(--radius-panel);
+    --motion-hover: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-panel: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+    --z-sidebar: 20;
+    --z-toolbar: 18;
+    --z-statusbar: 17;
+    --z-overlay: 40;
+    --z-dialog: 41;
+
+    /* Legacy aliases mapped to refined tokens */
+    --gss-canvas: var(--color-bg-app);
+    --gss-surface: #ffffff;
+    --gss-surface-muted: var(--color-surface-subtle);
+    --gss-surface-dark: #1a2735;
+    --gss-card-dark: #233342;
+    --gss-ink: var(--color-text-primary);
+    --gss-ink-muted: var(--color-text-secondary);
+    --gss-ink-light: var(--color-text-muted);
+    --gss-border: var(--color-border);
+    --gss-border-subtle: #e8ebef;
+    --gss-border-dark: var(--color-border-strong);
+    --gss-navy: var(--color-text-primary);
+    --gss-navy-light: #2f3a46;
+    --gss-gold: var(--color-accent);
+    --gss-gold-hover: var(--color-accent-hover);
+    --gss-gold-light: var(--color-accent-subtle);
+    --gss-gold-border: var(--color-border-strong);
+    --gss-success: var(--color-success);
+    --gss-success-bg: var(--color-success-bg);
+    --gss-success-border: #b9dec8;
+    --gss-success-ink: var(--color-success);
+    --gss-warning: var(--color-warning);
+    --gss-warning-bg: var(--color-warning-bg);
+    --gss-warning-border: #f1d59b;
+    --gss-warning-ink: var(--color-warning);
+    --gss-danger: var(--color-danger);
+    --gss-danger-bg: var(--color-danger-bg);
+    --gss-danger-border: #efbbbb;
+    --gss-danger-ink: var(--color-danger);
+    --gss-info: var(--color-info);
+    --gss-info-bg: var(--color-info-bg);
+    --gss-info-border: #b8d2fa;
+    --gss-info-ink: var(--color-info);
+    --gss-focus: var(--color-focus);
+    --gss-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Ubuntu, Cantarell, sans-serif;
+
+    /* Audience-stage theme defaults */
+    --stage-theme-accent: #d6b474;
+    --stage-theme-background: #082f2b;
+    --stage-theme-surface: #f6f1e7;
+    --stage-theme-text: #ffffff;
+
+    /* Stage Audience Specific (Dark Mode) */
+    --gss-stage-background: #000000;
+    --gss-stage-text: #ffffff;
+    --gss-stage-gold: #ffffff;
+    --gss-stage-subtext: #94a3b8;
+
+    --gss-shadow-sm: 0 1px 2px rgb(31 41 55 / 0.05);
+    --gss-shadow-md: 0 8px 22px rgb(31 41 55 / 0.12);
+    --gss-shadow-lg: 0 14px 34px rgb(31 41 55 / 0.14);
+    --gss-shadow-xl: 0 22px 54px rgb(31 41 55 / 0.18);
+    --gss-radius-sm: var(--radius-control);
+    --gss-radius-md: var(--radius-panel);
+    --gss-radius-lg: var(--radius-dialog);
+    --gss-radius-xl: 0.75rem;
+    --gss-radius-full: 9999px;
+
+    /* Transitions */
+    --gss-transition: var(--motion-hover);
+
+    color: var(--gss-ink);
+    background: var(--gss-canvas);
+    font-family: var(--gss-font-sans);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+}

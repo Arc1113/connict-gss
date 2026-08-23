@@ -340,8 +340,9 @@ export default function StageControl({ ceremony }) {
                         <Link className="secondary-action" href="/stage" target="_blank">
                             Open audience stage
                         </Link>
-                        <Link className="secondary-action" href="/dashboard">
-                            Return to operations
+                        <Link className="secondary-action operation-back-link" href="/dashboard">
+                            <span aria-hidden="true">←</span>
+                            Back to Home
                         </Link>
                     </nav>
                 </header>

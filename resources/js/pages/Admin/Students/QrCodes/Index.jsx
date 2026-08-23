@@ -29,6 +29,13 @@ export default function StudentQrCodeIndex({
     const allPrintableSelected =
         selectableIds.length > 0 &&
         selectableIds.every((id) => selectedIds.includes(id));
+    const advancedFilterCount = [
+        filters.college,
+        filters.program,
+        filters.qr_readiness,
+        filters.sequence_from,
+        filters.sequence_to,
+    ].filter(Boolean).length;
 
     function toggleStudent(id) {
         setSelectedIds((current) => {
@@ -65,20 +72,18 @@ export default function StudentQrCodeIndex({
                         Graduate records
                     </Link>
                 }
-                description="Review readiness, inspect individual cards, and prepare controlled print batches without exposing encoded tokens."
                 eyebrow={workspace ? 'Ceremony workspace' : 'Graduate data preparation'}
                 title={workspace ? 'QR & Media' : 'QR preparation'}
             />
 
-            <section className="admin-qr-instructions" aria-labelledby="qr-workflow">
-                <h2 id="qr-workflow">Print workflow</h2>
+            <details className="admin-qr-instructions">
+                <summary>Print instructions</summary>
                 <ol>
-                    <li>Filter one ceremony and review each graduate’s readiness.</li>
                     <li>Select up to {maximumBatchSize} printable graduates.</li>
-                    <li>Open the print sheet, use 100% scale, and disable headers and footers.</li>
-                    <li>Test representative printed cards on the scanner before the ceremony.</li>
+                    <li>Print at 100% with headers and footers off.</li>
+                    <li>Test a card with the scanner.</li>
                 </ol>
-            </section>
+            </details>
 
             <form
                 action={workspace?.urls.qr ?? '/admin/students/qr-codes'}
@@ -109,49 +114,8 @@ export default function StudentQrCodeIndex({
                     </div>
                 )}
                 {workspace?.locked && (
-                    <div className="admin-filter-search-wide">
-                        <label>Working ceremony</label>
-                        <div className="admin-readonly-field">
-                            <strong>{workspace.ceremony.name}</strong>
-                            <span>{workspace.ceremony.status}</span>
-                        </div>
-                        <input
-                            name="ceremony_id"
-                            type="hidden"
-                            value={filterValue(filters.ceremony_id)}
-                        />
-                    </div>
+                    <input name="ceremony_id" type="hidden" value={filterValue(filters.ceremony_id)} />
                 )}
-                <div>
-                    <label htmlFor="college">College</label>
-                    <select
-                        defaultValue={filterValue(filters.college)}
-                        id="college"
-                        name="college"
-                    >
-                        <option value="">All colleges</option>
-                        {filterOptions.colleges.map((college) => (
-                            <option key={college} value={college}>
-                                {college}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label htmlFor="program">Program</label>
-                    <select
-                        defaultValue={filterValue(filters.program)}
-                        id="program"
-                        name="program"
-                    >
-                        <option value="">All programs</option>
-                        {filterOptions.programs.map((program) => (
-                            <option key={program} value={program}>
-                                {program}
-                            </option>
-                        ))}
-                    </select>
-                </div>
                 <div>
                     <label htmlFor="eligibility_status">Eligibility</label>
                     <select
@@ -180,38 +144,44 @@ export default function StudentQrCodeIndex({
                         <option value="audio_rejected">Rejected audio</option>
                     </select>
                 </div>
-                <div>
-                    <label htmlFor="qr_readiness">Token state</label>
-                    <select
-                        defaultValue={filterValue(filters.qr_readiness)}
-                        id="qr_readiness"
-                        name="qr_readiness"
-                    >
-                        <option value="">All token states</option>
-                        <option value="ready">Original token</option>
-                        <option value="regenerated">Regenerated — reprint</option>
-                    </select>
-                </div>
-                <div>
-                    <label htmlFor="sequence_from">Sequence from</label>
-                    <input
-                        defaultValue={filterValue(filters.sequence_from)}
-                        id="sequence_from"
-                        min="1"
-                        name="sequence_from"
-                        type="number"
-                    />
-                </div>
-                <div>
-                    <label htmlFor="sequence_to">Sequence to</label>
-                    <input
-                        defaultValue={filterValue(filters.sequence_to)}
-                        id="sequence_to"
-                        min="1"
-                        name="sequence_to"
-                        type="number"
-                    />
-                </div>
+                <details className="admin-filter-advanced admin-qr-filter-advanced">
+                    <summary>
+                        More filters
+                        {advancedFilterCount > 0 && <span>{advancedFilterCount} active</span>}
+                    </summary>
+                    <div className="admin-filter-advanced-grid">
+                        <div>
+                            <label htmlFor="college">College</label>
+                            <select defaultValue={filterValue(filters.college)} id="college" name="college">
+                                <option value="">All colleges</option>
+                                {filterOptions.colleges.map((college) => <option key={college} value={college}>{college}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="program">Program</label>
+                            <select defaultValue={filterValue(filters.program)} id="program" name="program">
+                                <option value="">All programs</option>
+                                {filterOptions.programs.map((program) => <option key={program} value={program}>{program}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="qr_readiness">Token state</label>
+                            <select defaultValue={filterValue(filters.qr_readiness)} id="qr_readiness" name="qr_readiness">
+                                <option value="">All token states</option>
+                                <option value="ready">Original token</option>
+                                <option value="regenerated">Regenerated — reprint</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="sequence_from">Sequence from</label>
+                            <input defaultValue={filterValue(filters.sequence_from)} id="sequence_from" min="1" name="sequence_from" type="number" />
+                        </div>
+                        <div>
+                            <label htmlFor="sequence_to">Sequence to</label>
+                            <input defaultValue={filterValue(filters.sequence_to)} id="sequence_to" min="1" name="sequence_to" type="number" />
+                        </div>
+                    </div>
+                </details>
                 <div className="admin-filter-actions">
                     <button className="admin-button admin-button-primary" type="submit">
                         Apply filters
@@ -275,11 +245,7 @@ export default function StudentQrCodeIndex({
                                 {selectedIds.length === 1 ? 'graduate' : 'graduates'}{' '}
                                 selected
                             </strong>
-                            <span>
-                                Selection applies to this result page. Changing filters
-                                or pages starts a new selection; the batch limit is{' '}
-                                {maximumBatchSize}.
-                            </span>
+                            <span>Up to {maximumBatchSize} cards per print batch.</span>
                         </div>
                         <button
                             className="admin-button admin-button-secondary"

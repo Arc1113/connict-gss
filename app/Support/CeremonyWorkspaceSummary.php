@@ -97,4 +97,81 @@ final class CeremonyWorkspaceSummary
             ] : null,
         ]));
     }
+
+    /**
+     * Return the small, user-facing preparation checklist used by Home and the
+     * ceremony workspace. Counts and blocker priority remain server-owned.
+     *
+     * @param  array<string, int>  $counts
+     * @return list<array{key: string, status: string, count: int, issue_count: int, label: string, detail: string, href: string}>
+     */
+    public function checklist(Ceremony $ceremony, array $counts): array
+    {
+        $blockerCount = count($this->blockers($counts));
+
+        return [
+            [
+                'key' => 'graduate_data',
+                'status' => $counts['graduates_total'] > 0 && $counts['eligibility_issues'] === 0 ? 'ready' : 'warning',
+                'count' => $counts['graduates_total'],
+                'issue_count' => $counts['graduates_total'] === 0 ? 0 : $counts['eligibility_issues'],
+                'label' => 'Graduate information',
+                'detail' => $counts['graduates_total'] === 0
+                    ? 'Add or import graduate records.'
+                    : ($counts['eligibility_issues'] > 0 ? 'Review eligibility before scanning.' : 'Graduate records are ready.'),
+                'href' => $counts['graduates_total'] === 0
+                    ? route('admin.ceremonies.students.import.index', $ceremony)
+                    : route('admin.ceremonies.students.index', $ceremony),
+            ],
+            [
+                'key' => 'photos',
+                'status' => $counts['photos_missing'] === 0 ? 'ready' : 'warning',
+                'count' => $counts['photos_ready'],
+                'issue_count' => $counts['photos_missing'],
+                'label' => 'Photos',
+                'detail' => $counts['photos_missing'] === 0 ? 'Every graduate has a photo.' : 'Review graduates with missing photos.',
+                'href' => route('admin.ceremonies.students.index', $ceremony).'?media=missing_photo',
+            ],
+            [
+                'key' => 'announcements',
+                'status' => $counts['announcements_needs_review'] === 0
+                    && $counts['announcements_missing'] === 0
+                    && $counts['announcements_rejected'] === 0 ? 'ready' : 'warning',
+                'count' => $counts['announcements_ready'],
+                'issue_count' => $counts['announcements_needs_review'] + $counts['announcements_missing'] + $counts['announcements_rejected'],
+                'label' => 'Announcements',
+                'detail' => $counts['announcements_ready'].' ready · '.($counts['announcements_needs_review'] + $counts['announcements_missing'] + $counts['announcements_rejected']).' need attention.',
+                'href' => route('admin.ceremonies.announcements', $ceremony),
+            ],
+            [
+                'key' => 'qr',
+                'status' => $counts['qr_missing'] === 0 ? 'ready' : 'warning',
+                'count' => $counts['qr_ready'],
+                'issue_count' => $counts['qr_missing'],
+                'label' => 'QR preparation',
+                'detail' => $counts['qr_missing'] === 0 ? 'QR cards are ready.' : 'Prepare the remaining QR cards.',
+                'href' => route('admin.ceremonies.students.qr.index', $ceremony),
+            ],
+            [
+                'key' => 'stage_design',
+                'status' => 'ready',
+                'count' => 1,
+                'issue_count' => 0,
+                'label' => 'Stage design',
+                'detail' => 'Review the audience display look and layout.',
+                'href' => route('admin.ceremonies.section', [$ceremony, 'stage-design']),
+            ],
+            [
+                'key' => 'readiness',
+                'status' => $blockerCount === 0 ? 'ready' : 'warning',
+                'count' => $blockerCount === 0 ? 1 : 0,
+                'issue_count' => $blockerCount,
+                'label' => 'Ceremony readiness',
+                'detail' => $blockerCount === 0
+                    ? 'No preparation blockers are currently flagged.'
+                    : "{$blockerCount} preparation area(s) need attention.",
+                'href' => route('admin.ceremonies.section', [$ceremony, 'readiness']),
+            ],
+        ];
+    }
 }

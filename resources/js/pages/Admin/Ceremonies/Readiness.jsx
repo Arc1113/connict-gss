@@ -26,11 +26,7 @@ export default function CeremonyReadiness({ ceremony, readiness }) {
             <section className="ceremony-workspace-panel">
                 <div className="admin-section-heading">
                     <div>
-                        <h2>Blocking issues</h2>
-                        <p>
-                            Every issue below includes one direct recovery action for this
-                            ceremony workspace.
-                        </p>
+                        <h2>Readiness</h2>
                     </div>
                 </div>
 
@@ -56,15 +52,11 @@ export default function CeremonyReadiness({ ceremony, readiness }) {
             <section className="ceremony-workspace-panel">
                 <div className="admin-section-heading">
                     <div>
-                        <h2>Readiness sections</h2>
-                        <p>
-                            Review each preparation area in the same Working Ceremony
-                            context.
-                        </p>
+                        <h2 className="sr-only">Preparation areas</h2>
                     </div>
                 </div>
 
-                <div className="admin-task-links">
+                <div className="readiness-task-links">
                     {readiness.sections.map((section) => (
                         <Link
                             className="admin-task-link"
@@ -81,14 +73,11 @@ export default function CeremonyReadiness({ ceremony, readiness }) {
                 </div>
             </section>
 
-            <section className="ceremony-workspace-panel">
+            <details className="ceremony-workspace-panel readiness-backup">
+                <summary>Backup status</summary>
                 <div className="admin-section-heading">
                     <div>
-                        <h2>Backup and device readiness</h2>
-                        <p>
-                            Local backup status remains a separate operational control,
-                            but the latest result is surfaced here for ceremony checks.
-                        </p>
+                        <h2>Latest backup</h2>
                     </div>
                     <Link
                         className="admin-button admin-button-secondary"
@@ -122,7 +111,7 @@ export default function CeremonyReadiness({ ceremony, readiness }) {
                         No local backup has been recorded yet.
                     </p>
                 )}
-            </section>
+            </details>
         </AdminLayout>
     );
 }

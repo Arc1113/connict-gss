@@ -22,4 +22,9 @@ enum CeremonyStatus: string
             self::Archived => 'Archived',
         };
     }
+
+    public function isTerminal(): bool
+    {
+        return in_array($this, [self::Completed, self::Archived], true);
+    }
 }

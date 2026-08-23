@@ -323,6 +323,7 @@ class StudentQrCodeController extends Controller
         Student $student,
         QrCodeRenderer $renderer,
         StudentQrReadiness $readiness,
+        ?string $backUrl = null,
     ): Response {
         Gate::authorize('printQrCode', $student);
         $this->assertPrintable($student, $readiness);
@@ -330,6 +331,7 @@ class StudentQrCodeController extends Controller
 
         return response()
             ->view('admin.student-qr-print', [
+                'backUrl' => $backUrl ?? route('admin.students.qr-codes.index', [], false),
                 'mode' => 'individual',
                 'title' => 'Individual graduate QR card',
                 'ceremony' => $student->ceremony,
@@ -352,7 +354,12 @@ class StudentQrCodeController extends Controller
     ): Response {
         abort_unless((int) $student->ceremony_id === (int) $ceremony, 404);
 
-        return $this->print($student, $renderer, $readiness);
+        return $this->print(
+            $student,
+            $renderer,
+            $readiness,
+            route('admin.ceremonies.students.qr.index', $ceremony, false),
+        );
     }
 
     public function batch(
@@ -371,6 +378,9 @@ class StudentQrCodeController extends Controller
 
         return response()
             ->view('admin.student-qr-print', [
+                'backUrl' => $request->route('ceremony') === null
+                    ? route('admin.students.qr-codes.index', [], false)
+                    : route('admin.ceremonies.students.qr.index', $ceremony, false),
                 'mode' => 'batch',
                 'title' => 'Graduate QR batch',
                 'ceremony' => $ceremony,

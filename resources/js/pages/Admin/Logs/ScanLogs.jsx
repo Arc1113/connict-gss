@@ -26,7 +26,7 @@ export default function ScanLogs({ canExport, filterOptions, filters, logs }) {
     const hasFilters = Object.values(filters).some(Boolean);
 
     return (
-        <AdminLayout>
+        <AdminLayout mode="technical">
             <Head title="Scan logs" />
             <PageHeader
                 actions={

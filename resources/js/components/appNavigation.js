@@ -1,10 +1,7 @@
 function parseLocation(currentUrl) {
     const url = new URL(currentUrl, 'http://localhost');
 
-    return {
-        path: url.pathname,
-        query: url.searchParams,
-    };
+    return { path: url.pathname, query: url.searchParams };
 }
 
 function exactPath(pathname) {
@@ -35,28 +32,66 @@ function queryValue(name, expectedValue) {
     return ({ query }) => query.get(name) === expectedValue;
 }
 
-const isImportRoute = pathPrefix('/admin/students/import');
+const isImportRoute = anyMatcher(
+    pathPrefix('/admin/students/import'),
+    regexPath(/^\/admin\/ceremonies\/\d+\/import(?:\/.*)?$/),
+);
 const isQrRoute = anyMatcher(
     pathPrefix('/admin/students/qr-codes'),
     regexPath(/^\/admin\/students\/\d+\/qr-code$/),
+    regexPath(/^\/admin\/ceremonies\/\d+\/qr(?:\/.*)?$/),
 );
 const isAnnouncementRoute = anyMatcher(
     pathPrefix('/admin/voice-generation'),
-    regexPath(/^\/admin\/ceremonies\/\d+\/announcements(?:\/.*)?$/),
-    regexPath(/^\/admin\/ceremonies\/\d+\/announcement-settings(?:\/.*)?$/),
-    regexPath(/^\/admin\/ceremonies\/\d+\/announcement-batches(?:\/.*)?$/),
+    regexPath(/^\/admin\/ceremonies\/\d+\/(?:announcements|announcement-settings|announcement-batches)(?:\/.*)?$/),
+);
+const isPreparationRoute = anyMatcher(
+    isImportRoute,
+    isQrRoute,
+    isAnnouncementRoute,
+    pathPrefix('/admin/pronunciation-rules'),
+    pathPrefix('/admin/stage-designs'),
+    regexPath(/^\/admin\/ceremonies\/\d+\/(?:setup|guided-setup|preparation|readiness)$/),
+    exactPath('/admin/preparation'),
 );
 const isStudentRoute = andMatcher(
-    pathPrefix('/admin/students'),
+    anyMatcher(
+        pathPrefix('/admin/students'),
+        regexPath(/^\/admin\/ceremonies\/\d+\/graduates(?:\/.*)?$/),
+    ),
     notMatcher(isImportRoute),
     notMatcher(isQrRoute),
 );
-const isCeremonyOverviewRoute = anyMatcher(
+const isCeremonyRoute = anyMatcher(
     exactPath('/admin/ceremonies'),
     exactPath('/admin/ceremonies/create'),
     regexPath(/^\/admin\/ceremonies\/\d+(?:\/edit)?$/),
-    regexPath(/^\/admin\/ceremonies\/\d+\/setup$/),
-    regexPath(/^\/admin\/ceremonies\/\d+\/operational-reset$/),
+    regexPath(/^\/admin\/ceremonies\/\d+\/(?:setup|readiness|operational-reset)$/),
+);
+const isCeremonyAdministrationRoute = anyMatcher(
+    exactPath('/admin/ceremonies'),
+    exactPath('/admin/ceremonies/create'),
+    regexPath(/^\/admin\/ceremonies\/\d+\/edit$/),
+);
+const isPreparationWorkspaceRoute = anyMatcher(
+    isPreparationRoute,
+    regexPath(/^\/admin\/ceremonies\/\d+$/),
+);
+const isRunCeremonyRoute = anyMatcher(
+    pathPrefix('/scanner'),
+    pathPrefix('/stage-control'),
+    exactPath('/stage'),
+);
+const isReportsRoute = anyMatcher(
+    pathPrefix('/admin/reports/ceremony-summary'),
+    pathPrefix('/admin/scan-logs'),
+    pathPrefix('/admin/stage-events'),
+);
+const isSettingsRoute = anyMatcher(
+    pathPrefix('/admin/device-connections'),
+    pathPrefix('/admin/backups'),
+    pathPrefix('/admin/users'),
+    pathPrefix('/admin/audit-logs'),
 );
 
 function hasAnnouncementAccess(abilities) {
@@ -68,204 +103,164 @@ function hasAnnouncementAccess(abilities) {
     );
 }
 
-function ceremonyOverviewHref(abilities, options) {
+function preparationHubHref(abilities, options) {
     if (!abilities.view_ceremonies) {
         return null;
     }
 
     return options.workingCeremony?.id
-        ? `/admin/ceremonies/${options.workingCeremony.id}`
-        : '/admin/ceremonies';
+        ? `/admin/ceremonies/${options.workingCeremony.id}/preparation`
+        : '/admin/preparation';
+}
+
+function item(href, label, icon, visible, match, options = {}) {
+    return {
+        href,
+        icon,
+        label,
+        visible,
+        match,
+        external: options.external ?? false,
+        tour: options.tour,
+    };
 }
 
 function navigationDefinition(abilities, options = {}) {
-    return [
+    const preparationHref = preparationHubHref(abilities, options);
+    const reportHref = abilities.view_ceremony_reports
+        ? '/admin/reports/ceremony-summary'
+        : abilities.view_operational_logs && !abilities.operate_stage
+          ? '/admin/scan-logs'
+          : null;
+
+    const primaryNavigation = [
         {
-            label: 'OVERVIEW',
+            label: 'Home',
             items: [
-                {
-                    href: '/dashboard',
-                    icon: 'overview',
-                    label: 'Overview',
-                    visible: true,
-                    match: exactPath('/dashboard'),
-                    tour: 'readiness',
-                },
+                item('/dashboard', 'Home', 'overview', true, anyMatcher(exactPath('/dashboard'), exactPath('/admin')), { tour: 'home' }),
             ],
         },
         {
-            label: 'CEREMONY WORKSPACE',
+            label: 'Graduates',
             items: [
-                {
-                    href: ceremonyOverviewHref(abilities, options),
-                    icon: 'ceremony',
-                    label: 'Ceremony Overview',
-                    visible: abilities.view_ceremonies,
-                    match: isCeremonyOverviewRoute,
-                },
-                {
-                    href: '/admin/students',
-                    icon: 'graduates',
-                    label: 'Graduates',
-                    visible: abilities.view_students,
-                    match: isStudentRoute,
-                    tour: 'graduates',
-                },
-                {
-                    href: '/admin/students/import',
-                    icon: 'import',
-                    label: 'Import',
-                    visible: abilities.import_students,
-                    match: isImportRoute,
-                },
-                {
-                    href: '/admin/students/qr-codes',
-                    icon: 'qr',
-                    label: 'QR & Media',
-                    visible: abilities.prepare_qr_codes,
-                    match: isQrRoute,
-                },
-                {
-                    href: '/admin/voice-generation',
-                    icon: 'audio',
-                    label: 'Announcements',
-                    visible: hasAnnouncementAccess(abilities),
-                    match: isAnnouncementRoute,
-                },
-                abilities.view_pronunciation_rules && {
-                    href: '/admin/pronunciation-rules',
-                    icon: 'audio',
-                    label: 'Pronunciation dictionary',
-                    visible: true,
-                    match: pathPrefix('/admin/pronunciation-rules'),
-                    tour: 'pronunciation-dictionary',
-                },
-                {
-                    href: '/admin/stage-designs',
-                    icon: 'audience',
-                    label: 'Stage Design',
-                    visible: abilities.manage_stage_designs,
-                    match: pathPrefix('/admin/stage-designs'),
-                },
+                item('/admin/students', 'Graduates', 'graduates', abilities.view_students, isStudentRoute, { tour: 'graduates' }),
             ],
         },
         {
-            label: 'LIVE OPERATIONS',
+            label: 'Preparation',
             items: [
-                {
-                    href: '/scanner',
-                    icon: 'scanner',
-                    label: 'Scanner',
-                    visible: abilities.operate_scanner,
-                    match: pathPrefix('/scanner'),
-                },
-                {
-                    href: '/stage-control',
-                    icon: 'stage',
-                    label: 'Stage Control',
-                    visible: abilities.operate_stage,
-                    match: pathPrefix('/stage-control'),
-                },
-                {
-                    href: '/stage',
-                    icon: 'audience',
-                    label: 'Stage Display',
-                    visible: abilities.operate_stage,
-                    match: exactPath('/stage'),
-                    external: true,
-                },
+                item(preparationHref, 'Preparation', 'ceremony', Boolean(preparationHref), isPreparationWorkspaceRoute, { tour: 'preparation' }),
+                item('/admin/students/import', 'Import Graduates', 'import', abilities.import_students, isImportRoute),
             ],
         },
         {
-            label: 'REVIEW',
+            label: 'Run Ceremony',
             items: [
-                {
-                    href: '/admin/reports/ceremony-summary',
-                    icon: 'reports',
-                    label: 'Ceremony Summary',
-                    visible: abilities.view_ceremony_reports,
-                    match: pathPrefix('/admin/reports/ceremony-summary'),
-                },
-                {
-                    href: '/admin/scan-logs',
-                    icon: 'scanLog',
-                    label: 'Scan Logs',
-                    visible: abilities.view_operational_logs,
-                    match: pathPrefix('/admin/scan-logs'),
-                    tour: 'operational-logs',
-                },
-                {
-                    href: '/admin/stage-events',
-                    icon: 'events',
-                    label: 'Stage Events',
-                    visible: abilities.view_operational_logs,
-                    match: pathPrefix('/admin/stage-events'),
-                },
+                item('/scanner', 'Scanner', 'scanner', abilities.operate_scanner, pathPrefix('/scanner')),
+                item('/stage-control', 'Stage Control', 'stage', abilities.operate_stage, pathPrefix('/stage-control')),
+                item('/stage', 'Stage Display', 'audience', abilities.operate_stage, exactPath('/stage'), { external: true }),
             ],
         },
         {
-            label: 'SYSTEM',
+            label: 'Reports',
             items: [
-                {
-                    href: '/admin/device-connections',
-                    icon: 'devices',
-                    label: 'Connect Devices',
-                    visible: abilities.manage_device_connections,
-                    match: pathPrefix('/admin/device-connections'),
-                },
-                {
-                    href: '/admin/backups',
-                    icon: 'backup',
-                    label: 'Backups',
-                    visible: abilities.view_backups,
-                    match: pathPrefix('/admin/backups'),
-                    tour: 'backups',
-                },
-                {
-                    href: '/admin/users',
-                    icon: 'users',
-                    label: 'Operator Accounts',
-                    visible: abilities.manage_users,
-                    match: pathPrefix('/admin/users'),
-                    tour: 'operator-accounts',
-                },
-                {
-                    href: '/admin/audit-logs',
-                    icon: 'audit',
-                    label: 'Audit Logs',
-                    visible: abilities.view_audit_logs,
-                    match: pathPrefix('/admin/audit-logs'),
-                },
+                item(reportHref, 'Reports', 'reports', Boolean(reportHref), isReportsRoute, { tour: 'reports' }),
+            ],
+        },
+        {
+            label: 'Settings',
+            items: [
+                item('/admin/ceremonies', 'Ceremonies', 'ceremony', abilities.manage_ceremonies, isCeremonyAdministrationRoute, { tour: 'ceremonies' }),
+                item('/admin/device-connections', 'Device Connections', 'devices', abilities.manage_device_connections, pathPrefix('/admin/device-connections'), { tour: 'device-connections' }),
+                item('/admin/backups', 'Backups', 'backup', abilities.view_backups, pathPrefix('/admin/backups'), { tour: 'backups' }),
             ],
         },
     ];
+
+    const secondaryNavigation = [
+        {
+            label: 'Preparation',
+            items: [
+                item('/admin/students/import', 'Import Graduates', 'import', abilities.import_students, isImportRoute),
+                item('/admin/students/qr-codes', 'QR & Media', 'qr', abilities.prepare_qr_codes, isQrRoute),
+                item('/admin/voice-generation', 'Announcements', 'audio', hasAnnouncementAccess(abilities), isAnnouncementRoute, { tour: 'announcements' }),
+                item('/admin/pronunciation-rules', 'Pronunciation Dictionary', 'audio', abilities.view_pronunciation_rules, pathPrefix('/admin/pronunciation-rules'), { tour: 'pronunciation-dictionary' }),
+                item('/admin/stage-designs', 'Stage Design', 'audience', abilities.manage_stage_designs, pathPrefix('/admin/stage-designs')),
+            ],
+        },
+        {
+            label: 'Reports',
+            items: [
+                item('/admin/scan-logs', 'Scan Logs', 'scanLog', abilities.view_operational_logs, pathPrefix('/admin/scan-logs'), { tour: 'operational-logs' }),
+                item('/admin/stage-events', 'Stage Events', 'events', abilities.view_operational_logs, pathPrefix('/admin/stage-events')),
+            ],
+        },
+        {
+            label: 'Settings',
+            items: [
+                item('/admin/users', 'Operator Accounts', 'users', abilities.manage_users, pathPrefix('/admin/users'), { tour: 'operator-accounts' }),
+                item('/admin/audit-logs', 'Audit Logs', 'audit', abilities.view_audit_logs, pathPrefix('/admin/audit-logs')),
+            ],
+        },
+    ];
+
+    return { primaryNavigation, secondaryNavigation };
 }
 
-export function buildNavigation(abilities, currentUrl, options = {}) {
-    const location = parseLocation(currentUrl);
-
-    return navigationDefinition(abilities, options)
+function mapNavigation(groups, location) {
+    return groups
         .map((group) => ({
             label: group.label,
             items: group.items
-                .filter((item) => item.visible && item.href)
-                .map((item) => ({
-                    href: item.href,
-                    icon: item.icon,
-                    label: item.label,
-                    external: item.external ?? false,
-                    tour: item.tour,
-                    active: item.match(location),
+                .filter((entry) => entry.visible && entry.href)
+                .map((entry) => ({
+                    href: entry.href,
+                    icon: entry.icon,
+                    label: entry.label,
+                    external: entry.external,
+                    tour: entry.tour,
+                    active: entry.match(location),
                 })),
+        }))
+        .filter((group) => group.items.length > 0);
+}
+
+export function buildNavigation(abilities, currentUrl, options = {}) {
+    const { primaryNavigation } = navigationDefinition(abilities, options);
+
+    return mapNavigation(primaryNavigation, parseLocation(currentUrl));
+}
+
+export function buildCommandNavigation(abilities, currentUrl, options = {}) {
+    const { primaryNavigation, secondaryNavigation } = navigationDefinition(abilities, options);
+    const location = parseLocation(currentUrl);
+    const primary = mapNavigation(primaryNavigation, location);
+    const secondary = mapNavigation(secondaryNavigation, location);
+    const seen = new Set();
+
+    return [...primary, ...secondary]
+        .map((group) => ({
+            ...group,
+            items: group.items.filter((entry) => {
+                if (seen.has(entry.href)) {
+                    return false;
+                }
+                seen.add(entry.href);
+                return true;
+            }),
         }))
         .filter((group) => group.items.length > 0);
 }
 
 export const navigationMatchers = {
     isAnnouncementRoute,
-    isCeremonyOverviewRoute,
+    isCeremonyRoute,
     isImportRoute,
+    isPreparationRoute,
     isQrRoute,
+    isReportsRoute,
+    isRunCeremonyRoute,
+    isSettingsRoute,
     isStudentRoute,
     queryValue,
 };

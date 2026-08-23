@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Phase4;
 
+use App\Enums\AudioReadinessStatus;
 use App\Enums\EligibilityStatus;
 use App\Enums\StageQueueStatus;
 use App\Enums\UserRole;
@@ -160,6 +161,30 @@ class StudentAdministrationTest extends TestCase
                         'college=College%20of%20Engineering',
                     ) && str_contains($url, 'eligibility_status=pending'),
                 ));
+    }
+
+    public function test_list_exposes_one_human_readable_preparation_status_and_filter(): void
+    {
+        $ready = Student::factory()->create([
+            'ceremony_id' => $this->ceremony->id,
+            'eligibility_status' => EligibilityStatus::Eligible,
+            'photo_path' => 'graduates/ready.jpg',
+            'audio_readiness_status' => AudioReadinessStatus::Approved,
+        ]);
+        Student::factory()->create([
+            'ceremony_id' => $this->ceremony->id,
+            'eligibility_status' => EligibilityStatus::Pending,
+            'photo_path' => null,
+        ]);
+
+        $this->actingAs($this->administrator)
+            ->get('/admin/students?preparation_status=ready')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('students.total', 1)
+                ->where('students.data.0.id', $ready->id)
+                ->where('students.data.0.preparation_status.value', 'ready')
+                ->where('students.data.0.preparation_status.label', 'Ready'));
     }
 
     public function test_deletion_is_blocked_after_operational_history_and_allowed_before_it(): void

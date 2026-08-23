@@ -25,7 +25,7 @@ export default function StageEvents({ canExport, events, filterOptions, filters 
     const hasFilters = Object.values(filters).some(Boolean);
 
     return (
-        <AdminLayout>
+        <AdminLayout mode="technical">
             <Head title="Stage events" />
             <PageHeader
                 actions={

@@ -40,6 +40,9 @@ class DashboardController extends Controller
             $counts = $workingCeremony === null
                 ? null
                 : $workspaceSummary->forCeremony($workingCeremony)['counts'];
+            $checklist = $workingCeremony === null || $counts === null
+                ? []
+                : $workspaceSummary->checklist($workingCeremony, $counts);
             $attention = $workingCeremony === null || $counts === null
                 ? []
                 : $this->attention($workingCeremony, $workspaceSummary->blockers($counts));
@@ -49,6 +52,7 @@ class DashboardController extends Controller
                     ? null
                     : $this->ceremony($workingCeremony),
                 'attention' => $attention,
+                'preparation_checklist' => $checklist,
                 'next_action' => $attention[0] ?? null,
                 'primary_action' => $attention[0] ?? ($workingCeremony === null
                     ? [

@@ -11,7 +11,6 @@ export default function VoiceGeneration({ workspace }) {
         <AdminLayout>
             <Head title="Announcements" />
             <PageHeader
-                description="Choose a provider, verify pronunciation, generate candidates, and approve every announcement before ceremony day."
                 eyebrow={ceremony ? 'Ceremony workspace' : 'Preparation workspace'}
                 title="Announcements"
             />
@@ -19,27 +18,32 @@ export default function VoiceGeneration({ workspace }) {
             {!ceremony && <div className="admin-empty-state"><h2>No working ceremony selected</h2><p>Choose a ceremony workspace before preparing announcement audio.</p><Link className="admin-button admin-button-primary" href="/admin/ceremonies">Open ceremonies</Link></div>}
 
             {ceremony && <>
-                <section className="voice-workspace-summary">
-                    <div><span>Working ceremony</span><strong>{ceremony.name}</strong></div>
-                    <div><span>Awaiting generation</span><strong>{counts.missing}</strong></div>
-                    <div><span>Awaiting review</span><strong>{counts.needs_review}</strong></div>
-                    <div><span>Approved</span><strong>{counts.approved}</strong></div>
+                <section className="announcement-task-list" aria-label="Announcement preparation">
+                    <Link href="/admin/pronunciation-rules">
+                        <span><strong>Pronunciation</strong><small>Names and wording</small></span>
+                        <span>Open</span>
+                    </Link>
+                    <Link href={permissions.batches ? batchUrl : workspace.urls.graduates}>
+                        <span><strong>Generate audio</strong><small>{counts.missing} {counts.missing === 1 ? 'graduate needs audio' : 'graduates need audio'}</small></span>
+                        <span>Open</span>
+                    </Link>
+                    {permissions.review && reviewQueue.length > 0 && (
+                        <a href="#review-queue">
+                            <span><strong>Review audio</strong><small>{counts.needs_review} waiting</small></span>
+                            <span>Review</span>
+                        </a>
+                    )}
                 </section>
 
-                {permissions.review && (
+                {permissions.review && reviewQueue.length > 0 && (
                     <section className="voice-review-queue" id="review-queue">
                         <div className="admin-section-heading">
                             <div>
-                                <p className="announcement-kicker">Human listening check</p>
-                                <h2>Generated voices awaiting approval</h2>
-                                <p>This queue follows ceremony sequence. Approve or reject one voice and the next graduate opens automatically.</p>
+                                <h2>Review audio</h2>
                             </div>
                             <strong>{counts.needs_review} waiting</strong>
                         </div>
-                        {reviewQueue.length === 0 ? (
-                            <div className="voice-review-complete"><strong>Review queue complete</strong><span>No generated voices currently need a decision.</span></div>
-                        ) : (
-                            <ol>
+                        <ol>
                                 {reviewQueue.map((candidate, index) => (
                                     <li key={candidate.id}>
                                         <span>{index + 1}</span>
@@ -47,23 +51,18 @@ export default function VoiceGeneration({ workspace }) {
                                         <Link className={index === 0 ? 'admin-button admin-button-primary' : 'admin-row-action'} href={candidate.review_url}>{index === 0 ? 'Review next' : 'Review'}</Link>
                                     </li>
                                 ))}
-                            </ol>
-                        )}
+                        </ol>
                     </section>
                 )}
 
-                <section className="voice-provider-readiness" aria-label="Voice provider readiness">
-                    <article><span>Local offline</span><strong>{providers.kokoro.configured ? 'Ready' : 'Setup required'}</strong><p>Runs Kokoro on this computer and does not need internet at generation time.</p></article>
-                    <article><span>Azure online</span><strong>{providers.azure.configured ? 'Ready' : 'Setup required'}</strong><p>Uses configured Azure credentials and internet connectivity.</p></article>
-                </section>
-
-                <ol className="voice-workflow">
-                    <li><span>1</span><div><h2>Select Local or Azure</h2><p>The provider is saved on a new immutable ceremony template version.</p>{permissions.settings && <Link href={settingsUrl}>Open provider settings</Link>}</div></li>
-                    <li><span>2</span><div><h2>Compare curated voices</h2><p>Generate temporary samples using a realistic fictional graduation announcement.</p>{permissions.settings && <Link href={`${settingsUrl}#voice-comparison`}>Compare voices</Link>}</div></li>
-                    <li><span>3</span><div><h2>Preview wording and pronunciation</h2><p>Open a graduate to confirm their spoken name, awards, and announcement text.</p><Link href={workspace.urls.graduates}>Open graduates</Link></div></li>
-                    <li><span>4</span><div><h2>Generate selected or batch audio</h2><p>Create private candidates without approving or publishing them automatically.</p>{permissions.batches && <Link href={batchUrl}>Start batch generation</Link>}</div></li>
-                    <li><span>5</span><div><h2>Review and approve</h2><p>{counts.needs_review} candidate{counts.needs_review === 1 ? '' : 's'} currently need a human listening check.</p>{permissions.review && <a href="#review-queue">Open review queue</a>}</div></li>
-                </ol>
+                <details className="announcement-advanced-settings">
+                    <summary>Advanced announcement settings</summary>
+                    <div className="voice-provider-readiness" aria-label="Voice provider readiness">
+                        <article><span>Local offline</span><strong>{providers.kokoro.configured ? 'Ready' : 'Setup required'}</strong><p>Runs locally and does not need internet at generation time.</p></article>
+                        <article><span>Azure online</span><strong>{providers.azure.configured ? 'Ready' : 'Setup required'}</strong><p>Uses configured Azure credentials and internet connectivity.</p></article>
+                    </div>
+                    {permissions.settings && <Link href={settingsUrl}>Open announcement settings</Link>}
+                </details>
             </>}
         </AdminLayout>
     );

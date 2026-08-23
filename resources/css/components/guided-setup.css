@@ -1,0 +1,168 @@
+.guided-setup-page {
+    display: grid;
+    gap: 1.25rem;
+    max-width: 62rem;
+    margin: 0 auto;
+    padding: 0.5rem 0 2rem;
+}
+
+.guided-setup-header,
+.guided-setup-footer {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.guided-setup-header {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.guided-setup-header h1,
+.guided-setup-step h2 {
+    margin: 0;
+    color: var(--color-text-primary);
+    letter-spacing: -0.03em;
+}
+
+.guided-setup-header h1 {
+    font-size: clamp(1.55rem, 3vw, 2.25rem);
+}
+
+.guided-setup-header p:last-child,
+.guided-setup-step > p:not(.guided-setup-step-number):not(.guided-setup-ready) {
+    max-width: 62ch;
+    margin: 0.45rem 0 0;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+}
+
+.guided-setup-kicker,
+.guided-setup-step-number {
+    margin: 0 0 0.35rem;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.guided-setup-main {
+    display: grid;
+    grid-template-columns: minmax(13rem, 0.7fr) minmax(0, 1.3fr);
+    gap: 1.25rem;
+}
+
+.guided-setup-progress,
+.guided-setup-step {
+    padding: 1.25rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+}
+
+.guided-setup-progress ol {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.guided-setup-progress li {
+    display: grid;
+    grid-template-columns: 1.65rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 2.5rem;
+    color: var(--color-text-secondary);
+}
+
+.guided-setup-progress li > span {
+    display: grid;
+    width: 1.5rem;
+    height: 1.5rem;
+    place-items: center;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 50%;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.guided-setup-progress li.is-ready > span {
+    color: var(--color-success);
+    border-color: var(--color-success);
+}
+
+.guided-setup-progress li.is-current {
+    color: var(--color-accent);
+    font-weight: 700;
+}
+
+.guided-setup-progress li.is-current > span {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+.guided-setup-progress small {
+    display: block;
+    margin-top: 0.1rem;
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    font-weight: 500;
+}
+
+.guided-setup-step {
+    min-height: 18rem;
+}
+
+.guided-setup-step h2 {
+    font-size: clamp(1.4rem, 2.5vw, 2rem);
+}
+
+.guided-setup-step-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 1.5rem;
+}
+
+.guided-setup-ready {
+    margin: 1.5rem 0 0;
+    color: var(--color-success);
+    font-weight: 650;
+}
+
+.guided-setup-footer {
+    align-items: center;
+    padding-top: 0.25rem;
+}
+
+.guided-setup-footer > div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.65rem;
+}
+
+@media (max-width: 48rem) {
+    .guided-setup-main {
+        grid-template-columns: 1fr;
+    }
+
+    .guided-setup-header,
+    .guided-setup-footer {
+        flex-direction: column;
+    }
+
+    .guided-setup-header .admin-button,
+    .guided-setup-footer > div,
+    .guided-setup-footer > div .admin-button {
+        width: 100%;
+    }
+
+    .guided-setup-footer > div .admin-button {
+        justify-content: center;
+    }
+}

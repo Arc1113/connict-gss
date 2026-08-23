@@ -1,0 +1,276 @@
+/* design.md final controls, PWA notices, and motion policy --------------- */
+
+.primary-action,
+.admin-button-primary {
+    color: #ffffff;
+    background: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
+    transition:
+        color var(--motion-hover),
+        background var(--motion-hover),
+        border-color var(--motion-hover),
+        transform var(--motion-hover);
+}
+
+.primary-action:hover:not(:disabled),
+.admin-button-primary:hover:not(:disabled) {
+    color: #ffffff;
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+    box-shadow: none;
+    transform: none;
+}
+
+.secondary-action,
+.admin-button-secondary {
+    color: var(--color-text-primary);
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
+}
+
+.secondary-action:hover:not(:disabled),
+.admin-button-secondary:hover:not(:disabled) {
+    color: var(--color-text-primary);
+    background: var(--color-bg-hover);
+    border-color: var(--color-text-tertiary);
+}
+
+.scanner-header .secondary-action {
+    color: #f7f9fb;
+    background: transparent;
+    border-color: #566170;
+}
+
+.scanner-header .secondary-action:hover:not(:disabled) {
+    color: #ffffff;
+    background: #303945;
+    border-color: #7c8998;
+}
+
+.primary-action:active:not(:disabled),
+.secondary-action:active:not(:disabled),
+.admin-button:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.primary-action:disabled,
+.secondary-action:disabled,
+.admin-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.52;
+}
+
+.admin-button-danger {
+    color: #ffffff;
+    background: var(--color-status-error);
+    border-color: var(--color-status-error);
+    border-radius: var(--radius-sm);
+}
+
+.admin-button-danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-status-error) 84%, black);
+    border-color: color-mix(in srgb, var(--color-status-error) 84%, black);
+}
+
+.admin-empty-state {
+    min-height: 11rem;
+    padding: 2.25rem 1.25rem;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-surface);
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: none;
+}
+
+.pwa-status {
+    z-index: calc(var(--z-statusbar) + 2);
+    right: 0.75rem;
+    bottom: calc(var(--app-statusbar-height, 1.875rem) + 0.75rem);
+    width: min(28rem, calc(100% - 1.5rem));
+    overflow: hidden;
+    color: #ffffff;
+    background: #20262e;
+    border: 1px solid #3d4754;
+    border-radius: var(--radius-md);
+    box-shadow: 0 0.75rem 1.75rem rgb(23 25 28 / 0.18);
+}
+
+.pwa-status > div {
+    min-height: 3.75rem;
+    padding: 0.65rem 0.75rem;
+}
+
+.pwa-status span {
+    color: #c5cdd6;
+    font-size: 0.68rem;
+}
+
+.pwa-status strong {
+    color: #ffffff;
+    font-size: 0.76rem;
+}
+
+.pwa-status button {
+    min-height: 2.35rem;
+    color: #ffffff;
+    background: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-sm);
+    font-size: 0.68rem;
+}
+
+.pwa-status button:hover {
+    background: var(--color-accent-hover);
+}
+
+.pwa-status .pwa-status-offline {
+    background: var(--color-status-error);
+}
+
+.pwa-status .pwa-status-dismiss {
+    color: #c5cdd6;
+    background: transparent;
+    border-color: transparent;
+}
+
+@media (display-mode: standalone) {
+    .app-shell {
+        min-height: 100dvh;
+    }
+
+    .app-statusbar {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+body {
+    min-width: 320px;
+    min-height: 100dvh;
+    margin: 0;
+    background:
+        radial-gradient(circle at 12% -10%, rgb(197 147 77 / 0.09), transparent 32rem),
+        var(--gss-canvas);
+}
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+button,
+a {
+    -webkit-tap-highlight-color: transparent;
+}
+
+button:active:not(:disabled),
+.primary-action:active:not(:disabled),
+.secondary-action:active:not(:disabled),
+.admin-button:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
+}
+
+/* Accessibility Focus Visible Standard */
+.primary-action:focus-visible,
+.secondary-action:focus-visible,
+.admin-button:focus-visible,
+.back-link:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+audio:focus-visible {
+    outline: 2px solid var(--gss-focus);
+    outline-offset: 2px;
+}
+
+/* Base Utility Classes */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.skip-link {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 20;
+    padding: 0.75rem 1rem;
+    color: #ffffff;
+    background: var(--gss-navy);
+    font-weight: 700;
+    text-decoration: none;
+    transform: translateY(-150%);
+    transition: transform var(--gss-transition);
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
+.brand-mark {
+    display: inline-grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    place-items: center;
+    color: var(--gss-gold);
+    background: var(--gss-gold-light);
+    border-radius: 0.85rem 0.85rem 0.85rem 0.28rem;
+}
+
+.brand-mark svg {
+    width: 1.75rem;
+    height: 1.75rem;
+    overflow: visible;
+    fill: none;
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+}
+
+.brand-mark-compact {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.65rem 0.65rem 0.65rem 0.22rem;
+}
+
+.brand-mark-compact svg {
+    width: 1.4rem;
+    height: 1.4rem;
+}
+
+.brand-mark-inverse {
+    color: #f1d7a8;
+    background: rgb(255 255 255 / 0.1);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14);
+}

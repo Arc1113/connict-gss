@@ -22,13 +22,13 @@ export default function StudentImportSummary({
 
     return (
         <AdminLayout>
-            <Head title="Graduate import complete" />
+            <Head title="Import finished" />
             <PageHeader
                 backHref={graduateListUrl}
                 backLabel="Graduates"
                 description="The reviewed rows were committed together to PostgreSQL."
                 eyebrow="Graduate import"
-                title="Import complete"
+                title="Import finished"
             />
             <ImportProgress currentStep={4} />
 
@@ -104,13 +104,13 @@ export default function StudentImportSummary({
                         className="admin-button admin-button-primary"
                         href={graduateListUrl}
                     >
-                        Review imported graduates
+                        Review graduates
                     </Link>
                     <Link
                         className="admin-button admin-button-secondary"
                         href={workspace?.urls.import ?? '/admin/students/import'}
                     >
-                        Import another CSV
+                        Import more graduates
                     </Link>
                 </div>
             </section>

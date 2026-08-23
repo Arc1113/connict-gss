@@ -110,7 +110,8 @@ class CeremonyController extends Controller
 
         return redirect()
             ->route('admin.ceremonies.show', $ceremony)
-            ->with('success', 'Ceremony created.');
+            ->with('success', 'Ceremony created.')
+            ->with('ceremony_created', true);
     }
 
     public function show(
@@ -124,6 +125,27 @@ class CeremonyController extends Controller
         $workspaceSummary = $summary->forCeremony($ceremony);
         $counts = $workspaceSummary['counts'];
 
+        if ($ceremony->status->isTerminal()) {
+            return Inertia::render('Admin/Ceremonies/Completed', [
+                'ceremony' => [
+                    ...$this->serialize($ceremony),
+                    'completed_at' => $ceremony->completed_at?->toIso8601String(),
+                ],
+                'summary' => [
+                    'graduate_count' => $counts['graduates_total'],
+                    'photos_ready' => $counts['photos_ready'],
+                    'announcements_ready' => $counts['announcements_ready'],
+                    'scan_events' => $ceremony->scanLogs()->count(),
+                    'stage_events' => $ceremony->stageEvents()->count(),
+                ],
+                'urls' => [
+                    'workspace' => route('admin.ceremonies.show', $ceremony),
+                    'reports' => route('admin.reports.ceremony-summary', ['ceremony_id' => $ceremony->id]),
+                    'export' => route('admin.reports.ceremony-summary.export', ['ceremony_id' => $ceremony->id]),
+                ],
+            ]);
+        }
+
         return Inertia::render('Admin/Ceremonies/Show', [
             'ceremony' => [
                 ...$this->serialize($ceremony),
@@ -132,6 +154,7 @@ class CeremonyController extends Controller
             ],
             'overview' => [
                 'summary' => $counts,
+                'checklist' => $summary->checklist($ceremony, $counts),
                 'blockers' => $this->workspaceBlockers($ceremony, $counts),
                 'next_action' => $this->workspaceNextAction($ceremony, $counts),
                 'details' => [
@@ -192,11 +215,11 @@ class CeremonyController extends Controller
                 $ceremony,
                 'announcements',
                 'Announcements',
-                'The existing announcement preparation flow remains available, but it still depends on the live ceremony until Phase 5 migrates working-ceremony scoping.',
+                'Prepare announcements for this ceremony. Provider settings stay under the advanced area.',
                 [
                     [
-                        'href' => '/admin/voice-generation',
-                        'label' => 'Open existing announcement workspace',
+                        'href' => route('admin.ceremonies.announcements', $ceremony),
+                        'label' => 'Open announcements',
                         'tone' => 'primary',
                     ],
                     ...($request->user()->can('manage-announcement-settings') ? [[

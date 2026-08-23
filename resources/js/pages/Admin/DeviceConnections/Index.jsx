@@ -26,7 +26,7 @@ function CopyButton({ label, value }) {
 
 export default function DeviceConnectionsIndex({ connection, realtime }) {
     return (
-        <AdminLayout>
+        <AdminLayout mode="technical">
             <Head title="Connect devices" />
             <PageHeader
                 actions={

@@ -1,0 +1,754 @@
+/* Scanner: standing-distance clarity with a calmer visual shell */
+.scanner-page {
+    min-height: 100dvh;
+    padding: clamp(1rem, 3vw, 2.75rem);
+    background:
+        radial-gradient(circle at 92% 0%, rgb(169 111 41 / 0.12), transparent 26rem),
+        var(--gss-canvas);
+}
+
+.scanner-shell {
+    width: min(82rem, 100%);
+    border: 0;
+    border-radius: 0.4rem 1.6rem 0.4rem 1.6rem;
+    box-shadow: var(--gss-shadow-lg);
+}
+
+.scanner-header {
+    padding: clamp(1.75rem, 4vw, 3.25rem);
+    color: #f8f5ed;
+    background:
+        radial-gradient(circle at 86% 10%, rgb(213 165 87 / 0.2), transparent 18rem),
+        var(--gss-navy);
+}
+
+.scanner-header h1 {
+    color: #ffffff;
+    font-size: clamp(2.4rem, 5vw, 4.75rem);
+    font-weight: 500;
+    letter-spacing: -0.05em;
+}
+
+.scanner-header > div > p:last-child {
+    color: #aabbb6;
+}
+
+.scanner-header .ceremony-status-active {
+    color: #d9bd87;
+}
+
+.scanner-header .ceremony-status-inactive {
+    color: #efb2aa;
+}
+
+.scanner-header .secondary-action {
+    border-color: rgb(255 255 255 / 0.28);
+    color: #ffffff;
+}
+
+.scanner-header .secondary-action:hover {
+    color: var(--gss-navy);
+    background: #ffffff;
+}
+
+.scanner-system-status {
+    background: #e9e5dc;
+}
+
+.scanner-form {
+    padding-top: clamp(2rem, 4vw, 3.25rem);
+}
+
+.scanner-form input {
+    border-width: 1px;
+    border-color: var(--gss-border);
+    border-radius: 0.3rem;
+    color: var(--gss-navy);
+    box-shadow: inset 0 -3px 0 var(--gss-navy);
+}
+
+.scanner-submit {
+    min-width: 12rem;
+}
+
+.scan-feedback {
+    min-height: 11rem;
+    border: 0;
+    border-left: 0.5rem solid var(--gss-ink-muted);
+    border-radius: 0.3rem 1rem 0.3rem 1rem;
+    box-shadow: var(--gss-shadow-md);
+}
+
+.scan-feedback strong {
+    font-size: clamp(2rem, 5vw, 3.8rem);
+    font-weight: 500;
+    letter-spacing: -0.04em;
+}
+
+.scanner-fallback {
+    border-color: transparent;
+    border-radius: 0.3rem 1rem 0.3rem 1rem;
+}
+
+.scanner-lookup-results label:hover {
+    background: var(--gss-surface);
+}
+
+/* Audience display and live control share the same ceremonial stage language */
+.stage-page {
+    min-height: 100dvh;
+    background:
+        radial-gradient(circle at 50% 42%, rgb(50 86 78 / 0.7), transparent 32rem),
+        linear-gradient(145deg, #0a2622, #041310);
+}
+
+.stage-page::before {
+    top: auto;
+    right: 8%;
+    bottom: 0;
+    left: 8%;
+    height: 0.22rem;
+    background: linear-gradient(90deg, transparent, var(--gss-stage-gold), transparent);
+}
+
+.stage-page::after {
+    position: absolute;
+    inset: 7% 5%;
+    border: 1px solid rgb(230 195 132 / 0.13);
+    border-radius: 50% 50% 1rem 1rem;
+    pointer-events: none;
+    content: "";
+}
+
+.stage-presentation h1,
+.stage-idle h1,
+.stage-loading h1 {
+    font-family: inherit;
+    font-weight: 500;
+    letter-spacing: -0.045em;
+    text-shadow: 0 16px 34px rgb(0 0 0 / 0.4);
+}
+
+.stage-photo {
+    border-width: 1px;
+    border-color: rgb(229 194 131 / 0.62);
+    border-radius: 1.4rem 1.4rem 1.4rem 0.4rem;
+    filter: saturate(0.84) contrast(1.04);
+    box-shadow: 0 30px 52px -30px rgb(0 0 0 / 0.88);
+}
+
+.stage-control-page {
+    min-height: 100dvh;
+    padding-top: 2.25rem;
+    background:
+        radial-gradient(circle at 94% 0%, rgb(169 111 41 / 0.1), transparent 25rem),
+        var(--gss-canvas);
+}
+
+.stage-control-header {
+    align-items: center;
+    padding-bottom: 1.75rem;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--gss-border);
+}
+
+.stage-control-header h1 {
+    font-size: clamp(2.75rem, 5vw, 4.75rem);
+    font-weight: 500;
+    letter-spacing: -0.055em;
+}
+
+.stage-control-status {
+    border: 0;
+    border-radius: 0.3rem 1rem 0.3rem 1rem;
+    background: var(--gss-surface);
+    box-shadow: var(--gss-shadow-md);
+}
+
+.stage-control-current,
+.stage-control-queue,
+.stage-control-support,
+.stage-control-loading,
+.stage-control-empty {
+    border: 0;
+    border-radius: 0.35rem 1.2rem 0.35rem 1.2rem;
+    box-shadow: var(--gss-shadow-md);
+}
+
+.stage-control-current-identity h3,
+.stage-control-current-empty h3 {
+    font-family: inherit;
+    font-weight: 500;
+    letter-spacing: -0.045em;
+}
+
+.stage-control-table-wrap tbody tr {
+    transition: background var(--gss-transition);
+}
+
+.stage-control-table-wrap tbody tr:hover {
+    background: var(--gss-surface-muted);
+}
+
+@media (max-width: 72rem) {
+    .welcome-hero {
+        grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.62fr);
+        gap: 3rem;
+    }
+
+    .welcome-hero h1 {
+        font-size: clamp(3.2rem, 7vw, 6rem);
+    }
+
+    .dashboard-workspace {
+        grid-column: span 6;
+    }
+
+    .dashboard-workspace:nth-child(1),
+    .dashboard-workspace:nth-child(2),
+    .dashboard-workspace:nth-child(4),
+    .dashboard-workspace:nth-child(5) {
+        grid-column: span 6;
+    }
+
+    .dashboard-profile {
+        grid-template-columns: minmax(0, 1fr) minmax(20rem, 1fr);
+    }
+
+    .dashboard-home-link {
+        grid-column: 1 / -1;
+    }
+
+    .stage-control-layout {
+        grid-template-columns: minmax(19rem, 0.8fr) minmax(26rem, 1.2fr);
+    }
+
+    .admin-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-import-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 56rem) {
+    .welcome-nav,
+    .welcome-hero,
+    .welcome-workflow,
+    .welcome-reveal,
+    .welcome-cta,
+    .welcome-footer {
+        width: min(100% - 2rem, 44rem);
+    }
+
+    .welcome-hero {
+        grid-template-columns: minmax(0, 1fr);
+        min-height: auto;
+        padding-top: 5rem;
+    }
+
+    .welcome-hero-copy {
+        position: relative;
+        z-index: 2;
+    }
+
+    .welcome-hero h1 {
+        max-width: 13ch;
+        font-size: clamp(3.4rem, 12vw, 6.25rem);
+    }
+
+    .welcome-hero-visual {
+        min-height: 38rem;
+    }
+
+    .welcome-stage-frame {
+        left: 0;
+    }
+
+    .welcome-workflow > header,
+    .welcome-reveal {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .welcome-workflow > header {
+        align-items: start;
+        gap: 1.25rem;
+    }
+
+    .welcome-workflow h2 {
+        max-width: 16ch;
+    }
+
+    .welcome-reveal {
+        gap: 4rem;
+    }
+
+    .welcome-cta {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .welcome-cta-action {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .welcome-footer {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .welcome-footer p {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        text-align: left;
+    }
+
+    .auth-page {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .auth-context {
+        min-height: min(42rem, 78dvh);
+    }
+
+    .auth-context > div {
+        margin-top: 7rem;
+    }
+
+    .auth-card {
+        min-height: auto;
+        padding-top: 6rem;
+        padding-bottom: 7rem;
+    }
+
+    .dashboard-intro {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 2rem;
+    }
+
+    .dashboard-intro h1 {
+        max-width: 11ch;
+    }
+
+    .dashboard-profile {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 2rem;
+    }
+
+    .dashboard-home-link {
+        grid-column: auto;
+    }
+
+    .scanner-header,
+    .stage-control-header,
+    .admin-page-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .scanner-system-status,
+    .stage-control-status,
+    .stage-control-status.stage-control-status-automatic {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .scanner-system-status li + li,
+    .stage-control-status p + p {
+        border-top: 1px solid var(--gss-border-subtle);
+        border-left: 0;
+    }
+
+    .stage-control-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stage-control-support {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stage-control-support > div + div {
+        border-top: 1px solid var(--gss-border-subtle);
+        border-left: 0;
+    }
+
+    .admin-topbar {
+        position: static;
+    }
+
+    .admin-nav {
+        flex-wrap: nowrap;
+        margin-right: calc(clamp(1rem, 2.5vw, 2rem) * -1);
+        margin-left: calc(clamp(1rem, 2.5vw, 2rem) * -1);
+        padding-right: clamp(1rem, 2.5vw, 2rem);
+        padding-left: clamp(1rem, 2.5vw, 2rem);
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .admin-account {
+        gap: 0.5rem;
+    }
+
+    .admin-account > span {
+        display: none;
+    }
+
+    .admin-detail-list,
+    .admin-readiness-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ceremony-context-header {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ceremony-context-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 40rem) {
+    .welcome-nav {
+        min-height: 5.75rem;
+    }
+
+    .welcome-brand small {
+        display: none;
+    }
+
+    .welcome-nav-action {
+        min-width: 2.75rem;
+        padding: 0.5rem;
+        gap: 0;
+        font-size: 0;
+    }
+
+    .welcome-nav-action span {
+        font-size: 0.8rem;
+    }
+
+    .welcome-hero {
+        padding: 4rem 0 7rem;
+    }
+
+    .welcome-hero h1 {
+        max-width: 100%;
+        font-size: clamp(2.65rem, 11.25vw, 3.2rem);
+        line-height: 0.95;
+    }
+
+    .welcome-inline-visual {
+        width: clamp(3.8rem, 17vw, 4.5rem);
+        height: clamp(1.55rem, 7vw, 1.9rem);
+    }
+
+    .welcome-hero-copy > p:not(.welcome-kicker) {
+        font-size: 0.98rem;
+    }
+
+    .welcome-hero-visual {
+        min-height: 31rem;
+    }
+
+    .welcome-stage-frame {
+        inset: 1rem 0;
+        padding: 2rem;
+        border-radius: 8rem 8rem 0.8rem 0.8rem;
+    }
+
+    .welcome-cue-card {
+        min-width: 8rem;
+        padding: 0.8rem;
+    }
+
+    .welcome-cue-card-top {
+        left: -0.4rem;
+    }
+
+    .welcome-cue-card-bottom {
+        right: -0.4rem;
+    }
+
+    .welcome-workflow,
+    .welcome-reveal {
+        padding-top: 7rem;
+        padding-bottom: 7rem;
+    }
+
+    .workflow-grid {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: none;
+    }
+
+    .workflow-card,
+    .workflow-card-1,
+    .workflow-card-2,
+    .workflow-card-3,
+    .workflow-card-4 {
+        grid-column: auto;
+        min-height: 22rem;
+    }
+
+    .welcome-accordion {
+        flex-direction: column;
+        min-height: 38rem;
+    }
+
+    .welcome-accordion article,
+    .welcome-accordion article:first-child {
+        flex: 1 1 0;
+        min-height: 5rem;
+        border-right: 0;
+        border-bottom: 1px solid rgb(255 255 255 / 0.16);
+    }
+
+    .welcome-accordion article:hover,
+    .welcome-accordion article:focus-within {
+        flex: 3 1 0;
+    }
+
+    .welcome-cta {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 2rem;
+    }
+
+    .welcome-cta .brand-mark {
+        display: none;
+    }
+
+    .welcome-footer {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .welcome-footer p {
+        grid-column: auto;
+        grid-row: auto;
+    }
+
+    .welcome-footer div {
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .auth-context {
+        min-height: 38rem;
+        padding: 1.5rem;
+    }
+
+    .auth-context h2 {
+        font-size: clamp(2.7rem, 13vw, 4rem);
+    }
+
+    .auth-context > div {
+        margin-top: 5rem;
+    }
+
+    .auth-context li {
+        flex-basis: 100%;
+        padding-top: 0.6rem;
+    }
+
+    .auth-context li::before {
+        top: 0.93rem;
+    }
+
+    .auth-card {
+        padding: 4rem 1.5rem 5rem;
+    }
+
+    .auth-card .back-link {
+        margin-bottom: 4rem;
+    }
+
+    .dashboard-page {
+        padding-right: 1rem;
+        padding-left: 1rem;
+    }
+
+    .dashboard-header {
+        min-height: 5.75rem;
+    }
+
+    .dashboard-brand small,
+    .dashboard-account > span {
+        display: none;
+    }
+
+    .dashboard-account {
+        gap: 0.5rem;
+    }
+
+    .dashboard-intro {
+        padding-top: 4rem;
+    }
+
+    .dashboard-intro h1 {
+        font-size: clamp(3.2rem, 15vw, 5rem);
+    }
+
+    .dashboard-workspaces {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .dashboard-workspace,
+    .dashboard-workspace:nth-child(1),
+    .dashboard-workspace:nth-child(2),
+    .dashboard-workspace:nth-child(4),
+    .dashboard-workspace:nth-child(5) {
+        grid-column: auto;
+        min-height: 20rem;
+    }
+
+    .dashboard-profile dl {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+    }
+
+    .scanner-page,
+    .stage-control-page {
+        padding: 0.75rem;
+    }
+
+    .scanner-shell {
+        border-radius: 0.3rem 1rem 0.3rem 1rem;
+    }
+
+    .scanner-header,
+    .scanner-form,
+    .stage-control-current,
+    .stage-control-queue {
+        padding: 1.25rem;
+    }
+
+    .scanner-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .scanner-form label,
+    .scanner-form p {
+        grid-column: auto;
+    }
+
+    .scanner-submit {
+        width: 100%;
+    }
+
+    .scan-feedback {
+        margin-right: 1.25rem;
+        margin-left: 1.25rem;
+    }
+
+    .scanner-last-success {
+        grid-template-columns: minmax(0, 1fr);
+        margin-right: 1.25rem;
+        margin-left: 1.25rem;
+    }
+
+    .scanner-fallback {
+        margin-right: 1.25rem;
+        margin-left: 1.25rem;
+    }
+
+    .scanner-fallback-body form > div {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stage-control-selected-action,
+    .admin-section-heading,
+    .admin-pagination {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .stage-control-primary-actions > *,
+    .stage-control-selected-action > button {
+        width: 100%;
+    }
+
+    .admin-topbar-inner {
+        gap: 0.75rem;
+    }
+
+    .admin-brand {
+        max-width: calc(100% - 10rem);
+    }
+
+    .admin-brand > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .admin-account a {
+        display: none;
+    }
+
+    .admin-main {
+        padding-top: 2.5rem;
+    }
+
+    .admin-page-header h1 {
+        font-size: clamp(2.7rem, 14vw, 4.25rem);
+    }
+
+    .admin-page-actions,
+    .admin-page-actions > *,
+    .admin-form-actions,
+    .admin-form-actions > * {
+        width: 100%;
+    }
+
+    .admin-filters,
+    .admin-form-grid,
+    .admin-media-editor,
+    .admin-import-mapping-grid,
+    .admin-import-context dl,
+    .admin-import-counts,
+    .admin-detail-list,
+    .admin-readiness-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ceremony-workspace-next-action,
+    .ceremony-workspace-blockers li,
+    .ceremony-workspace-status-list > div {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .ceremony-workspace-status-list dd {
+        text-align: left;
+    }
+
+    .admin-filter-search,
+    .admin-filter-search-wide {
+        grid-column: auto;
+    }
+
+    .admin-import-progress {
+        overflow-x: auto;
+    }
+
+    .admin-import-progress ol {
+        min-width: 34rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .welcome-marquee > div {
+        animation: none;
+    }
+}

@@ -9,7 +9,7 @@ export default function UserIndex({ filters, roleOptions, users }) {
     const hasFilters = Object.values(filters).some(Boolean);
 
     return (
-        <AdminLayout>
+        <AdminLayout mode="technical">
             <Head title="Operator accounts" />
             <PageHeader
                 actions={

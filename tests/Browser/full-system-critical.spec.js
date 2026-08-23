@@ -134,6 +134,16 @@ async function clearStagePreflight(page) {
     }
 }
 
+async function dismissGettingStartedIfVisible(page) {
+    const dismiss = page.getByRole('button', {
+        name: 'Dismiss getting-started panel',
+    });
+
+    if (await dismiss.isVisible({ timeout: 500 }).catch(() => false)) {
+        await dismiss.click();
+    }
+}
+
 test('invalid credentials return keyboard focus to the email field', async ({
     page,
 }) => {
@@ -359,7 +369,7 @@ test('ceremony workspace opens with local navigation while working and live cere
 
     await page.getByRole('link', { name: '← Ceremony overview' }).click();
     await expect(page).toHaveURL(/\/admin\/ceremonies\/\d+$/);
-    await expect(page.getByRole('heading', { name: 'Preparation status' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Ready the ceremony in order' })).toBeVisible();
     await expectNoAxeViolations(page);
 });
 
@@ -389,24 +399,19 @@ test('phase five preparation journey keeps the same working ceremony across work
 
     await workspaceNav().getByRole('link', { name: 'Graduates' }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/ceremonies/${workingCeremonyId}/graduates$`));
-    await expect(page.getByRole('heading', { name: 'Graduates', exact: true })).toBeVisible();
-    await expect(page.locator('.admin-readonly-field').first()).toContainText(
-        workingCeremonyName,
-    );
+    await expect(page.locator('h1').getByText('Graduates', { exact: true })).toBeVisible();
     await expectNoAxeViolations(page);
 
     const importHref = await page
-        .getByRole('link', { name: 'Import graduates' })
+        .locator('.admin-page-header')
+        .getByRole('link', { name: 'Import graduates', exact: true })
         .getAttribute('href');
     expect(importHref).toMatch(new RegExp(`/admin/ceremonies/${workingCeremonyId}/import$`));
     await page.goto(importHref ?? '/admin/students/import');
     await expect(page).toHaveURL(new RegExp(`/admin/ceremonies/${workingCeremonyId}/import$`));
     await expect(
-        page.getByRole('heading', { name: 'Import graduate records' }),
+            page.getByRole('heading', { name: 'Import graduates' }),
     ).toBeVisible();
-    await expect(page.locator('.admin-readonly-field').first()).toContainText(
-        workingCeremonyName,
-    );
     await expectNoAxeViolations(page);
 
     const graduatesHref = await page
@@ -421,30 +426,24 @@ test('phase five preparation journey keeps the same working ceremony across work
     await page.goto(qrHref ?? '/admin/students/qr-codes');
     await expect(page).toHaveURL(new RegExp(`/admin/ceremonies/${workingCeremonyId}/qr`));
     await expect(page.getByRole('heading', { name: 'QR & Media', exact: true })).toBeVisible();
-    await expect(page.locator('.admin-readonly-field').first()).toContainText(
-        workingCeremonyName,
-    );
 
     await page.goto(`/admin/ceremonies/${workingCeremonyId}/announcements`);
     await expect(page).toHaveURL(new RegExp(`/admin/ceremonies/${workingCeremonyId}/announcements$`));
     await expect(page.getByRole('heading', { name: 'Announcements', exact: true })).toBeVisible();
-    await expect(page.locator('.voice-workspace-summary')).toContainText(
-        workingCeremonyName,
-    );
     await expectNoAxeViolations(page);
 
     await page.goto(`/admin/ceremonies/${workingCeremonyId}/stage-design`);
     await expect(page).toHaveURL(new RegExp(`/admin/ceremonies/${workingCeremonyId}/stage-design$`));
-    await expect(page.getByRole('heading', { name: 'Current ceremony stage design' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Stage preview' })).toBeVisible();
 
     await page.goto(`/admin/ceremonies/${workingCeremonyId}/readiness`);
     await expect(page).toHaveURL(new RegExp(`/admin/ceremonies/${workingCeremonyId}/readiness$`));
-    await expect(page.getByRole('heading', { name: 'Readiness sections' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Readiness' })).toBeVisible();
     await expectNoAxeViolations(page);
 
     await page.goto(`/admin/ceremonies/${workingCeremonyId}`);
     await expect(page).toHaveURL(new RegExp(`/admin/ceremonies/${workingCeremonyId}$`));
-    await expect(page.getByRole('heading', { name: 'Preparation status' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Ready the ceremony in order' })).toBeVisible();
     await expectNoAxeViolations(page);
 });
 
@@ -604,7 +603,7 @@ test('phase eight uses semantic parent links for direct-entry ceremony workspace
                 'SEMANTIC-0001,Semantic,,Parent,BS Computer Science,99,eligible',
             ].join('\n')),
         });
-        await page.getByRole('button', { name: 'Inspect import' }).click();
+        await page.getByRole('button', { name: 'Continue' }).click();
         const importBack = page.getByRole('link', { name: 'Go to Import source' });
         await expect(importBack).toHaveAttribute(
             'href',
@@ -706,12 +705,12 @@ test('administrator and data encoder receive only their assigned capabilities', 
 
         await expectNavigationGroups(
             admin,
-            ['OVERVIEW', 'CEREMONY WORKSPACE', 'LIVE OPERATIONS', 'REVIEW', 'SYSTEM'],
+            ['Home', 'Graduates', 'Preparation', 'Run Ceremony', 'Reports', 'Settings'],
         );
         await expectNavigationGroups(
             encoder,
-            ['OVERVIEW', 'CEREMONY WORKSPACE'],
-            ['LIVE OPERATIONS', 'REVIEW', 'SYSTEM'],
+            ['Home', 'Graduates', 'Preparation'],
+            ['Run Ceremony', 'Reports', 'Settings'],
         );
 
         for (const viewport of [
@@ -746,24 +745,49 @@ test('administrator and data encoder receive only their assigned capabilities', 
                             : true,
                     mainWorkspaceStayedPut: workspace.scrollTop === workspaceScrollTop,
                     lastDestinationFocused: document.activeElement === lastLink,
+                    tabGap: Number.parseFloat(
+                        getComputedStyle(navigation.querySelector('ul')).gap,
+                    ),
+                    groupGap: Number.parseFloat(
+                        getComputedStyle(
+                            navigation.querySelector('section + section'),
+                        ).marginTop,
+                    ),
+                    tabMinimumHeight: Number.parseFloat(
+                        getComputedStyle(lastLink).minHeight,
+                    ),
                 };
             });
 
-            expect(sidebarFit.lastDestination).toBe('Audit Logs');
+            expect(sidebarFit.lastDestination).toBe('Backups');
             expect(sidebarFit.canReachLastDestination).toBe(true);
             expect(sidebarFit.mainWorkspaceStayedPut).toBe(true);
             expect(sidebarFit.lastDestinationFocused).toBe(true);
             expect(
                 sidebarFit.allNavigationFits || sidebarFit.navigationScrolled,
             ).toBe(true);
+
+            // Standard laptop windows should retain readable separation
+            // between sidebar destinations. The dense fallback is only for
+            // genuinely short desktop windows.
+            expect(sidebarFit.tabGap).toBeGreaterThan(0);
+            expect(sidebarFit.groupGap).toBeGreaterThan(0);
+            expect(sidebarFit.tabMinimumHeight).toBeGreaterThanOrEqual(34);
         }
 
         await admin.goto('/admin/users');
         await expect(admin.getByRole('heading', { name: 'Operator accounts' })).toBeVisible();
 
+        await admin.goto('/dashboard');
+        await expect(admin.locator('.app-statusbar')).toHaveCount(0);
+        await expect(admin.locator('.app-connection')).toHaveCount(0);
+        await admin.goto('/admin/backups');
+        await expect(admin.locator('.app-statusbar')).toBeVisible();
+        await expect(admin.locator('.app-connection')).toBeVisible();
+
         await encoder.goto('/admin/students/import');
         await expect(
-            encoder.getByRole('heading', { name: 'Import graduate records' }),
+            encoder.getByRole('heading', { name: 'Import graduates' }),
         ).toBeVisible();
 
         const forbidden = await encoder.goto('/admin/backups');
@@ -782,7 +806,7 @@ test('administrator admin-only workflows remain usable after the navigation refa
     prepareBrowserBackupFixture();
 
     await signIn(page, 'admin@example.test');
-    await page.getByRole('button', { name: 'Dismiss getting-started panel' }).click();
+    await dismissGettingStartedIfVisible(page);
 
     await page.goto('/admin/students');
     await openFirstGraduateRecord(page);
@@ -848,8 +872,8 @@ test('stage operator navigation stays limited to live operations and review dest
     await expect(page.getByRole('heading', { name: 'Working ceremony' })).toHaveCount(0);
     await expectNavigationGroups(
         page,
-        ['OVERVIEW', 'LIVE OPERATIONS', 'REVIEW'],
-        ['CEREMONY WORKSPACE', 'SYSTEM'],
+        ['Home', 'Run Ceremony'],
+        ['Graduates', 'Preparation', 'Reports', 'Settings'],
     );
     await expect(
         page.locator('.app-sidebar-nav').getByRole('link', { name: 'Stage Control' }),
@@ -858,7 +882,7 @@ test('stage operator navigation stays limited to live operations and review dest
         page.locator('.app-sidebar-nav').getByRole('link', { name: 'Stage Display' }),
     ).toBeVisible();
     await expect(
-        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Ceremony Overview' }),
+        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Preparation' }),
     ).toHaveCount(0);
 
     await page.goto('/stage-control');
@@ -869,7 +893,7 @@ test('stage operator navigation stays limited to live operations and review dest
         page.getByRole('option', { name: /Stage Control/i }),
     ).toBeVisible();
     await expect(
-        page.getByRole('option', { name: /Ceremony Overview/i }),
+        page.getByRole('option', { name: /Preparation/i }),
     ).toHaveCount(0);
 });
 
@@ -881,23 +905,23 @@ test('navigation active states prefer the specific primary workspace', async ({
     await page.goto('/admin/students');
     await openFirstGraduateRecord(page);
     await expect(
-        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Graduates' }),
+        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Graduates', exact: true }),
     ).toHaveAttribute('aria-current', 'page');
     await expect(
-        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Import' }),
+        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Import Graduates' }),
     ).not.toHaveAttribute('aria-current', 'page');
 
     await page.goto('/admin/students/import');
     await expect(
-        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Import' }),
+        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Import Graduates' }),
     ).toHaveAttribute('aria-current', 'page');
     await expect(
-        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Graduates' }),
+        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Graduates', exact: true }),
     ).not.toHaveAttribute('aria-current', 'page');
 
     await page.goto('/admin/voice-generation');
     await expect(
-        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Announcements' }),
+        page.locator('.app-sidebar-nav').getByRole('link', { name: 'Preparation', exact: true }),
     ).toHaveAttribute('aria-current', 'page');
 });
 
@@ -911,11 +935,11 @@ test('command palette lists the new authorized navigation destinations', async (
     await page.getByLabel('Search commands').fill('announce');
     await expect(page.getByRole('option', { name: /Announcements/i })).toBeVisible();
     await expect(page.getByRole('option', { name: /Announcements/i })).toContainText(
-        'CEREMONY WORKSPACE',
+        'Preparation',
     );
     await page.getByRole('option', { name: /Announcements/i }).click();
     await expect(
-        page.getByRole('heading', { name: 'Announcements' }),
+        page.getByRole('heading', { name: 'Announcements', exact: true }),
     ).toBeVisible();
 });
 
@@ -929,18 +953,18 @@ test('mobile navigation drawer keeps the workflow groups reachable and closes af
     await expect(page.locator('.app-shell')).toHaveAttribute('data-mobile-open', 'true');
     await expectNavigationGroups(
         page,
-        ['OVERVIEW', 'CEREMONY WORKSPACE', 'LIVE OPERATIONS', 'REVIEW', 'SYSTEM'],
+        ['Home', 'Graduates', 'Preparation', 'Run Ceremony', 'Reports', 'Settings'],
     );
     await expect(page.locator('#working-ceremony-select')).toBeVisible();
 
     await page
         .locator('.app-sidebar-nav')
-        .getByRole('link', { name: 'Import' })
+        .getByRole('link', { name: 'Import Graduates' })
         .click();
 
     await expect(page.locator('.app-shell')).toHaveAttribute('data-mobile-open', 'false');
     await expect(
-        page.getByRole('heading', { name: 'Import graduate records' }),
+        page.getByRole('heading', { name: 'Import graduates' }),
     ).toBeVisible();
     expect(
         await page.evaluate(
@@ -1358,11 +1382,15 @@ test('assisted automatic state remains readable, locked, and persistent', async 
             state: 'detached',
         });
 
-        const completeAndClear = control.getByRole('button', {
-            name: 'Complete and clear',
+        const returnCurrent = control.getByRole('button', {
+            name: 'Previous',
+            exact: true,
         });
-        if (await completeAndClear.isVisible()) {
-            await completeAndClear.click();
+        if (await returnCurrent.isVisible({ timeout: 1000 }).catch(() => false)) {
+            await returnCurrent.click();
+            await control
+                .getByRole('button', { name: 'Return graduate to queue' })
+                .click();
             await expect(
                 control.getByText('No graduate is currently presented'),
             ).toBeVisible();
@@ -1415,5 +1443,144 @@ test('assisted automatic state remains readable, locked, and persistent', async 
         }
         await adminContext.close().catch(() => {});
         await controlContext.close().catch(() => {});
+    }
+});
+
+test('role guide pauses instead of overriding manual preparation navigation', async ({
+    page,
+}) => {
+    await signIn(page, 'admin@example.test');
+
+    await page.getByRole('button', { name: 'Help and guidance' }).click();
+    await page.getByRole('button', { name: /(?:start|resume) role guide/i }).click();
+    await expect(page).toHaveURL(/\/admin\/ceremonies$/);
+
+    await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await expect(page).toHaveURL(/\/admin\/students$/);
+
+    await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    await page
+        .locator('.app-sidebar-nav')
+        .getByRole('link', { name: 'Preparation', exact: true })
+        .click();
+
+    await expect(page).toHaveURL(/\/admin\/(?:preparation|ceremonies(?:\/\d+\/preparation)?)$/);
+    await expect(page.locator('.tour-coachmark')).toHaveCount(0);
+});
+
+test('ceremony creation offers optional guided setup and skipped work stays unresolved', async ({
+    page,
+}) => {
+    const ceremonyName = `Guided Setup Ceremony ${Date.now()}`;
+
+    await signIn(page, 'admin@example.test');
+    await page.goto('/admin/ceremonies/create');
+    await page.getByLabel('Ceremony name').fill(ceremonyName);
+    await page.getByLabel('Academic year').fill('2027-2028');
+    await page.getByRole('button', { name: 'Create ceremony' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Your ceremony is ready to prepare' })).toBeVisible();
+    await page.getByRole('link', { name: 'Start guided setup' }).click();
+    await expect(page).toHaveURL(/\/admin\/ceremonies\/\d+\/guided-setup$/);
+    await expect(page.getByText('Guided ceremony setup', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Start guided setup' }).click();
+    await expect(page.getByRole('button', { name: 'Skip for now' })).toBeVisible();
+    await page.getByRole('button', { name: 'Skip for now' }).click();
+    await expect(page.getByText('Skipped for now')).toBeVisible();
+    await page.getByRole('link', { name: 'Exit to workspace' }).click();
+    await expect(page).toHaveURL(/\/admin\/ceremonies\/\d+$/);
+    await expect(page.getByRole('heading', { name: 'Ready the ceremony in order' })).toBeVisible();
+    await expectNoAxeViolations(page);
+});
+
+test('preparation hub and run ceremony keep one selected ceremony context', async ({ page }) => {
+    await signIn(page, 'admin@example.test');
+    await page.goto('/admin/ceremonies');
+    const workspaceLink = page
+        .getByRole('row', { name: /Sample Graduation Ceremony/i })
+        .getByRole('link', { name: 'Open workspace' });
+    const ceremonyId = (await workspaceLink.getAttribute('href'))
+        ?.match(/\/ceremonies\/(\d+)/)?.[1];
+    await workspaceLink.click();
+
+    expect(ceremonyId).toBeTruthy();
+    await page.goto(`/admin/ceremonies/${ceremonyId}/preparation`);
+    await expect(page.getByRole('heading', { name: 'Checklist' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Announcements' })).toBeVisible();
+    await expectNoAxeViolations(page);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    await page.goto(`/admin/ceremonies/${ceremonyId}/run-ceremony`);
+    await expect(page.getByRole('heading', { name: 'Run ceremony', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Open ceremony operations' })).toBeVisible();
+    await expectNoAxeViolations(page);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('standard desktop sidebar keeps readable tab spacing', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await signIn(page, 'admin@example.test');
+
+    const spacing = await page.locator('.app-sidebar-nav').evaluate((navigation) => {
+        const firstLink = navigation.querySelector('a');
+
+        return {
+            tabGap: Number.parseFloat(
+                getComputedStyle(navigation.querySelector('ul')).gap,
+            ),
+            groupGap: Number.parseFloat(
+                getComputedStyle(
+                    navigation.querySelector('section + section'),
+                ).marginTop,
+            ),
+            tabMinimumHeight: Number.parseFloat(
+                getComputedStyle(firstLink).minHeight,
+            ),
+        };
+    });
+
+    expect(spacing.tabGap).toBeGreaterThan(0);
+    expect(spacing.groupGap).toBeGreaterThan(0);
+    expect(spacing.tabMinimumHeight).toBeGreaterThanOrEqual(34);
+});
+
+test('standalone operator pages provide a visible path back to Home', async ({
+    browser,
+}) => {
+    const scannerContext = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+    });
+    const stageContext = await browser.newContext({
+        viewport: { width: 1366, height: 768 },
+    });
+    const scanner = await scannerContext.newPage();
+    const stage = await stageContext.newPage();
+
+    try {
+        await signIn(scanner, 'scanner@example.test');
+        await scanner.goto('/scanner');
+        await scanner.getByRole('button', { name: 'Camera' }).click();
+        await expect(
+            scanner.getByRole('link', { name: 'Back to Home' }),
+        ).toBeVisible();
+        await scanner.getByRole('link', { name: 'Back to Home' }).click();
+        await expect(scanner).toHaveURL(/\/dashboard$/);
+
+        await signIn(stage, 'stage@example.test');
+        await stage.goto('/stage-control');
+        await expect(
+            stage.getByRole('link', { name: 'Back to Home' }),
+        ).toBeVisible();
+        await stage.getByRole('link', { name: 'Back to Home' }).click();
+        await expect(stage).toHaveURL(/\/dashboard$/);
+    } finally {
+        await scannerContext.close().catch(() => {});
+        await stageContext.close().catch(() => {});
     }
 });

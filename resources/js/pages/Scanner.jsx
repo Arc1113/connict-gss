@@ -652,11 +652,12 @@ export default function Scanner({ ceremony, ceremonyStatus }) {
                         </div>
                         <nav aria-label="Scanner navigation">
                             <OperationCommandMenu />
-                            <a className="secondary-action" href="/connect-phone">
+                            <a className="secondary-action scanner-phone-setup" href="/connect-phone">
                                 Phone setup
                             </a>
-                            <Link className="secondary-action" href="/dashboard">
-                                Return to operations
+                            <Link className="secondary-action operation-back-link" href="/dashboard">
+                                <span aria-hidden="true">←</span>
+                                Back to Home
                             </Link>
                         </nav>
                     </header>

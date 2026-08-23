@@ -239,7 +239,7 @@ try {
     await login(client, 'encoder@example.test');
     await client.navigate(`${applicationUrl}/admin/students/import`);
     await client.waitFor(
-        'document.querySelector("h1")?.textContent === "Import graduate records"',
+        'document.querySelector("h1")?.textContent === "Import graduates"',
     );
     await captureAt(client, 'import-upload-1440x900.png', 1440, 900);
     await assertAdministrationPage(client, 'upload at 1440');
@@ -273,7 +273,7 @@ try {
 
     await uploadCsv(client, validCsvPath);
     await client.waitFor(
-        'document.querySelector("h1")?.textContent === "Map CSV columns"',
+        'document.querySelector("h1")?.textContent === "Match columns"',
     );
     const mappingResult = await client.evaluate(`(() => {
         const selects = Array.from(document.querySelectorAll('tbody select'));
@@ -301,7 +301,7 @@ try {
 
     await submitForm(client, '.admin-import-mapping-form');
     await client.waitFor(
-        'document.querySelector("h1")?.textContent === "Review imported rows"',
+        'document.querySelector("h1")?.textContent === "Review import"',
     );
     await captureAt(client, 'import-preview-warning-1440x900.png', 1440, 900);
     await assertAdministrationPage(client, 'preview at 1440');
@@ -353,7 +353,7 @@ try {
     })()`);
     await submitForm(client, '.admin-import-confirm');
     await client.waitFor(
-        'document.querySelector("h1")?.textContent === "Import complete"',
+        'document.querySelector("h1")?.textContent === "Import finished"',
     );
     await captureAt(client, 'import-summary-1366x768.png', 1366, 768);
     await assertAdministrationPage(client, 'summary at 1366');
@@ -396,7 +396,7 @@ try {
     await client.navigate(`${applicationUrl}/admin/students/import`);
     await uploadCsv(client, invalidCsvPath);
     await client.waitFor(
-        'document.querySelector("h1")?.textContent === "Map CSV columns"',
+        'document.querySelector("h1")?.textContent === "Match columns"',
     );
     await submitForm(client, '.admin-import-mapping-form');
     await client.waitFor(

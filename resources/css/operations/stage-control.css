@@ -1,0 +1,442 @@
+/* ==========================================================================
+   STAGE CONTROL OPERATOR CONSOLE (/stage-control)
+   ========================================================================== */
+.stage-control-page {
+    min-height: 100dvh;
+    padding: 1.75rem clamp(1.25rem, 3vw, 2.5rem) 3rem;
+    color: var(--gss-ink);
+    background: var(--gss-canvas);
+}
+
+.stage-control-page > * {
+    width: min(96rem, 100%);
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.stage-control-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 2px solid var(--gss-navy);
+}
+
+.stage-control-header h1 {
+    margin: 0.15rem 0 0;
+    color: var(--gss-navy);
+    font-size: clamp(2rem, 3vw, 2.75rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.stage-control-header p:last-child {
+    margin: 0.45rem 0 0;
+    color: var(--gss-ink-muted);
+}
+
+.stage-control-header nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.65rem;
+}
+
+.stage-control-kicker,
+.stage-control-section-heading p {
+    margin: 0;
+    color: var(--gss-gold);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.stage-control-status {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 1.25rem;
+    border: 1px solid var(--gss-border);
+    border-radius: var(--gss-radius-md);
+    background: var(--gss-surface);
+    box-shadow: var(--gss-shadow-sm);
+    overflow: hidden;
+}
+
+.stage-control-status p {
+    display: grid;
+    gap: 0.2rem;
+    margin: 0;
+    padding: 0.85rem 1.25rem;
+}
+
+.stage-control-status p + p {
+    border-left: 1px solid var(--gss-border-subtle);
+}
+
+.stage-control-status strong {
+    color: var(--gss-ink-muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.stage-control-status span {
+    color: var(--gss-navy);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.stage-control-feedback {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--gss-radius-md);
+    border-left: 0.35rem solid var(--gss-border);
+    background: var(--gss-surface);
+    font-weight: 700;
+    box-shadow: var(--gss-shadow-sm);
+}
+
+.stage-control-feedback-success {
+    border-color: var(--gss-success);
+    color: var(--gss-success-ink);
+    background: var(--gss-success-bg);
+}
+
+.stage-control-feedback-error {
+    border-color: var(--gss-danger);
+    color: var(--gss-danger-ink);
+    background: var(--gss-danger-bg);
+}
+
+.stage-control-loading,
+.stage-control-empty {
+    margin-top: 1.5rem;
+    padding: 2.5rem;
+    border: 1px solid var(--gss-border);
+    border-radius: var(--gss-radius-lg);
+    background: var(--gss-surface);
+    box-shadow: var(--gss-shadow-sm);
+}
+
+.stage-control-loading h2,
+.stage-control-empty h2 {
+    margin: 0;
+    color: var(--gss-navy);
+}
+
+.stage-control-loading p,
+.stage-control-empty p {
+    margin: 0.5rem 0 0;
+    color: var(--gss-ink-muted);
+}
+
+.stage-control-layout {
+    display: grid;
+    grid-template-columns: minmax(22rem, 0.85fr) minmax(32rem, 1.35fr);
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.stage-control-current,
+.stage-control-queue,
+.stage-control-support {
+    border: 1px solid var(--gss-border);
+    border-radius: var(--gss-radius-lg);
+    background: var(--gss-surface);
+    box-shadow: var(--gss-shadow-sm);
+}
+
+.stage-control-current,
+.stage-control-queue {
+    padding: 1.5rem;
+}
+
+.stage-control-section-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--gss-border-subtle);
+}
+
+.stage-control-section-heading h2 {
+    margin: 0.15rem 0 0;
+    color: var(--gss-navy);
+    font-size: 1.35rem;
+    font-weight: 800;
+}
+
+.stage-control-section-heading > span {
+    color: var(--gss-ink-muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.stage-control-current-identity,
+.stage-control-current-empty {
+    min-height: 12rem;
+    padding: 1.5rem 0;
+}
+
+.stage-control-current-identity h3,
+.stage-control-current-empty h3 {
+    max-width: 24ch;
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--gss-navy);
+    font-family: var(--gss-font-sans);
+    font-size: clamp(2rem, 3.7vw, 3.25rem);
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.stage-control-current-identity p,
+.stage-control-current-empty p {
+    margin: 0.75rem 0 0;
+    overflow-wrap: anywhere;
+    color: var(--gss-ink-muted);
+    font-size: 1rem;
+    line-height: 1.45;
+}
+
+.stage-control-primary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gss-border-subtle);
+}
+
+.stage-control-primary-actions > .primary-action {
+    grid-column: 1 / -1;
+    min-height: 2.85rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+.stage-control-primary-actions > button:not(.primary-action) {
+    min-height: 2.5rem;
+    font-size: 0.82rem;
+}
+
+.stage-control-danger-action {
+    min-height: 2.5rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--gss-danger-border);
+    border-radius: var(--gss-radius-md);
+    color: var(--gss-danger);
+    background: var(--gss-danger-bg);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--gss-transition);
+}
+
+.stage-control-danger-action:hover:not(:disabled) {
+    border-color: var(--gss-danger);
+    background: #fee2e2;
+}
+
+.stage-control-danger-action:disabled {
+    cursor: wait;
+    opacity: 0.62;
+}
+
+.stage-control-automatic {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--gss-surface-muted);
+    border: 1px solid var(--gss-border-subtle);
+    border-radius: var(--gss-radius-md);
+}
+
+.stage-control-automatic p {
+    margin: 0.35rem 0 0.75rem;
+    color: var(--gss-ink-muted);
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+
+.stage-control-table-wrap {
+    max-height: 28rem;
+    overflow: auto;
+    border: 1px solid var(--gss-border-subtle);
+    border-radius: var(--gss-radius-md);
+}
+
+.stage-control-table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.stage-control-table-wrap th,
+.stage-control-table-wrap td {
+    padding: 0.85rem 0.75rem;
+    border-bottom: 1px solid var(--gss-border-subtle);
+    text-align: left;
+    vertical-align: top;
+}
+
+.stage-control-table-wrap thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    color: var(--gss-ink-muted);
+    background: var(--gss-surface-muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.stage-control-table-wrap tbody th {
+    min-width: 14rem;
+    font-weight: 700;
+}
+
+.stage-control-table-wrap tbody th strong,
+.stage-control-table-wrap tbody th span {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.stage-control-table-wrap tbody th span {
+    margin-top: 0.25rem;
+    color: var(--gss-ink-muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.stage-control-select-cell {
+    padding: 0.4rem !important;
+}
+
+.stage-control-radio-target {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    cursor: pointer;
+}
+
+.stage-control-radio-target input[type="radio"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    accent-color: var(--gss-navy);
+}
+
+.stage-control-text-action {
+    min-height: 2.75rem;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--gss-border);
+    border-radius: var(--gss-radius-md);
+    color: var(--gss-navy);
+    background: var(--gss-surface);
+    font-weight: 700;
+    transition: var(--gss-transition);
+}
+
+.stage-control-text-action:hover:not(:disabled) {
+    border-color: var(--gss-navy);
+    background: var(--gss-surface-muted);
+}
+
+.stage-control-selected-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 1.25rem;
+}
+
+.stage-control-selected-action p {
+    margin: 0;
+    color: var(--gss-ink-muted);
+    font-size: 0.875rem;
+}
+
+.stage-control-queue-empty {
+    min-height: 12rem;
+    padding: 2.5rem 0;
+    text-align: center;
+}
+
+.stage-control-queue-empty h3 {
+    margin: 0;
+    color: var(--gss-navy);
+}
+
+.stage-control-queue-empty p {
+    margin: 0.4rem 0 0;
+    color: var(--gss-ink-muted);
+}
+
+.stage-control-support {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: 1.2fr 1fr;
+}
+
+.stage-control-support > div {
+    min-width: 0;
+    padding: 1.5rem;
+}
+
+.stage-control-support > div + div {
+    border-left: 1px solid var(--gss-border-subtle);
+}
+
+.stage-control-support h2 {
+    margin: 0;
+    color: var(--gss-navy);
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.stage-control-support p {
+    color: var(--gss-ink-muted);
+}
+
+.stage-control-support ul,
+.stage-control-support ol {
+    display: grid;
+    gap: 0;
+    margin: 0.85rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stage-control-support li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--gss-border-subtle);
+}
+
+.stage-control-support li span,
+.stage-control-support li strong,
+.stage-control-support li small {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.stage-control-support li span:not(:first-child),
+.stage-control-support li small {
+    margin-top: 0.15rem;
+    color: var(--gss-ink-muted);
+    font-size: 0.8rem;
+}

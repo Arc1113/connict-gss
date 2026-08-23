@@ -127,7 +127,11 @@ class CeremonyWorkspaceTest extends TestCase
                 ->where('overview.summary.qr_missing', 1)
                 ->where('overview.summary.announcements_ready', 1)
                 ->where('overview.summary.announcements_needs_review', 1)
-                ->where('overview.summary.announcements_missing', 0));
+                ->where('overview.summary.announcements_missing', 0)
+                ->where('overview.checklist.0.key', 'graduate_data')
+                ->where('overview.checklist.0.status', 'warning')
+                ->where('overview.checklist.1.issue_count', 1)
+                ->has('overview.checklist', 6));
     }
 
     public function test_setup_route_renders_the_ceremony_setup_experience_with_authorization(): void

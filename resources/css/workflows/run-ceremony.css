@@ -1,0 +1,79 @@
+.run-ceremony-readiness,
+.run-ceremony-actions {
+    display: grid;
+    gap: 1rem;
+    max-width: 58rem;
+    margin: 1.25rem auto 0;
+    padding: 1.25rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+}
+
+.run-ceremony-readiness {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.run-ceremony-kicker {
+    margin: 0 0 0.3rem;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.run-ceremony-readiness h2,
+.run-ceremony-readiness p:not(.run-ceremony-kicker),
+.run-ceremony-actions h2 {
+    margin: 0;
+}
+
+.run-ceremony-readiness h2 {
+    color: var(--color-text-primary);
+    font-size: 1.15rem;
+}
+
+.run-ceremony-readiness p:not(.run-ceremony-kicker) {
+    max-width: 60ch;
+    margin-top: 0.3rem;
+    color: var(--color-text-secondary);
+    line-height: 1.45;
+}
+
+.run-ceremony-actions h2 {
+    color: var(--color-text-primary);
+    font-size: 1rem;
+}
+
+.run-ceremony-actions > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.run-ceremony-note {
+    max-width: 58rem;
+    margin: 1rem auto 0;
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+}
+
+@media (max-width: 48rem) {
+    .run-ceremony-readiness {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .run-ceremony-readiness .admin-button,
+    .run-ceremony-actions .admin-button {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .run-ceremony-actions > div {
+        display: grid;
+    }
+}

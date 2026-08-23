@@ -1,0 +1,212 @@
+/* Remaining operational UX remediation ----------------------------------- */
+/* Preserve the breathing room in normal laptop windows. The compact fallback
+   is reserved for genuinely short desktop windows, where it prevents the
+   sidebar from crowding the footer. */
+@media (min-width: 56.01rem) and (max-height: 42rem) {
+    .app-sidebar-nav {
+        padding-top: var(--space-1);
+        padding-bottom: var(--space-1);
+    }
+
+    .app-sidebar-nav section + section {
+        margin-top: 0;
+    }
+
+    .app-sidebar-nav h2 {
+        height: 0.875rem;
+        line-height: 0.875rem;
+    }
+
+    .app-sidebar-nav ul {
+        gap: 0;
+        margin-top: 0;
+    }
+
+    .app-sidebar-nav a {
+        min-height: 1.75rem;
+    }
+
+    .app-sidebar-footer {
+        padding-top: var(--space-1);
+        padding-bottom: var(--space-1);
+    }
+}
+
+@media (min-width: 48.01rem) {
+    .scanner-primary {
+        position: relative;
+        overflow: visible;
+        isolation: isolate;
+    }
+
+    .scanner-fallback {
+        position: relative;
+    }
+
+    .scanner-fallback[open] {
+        z-index: 12;
+    }
+
+    .scanner-fallback[open] summary {
+        border-bottom: 0;
+    }
+
+    .scanner-fallback-body {
+        position: absolute;
+        right: -1px;
+        bottom: calc(100% + var(--space-1));
+        left: -1px;
+        max-height: min(28rem, calc(100dvh - 7rem));
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        background: var(--color-bg-surface);
+        border: 1px solid var(--color-border-strong);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--gss-shadow-lg);
+    }
+}
+
+.stage-control-status p.stage-control-automatic-command {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-content: center;
+    column-gap: 0.75rem;
+}
+
+@media (min-width: 48.01rem) {
+    .stage-control-status.stage-control-status-automatic {
+        grid-template-columns: minmax(0, 0.85fr) minmax(0, 0.9fr) minmax(0, 0.95fr) minmax(0, 1.3fr);
+    }
+}
+
+.stage-control-automatic-command strong,
+.stage-control-automatic-command span {
+    grid-column: 1;
+}
+
+.stage-control-automatic-command span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+}
+
+.stage-control-status .stage-control-automatic-command .secondary-action {
+    grid-row: 1 / 3;
+    grid-column: 2;
+    align-self: center;
+    justify-self: end;
+    min-height: 2.25rem;
+    margin-top: 0;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.76rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 48rem) {
+    .stage-control-status p.stage-control-automatic-command {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+}
+
+@media (max-width: 64rem) {
+    .admin-student-detail-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-media-detail {
+        position: static;
+    }
+}
+
+@media (max-width: 48rem) {
+    .announcement-batch-selection,
+    .announcement-batch-selection tbody,
+    .announcement-batch-selection tr,
+    .announcement-batch-selection th,
+    .announcement-batch-selection td {
+        display: block;
+        width: 100%;
+    }
+
+    .announcement-batch-selection thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .app-workspace .announcement-batch-selection tbody tr {
+        display: grid;
+        grid-template-columns: 2.5rem minmax(0, 1fr);
+        gap: var(--space-1) var(--space-2);
+        padding: var(--space-3);
+        border-bottom: 1px solid var(--color-border-strong);
+    }
+
+    .app-workspace .announcement-batch-selection th,
+    .app-workspace .announcement-batch-selection td {
+        grid-column: 2;
+        height: auto;
+        max-width: none;
+        padding: 0;
+        border: 0;
+    }
+
+    .app-workspace .announcement-batch-selection td:first-child {
+        grid-row: 1 / span 5;
+        grid-column: 1;
+        align-self: center;
+    }
+
+    .announcement-batch-selection [data-label]:not(:first-child)::before {
+        margin-right: 0.4rem;
+        color: var(--color-text-muted);
+        content: attr(data-label) ": ";
+        font-size: 0.62rem;
+        font-weight: 650;
+        text-transform: uppercase;
+    }
+
+    .announcement-batch-selection th[data-label="Graduate"] {
+        margin: var(--space-1) 0;
+        font-size: 0.82rem;
+    }
+
+    .announcement-batch-selection th[data-label="Graduate"]::before {
+        display: none;
+    }
+
+    .announcement-batch-selection th small {
+        display: inline;
+        margin-left: var(--space-1);
+    }
+
+    .announcement-batch-card > header,
+    .announcement-batch-items li {
+        align-items: stretch;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .announcement-batch-item-status {
+        justify-items: start;
+        text-align: left;
+    }
+
+    .announcement-batch-card .admin-form-actions,
+    .announcement-batch-card .admin-form-actions .admin-button,
+    .announcement-batch-items li > .admin-button,
+    .announcement-batch-submit,
+    .announcement-batch-submit .admin-button {
+        width: 100%;
+    }
+
+    .announcement-batch-review-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

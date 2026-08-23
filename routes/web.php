@@ -9,9 +9,12 @@ use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\CeremonyAnnouncementSettingsController;
 use App\Http\Controllers\Admin\CeremonyController;
 use App\Http\Controllers\Admin\CeremonyOperationalResetController;
+use App\Http\Controllers\Admin\CeremonySetupController;
 use App\Http\Controllers\Admin\CeremonySummaryController;
 use App\Http\Controllers\Admin\DeviceConnectionController;
+use App\Http\Controllers\Admin\PreparationController;
 use App\Http\Controllers\Admin\PronunciationRuleController;
+use App\Http\Controllers\Admin\RunCeremonyController;
 use App\Http\Controllers\Admin\ScanLogController;
 use App\Http\Controllers\Admin\StageDesignTemplateController;
 use App\Http\Controllers\Admin\StageEventController;
@@ -156,11 +159,43 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
         Route::post('/backups', [BackupController::class, 'store'])->name('backups.store');
         Route::post('/backups/{backup}/verify', [BackupController::class, 'verify'])->name('backups.verify');
+        Route::get('/preparation', [PreparationController::class, 'index'])
+            ->name('preparation.index');
+        Route::get('/run-ceremony', [RunCeremonyController::class, 'index'])
+            ->name('run-ceremony.index');
 
         Route::get(
             '/ceremonies/{ceremony}/setup',
             [CeremonyController::class, 'setup'],
         )->name('ceremonies.setup');
+        Route::get(
+            '/ceremonies/{ceremony}/guided-setup',
+            [CeremonySetupController::class, 'show'],
+        )->name('ceremonies.guided-setup');
+        Route::get(
+            '/ceremonies/{ceremony}/preparation',
+            [PreparationController::class, 'forCeremony'],
+        )->name('ceremonies.preparation');
+        Route::get(
+            '/ceremonies/{ceremony}/run-ceremony',
+            [RunCeremonyController::class, 'forCeremony'],
+        )->name('ceremonies.run-ceremony');
+        Route::post(
+            '/ceremonies/{ceremony}/guided-setup/start',
+            [CeremonySetupController::class, 'start'],
+        )->name('ceremonies.guided-setup.start');
+        Route::post(
+            '/ceremonies/{ceremony}/guided-setup/continue',
+            [CeremonySetupController::class, 'continue'],
+        )->name('ceremonies.guided-setup.continue');
+        Route::post(
+            '/ceremonies/{ceremony}/guided-setup/skip',
+            [CeremonySetupController::class, 'skip'],
+        )->name('ceremonies.guided-setup.skip');
+        Route::post(
+            '/ceremonies/{ceremony}/guided-setup/skip-setup',
+            [CeremonySetupController::class, 'skipSetup'],
+        )->name('ceremonies.guided-setup.skip-setup');
         Route::get(
             '/ceremonies/{ceremony}/graduates',
             [StudentController::class, 'index'],

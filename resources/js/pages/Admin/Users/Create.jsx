@@ -5,7 +5,7 @@ import UserForm from '../../../components/Admin/UserForm';
 
 export default function UserCreate({ roleOptions }) {
     return (
-        <AdminLayout>
+        <AdminLayout mode="technical">
             <Head title="Add operator account" />
             <PageHeader
                 backHref="/admin/users"

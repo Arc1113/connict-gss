@@ -1,0 +1,115 @@
+/* ==========================================================================
+   AUDIENCE PRESENTATION DISPLAY (/stage)
+   ========================================================================== */
+.stage-page {
+    position: relative;
+    display: grid;
+    min-height: 100dvh;
+    place-items: center;
+    overflow: hidden;
+    padding: clamp(2rem, 5vw, 5rem);
+    color: var(--gss-stage-text);
+    background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%);
+}
+
+.stage-page::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 0.45rem;
+    background: linear-gradient(90deg, var(--gss-gold) 0%, var(--gss-gold-hover) 100%);
+    content: "";
+}
+
+.stage-presentation,
+.stage-idle,
+.stage-loading {
+    position: relative;
+    z-index: 1;
+    width: min(88rem, 100%);
+    text-align: center;
+}
+
+.stage-photo {
+    width: clamp(8rem, 15vw, 13rem);
+    aspect-ratio: 1;
+    margin-bottom: clamp(1rem, 2.5vh, 1.75rem);
+    object-fit: cover;
+    border: 3px solid rgba(245, 158, 11, 0.6);
+    border-radius: var(--gss-radius-md);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.stage-ceremony-name,
+.stage-idle p,
+.stage-loading p {
+    margin: 0;
+    color: var(--gss-stage-gold);
+    font-size: clamp(0.85rem, 1.5vw, 1.25rem);
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+.stage-presentation h1,
+.stage-idle h1,
+.stage-loading h1 {
+    max-width: 24ch;
+    margin: clamp(0.8rem, 2vh, 1.25rem) auto 0;
+    overflow-wrap: break-word;
+    font-family: var(--gss-font-sans);
+    font-size: clamp(3.25rem, min(7.8vw, 12vh), 8.5rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    text-wrap: balance;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.stage-idle h1,
+.stage-loading h1 {
+    font-size: clamp(3rem, min(6.5vw, 10vh), 6.75rem);
+}
+
+.stage-program {
+    max-width: 48ch;
+    margin: clamp(1.25rem, 3vh, 2rem) auto 0;
+    overflow-wrap: break-word;
+    color: var(--gss-stage-subtext);
+    font-size: clamp(1.2rem, min(2.6vw, 4.2vh), 2.25rem);
+    font-weight: 500;
+    line-height: 1.35;
+    text-wrap: balance;
+}
+
+.stage-major {
+    margin: 0.65rem 0 0;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: clamp(1rem, min(1.8vw, 3vh), 1.5rem);
+}
+
+.stage-honors {
+    display: inline-block;
+    max-width: 54ch;
+    margin: clamp(1.25rem, 3vh, 1.75rem) 0 0;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(245, 158, 11, 0.4);
+    color: var(--gss-stage-gold);
+    font-size: clamp(1.05rem, min(1.9vw, 3.2vh), 1.45rem);
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+}
+
+.stage-idle span {
+    display: block;
+    margin-top: clamp(1.25rem, 3vh, 1.75rem);
+    color: rgba(255, 255, 255, 0.65);
+    font-size: clamp(1rem, 1.6vw, 1.3rem);
+    letter-spacing: 0.05em;
+}
+
+.stage-holding h1 {
+    max-width: 18ch;
+}

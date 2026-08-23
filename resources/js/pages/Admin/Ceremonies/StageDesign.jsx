@@ -43,11 +43,7 @@ export default function CeremonyStageDesign({ ceremony, stageDesign }) {
             <section className="ceremony-workspace-panel">
                 <div className="admin-section-heading">
                     <div>
-                        <h2>Current ceremony stage design</h2>
-                        <p>
-                            This preview reflects the appearance saved on this ceremony.
-                            Reusable templates stay available in the separate library.
-                        </p>
+                        <h2>Stage preview</h2>
                     </div>
                 </div>
 
@@ -60,8 +56,8 @@ export default function CeremonyStageDesign({ ceremony, stageDesign }) {
                         />
                     </div>
 
-                    <aside className="admin-detail-section">
-                        <h2>Applied settings</h2>
+                    <details className="admin-detail-section stage-design-details">
+                        <summary>Applied settings</summary>
                         <dl className="admin-detail-list admin-detail-list-compact">
                             <div>
                                 <dt>Typography treatment</dt>
@@ -104,7 +100,7 @@ export default function CeremonyStageDesign({ ceremony, stageDesign }) {
                                 <dd>{settingLabel(theme.accent_color)}</dd>
                             </div>
                         </dl>
-                    </aside>
+                    </details>
                 </div>
             </section>
         </AdminLayout>

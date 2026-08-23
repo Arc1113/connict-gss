@@ -1,9 +1,11 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AdminLayout from '../../../components/Admin/AdminLayout';
+import ConfirmDialog from '../../../components/ConfirmDialog';
 import EmptyState from '../../../components/Admin/EmptyState';
 import PageHeader from '../../../components/Admin/PageHeader';
 import Pagination from '../../../components/Admin/Pagination';
 import StatusText from '../../../components/Admin/StatusText';
+import { useState } from 'react';
 
 export default function StudentIndex({
     filterOptions,
@@ -12,10 +14,14 @@ export default function StudentIndex({
     workspace,
 }) {
     const { auth } = usePage().props;
+    const [graduateToDelete, setGraduateToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const hasFilters = Object.entries(filters).some(
         ([key, value]) => key !== 'sort' && Boolean(value),
     );
     const advancedFilterCount = [
+        filters.eligibility_status,
+        filters.media,
         filters.college,
         filters.program,
         filters.stage_status,
@@ -25,6 +31,27 @@ export default function StudentIndex({
     return (
         <AdminLayout>
             <Head title="Graduate records" />
+            <ConfirmDialog
+                busy={isDeleting}
+                confirmLabel="Delete graduate"
+                description={graduateToDelete
+                    ? `${graduateToDelete.display_name} will be permanently removed from this ceremony. Records with ceremony activity remain protected by the server.`
+                    : ''}
+                onCancel={() => setGraduateToDelete(null)}
+                onConfirm={() => {
+                    if (!graduateToDelete) return;
+
+                    setIsDeleting(true);
+                    router.delete(`/admin/students/${graduateToDelete.id}`, {
+                        preserveScroll: true,
+                        onFinish: () => setIsDeleting(false),
+                        onSuccess: () => setGraduateToDelete(null),
+                    });
+                }}
+                open={Boolean(graduateToDelete)}
+                title={graduateToDelete ? `Delete ${graduateToDelete.display_name}?` : 'Delete graduate?'}
+                tone="danger"
+            />
             <PageHeader
                 actions={
                     (auth.abilities.import_students
@@ -58,30 +85,9 @@ export default function StudentIndex({
                         </>
                     )
                 }
-                description="Find and correct preparation data without exposing QR tokens."
                 eyebrow={workspace ? 'Ceremony workspace' : 'Administration'}
                 title={workspace ? 'Graduates' : 'Graduate records'}
             />
-
-            {workspace && (
-                <section className="ceremony-workspace-panel">
-                    <div className="admin-section-heading">
-                        <div>
-                            <h2>{workspace.ceremony.name}</h2>
-                            <p>
-                                {students.total.toLocaleString()} graduates in the current
-                                working ceremony.
-                            </p>
-                        </div>
-                        <Link
-                            className="admin-button admin-button-secondary"
-                            href={workspace.urls.overview}
-                        >
-                            Ceremony workspace
-                        </Link>
-                    </div>
-                </section>
-            )}
 
             <form
                 action={workspace?.urls.graduates ?? '/admin/students'}
@@ -117,47 +123,21 @@ export default function StudentIndex({
                     </div>
                 )}
                 {workspace?.locked && (
-                    <div>
-                        <label>Working ceremony</label>
-                        <div className="admin-readonly-field">
-                            <strong>{workspace.ceremony.name}</strong>
-                            <span>{workspace.ceremony.status}</span>
-                        </div>
-                        <input name="ceremony_id" type="hidden" value={filters.ceremony_id} />
-                    </div>
+                    <input name="ceremony_id" type="hidden" value={filters.ceremony_id} />
                 )}
                 <div>
-                    <label htmlFor="eligibility_status">Eligibility</label>
-                    <select
-                        defaultValue={filters.eligibility_status}
-                        id="eligibility_status"
-                        name="eligibility_status"
-                    >
-                        <option value="">All eligibility states</option>
-                        {filterOptions.eligibilityStatuses.map((status) => (
-                            <option key={status.value} value={status.value}>
-                                {status.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label htmlFor="media">Media readiness</label>
-                    <select defaultValue={filters.media} id="media" name="media">
-                        <option value="">All media states</option>
-                        <option value="ready">Photo ready and audio approved</option>
-                        <option value="missing_any">Any media missing</option>
-                        <option value="missing_photo">Photo missing</option>
-                        <option value="missing_audio">Audio missing</option>
-                        <option value="audio_uploaded">Audio uploaded</option>
-                        <option value="audio_needs_review">Audio needs review</option>
-                        <option value="audio_approved">Audio approved</option>
-                        <option value="audio_rejected">Audio rejected</option>
+                    <label htmlFor="preparation_status">Preparation status</label>
+                    <select defaultValue={filters.preparation_status} id="preparation_status" name="preparation_status">
+                        <option value="">All preparation states</option>
+                        <option value="ready">Ready</option>
+                        <option value="eligibility_review">Needs eligibility review</option>
+                        <option value="photo_missing">Photo missing</option>
+                        <option value="announcement_missing">Announcement missing</option>
+                        <option value="announcement_review">Announcement needs review</option>
                     </select>
                 </div>
                 <details
                     className="admin-filter-advanced"
-                    open={advancedFilterCount > 0}
                 >
                     <summary>
                         More filters
@@ -166,6 +146,35 @@ export default function StudentIndex({
                         )}
                     </summary>
                     <div className="admin-filter-advanced-grid">
+                        <div>
+                            <label htmlFor="eligibility_status">Eligibility</label>
+                            <select
+                                defaultValue={filters.eligibility_status}
+                                id="eligibility_status"
+                                name="eligibility_status"
+                            >
+                                <option value="">All eligibility states</option>
+                                {filterOptions.eligibilityStatuses.map((status) => (
+                                    <option key={status.value} value={status.value}>
+                                        {status.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="media">Media readiness</label>
+                            <select defaultValue={filters.media} id="media" name="media">
+                                <option value="">All media states</option>
+                                <option value="ready">Photo ready and audio approved</option>
+                                <option value="missing_any">Any media missing</option>
+                                <option value="missing_photo">Photo missing</option>
+                                <option value="missing_audio">Audio missing</option>
+                                <option value="audio_uploaded">Audio uploaded</option>
+                                <option value="audio_needs_review">Audio needs review</option>
+                                <option value="audio_approved">Audio approved</option>
+                                <option value="audio_rejected">Audio rejected</option>
+                            </select>
+                        </div>
                         <div>
                             <label htmlFor="college">College</label>
                             <select
@@ -272,11 +281,8 @@ export default function StudentIndex({
                                 <tr>
                                     <th scope="col">Sequence</th>
                                     <th scope="col">Graduate</th>
-                                    {!workspace && <th scope="col">Ceremony</th>}
                                     <th scope="col">Program</th>
-                                    <th scope="col">Eligibility</th>
-                                    <th scope="col">Media</th>
-                                    <th scope="col">Stage</th>
+                                    <th scope="col">Preparation status</th>
                                     <th scope="col">Action</th>
                                 </tr>
                             </thead>
@@ -290,7 +296,6 @@ export default function StudentIndex({
                                             </Link>
                                             <small>{student.student_number}</small>
                                         </th>
-                                        {!workspace && <td>{student.ceremony.name}</td>}
                                         <td>
                                             <span className="admin-cell-primary">
                                                 {student.program}
@@ -299,20 +304,20 @@ export default function StudentIndex({
                                         </td>
                                         <td>
                                             <StatusText
-                                                label={student.eligibility_status.label}
-                                                value={student.eligibility_status.value}
+                                                label={student.preparation_status.label}
+                                                value={student.preparation_status.value}
                                             />
+                                            <small className="admin-student-status-detail">
+                                                {student.preparation_status.detail}
+                                            </small>
                                         </td>
                                         <td>
-                                            <span className="admin-media-status-line">
-                                                Photo: {student.media.photo}
-                                            </span>
-                                            <span className="admin-media-status-line">
-                                                Audio: {student.media.audio}
-                                            </span>
-                                        </td>
-                                        <td>{student.stage_status.label}</td>
-                                        <td>
+                                            <Link
+                                                className="admin-row-action"
+                                                href={workspace ? `${workspace.urls.graduates}/${student.id}` : `/admin/students/${student.id}`}
+                                            >
+                                                Open
+                                            </Link>
                                             {auth.abilities.prepare_qr_codes && (
                                                 <Link
                                                     className="admin-row-action"
@@ -332,6 +337,15 @@ export default function StudentIndex({
                                                 >
                                                     Edit
                                                 </Link>
+                                            )}
+                                            {auth.abilities.delete_students && (
+                                                <button
+                                                    className="admin-row-action"
+                                                    onClick={() => setGraduateToDelete(student)}
+                                                    type="button"
+                                                >
+                                                    Delete
+                                                </button>
                                             )}
                                         </td>
                                     </tr>

@@ -53,7 +53,7 @@ final class OnboardingWorkspace
                 $this->item('ceremony', 'Create and activate a ceremony', '/admin/ceremonies', Ceremony::query()->exists()),
                 $this->item('accounts', 'Create operator accounts', '/admin/users', User::query()->where('id', '!=', $user->id)->exists()),
                 $this->item('pronunciation', 'Review the pronunciation dictionary', '/admin/pronunciation-rules', PronunciationRule::query()->where('is_enabled', true)->exists()),
-                $this->item('readiness', 'Review ceremony readiness', '/admin', false, true),
+                $this->item('readiness', 'Review ceremony readiness', '/dashboard', false, true),
             ],
             UserRole::DataEncoder => [
                 $this->item('graduates', 'Add or import graduate data', '/admin/students', Student::query()->exists()),

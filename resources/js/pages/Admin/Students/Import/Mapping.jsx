@@ -33,7 +33,7 @@ export default function StudentImportMapping({
 
     return (
         <AdminLayout>
-            <Head title="Map CSV columns" />
+            <Head title="Match columns" />
             <PageHeader
                 backHref={workspace?.urls.import ?? '/admin/students/import'}
                 backLabel="Import source"
@@ -47,7 +47,7 @@ export default function StudentImportMapping({
                 }
                 description="Match each source column to one approved graduate field."
                 eyebrow="Graduate import"
-                title="Map CSV columns"
+                title="Match columns"
             />
             <ImportProgress currentStep={2} />
 
@@ -185,7 +185,7 @@ export default function StudentImportMapping({
                         disabled={form.processing}
                         type="submit"
                     >
-                        {form.processing ? 'Preparing preview…' : 'Review imported rows'}
+                        {form.processing ? 'Preparing review…' : 'Continue'}
                     </button>
                 </div>
             </form>

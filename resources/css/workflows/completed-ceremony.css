@@ -1,0 +1,117 @@
+.completed-ceremony-summary,
+.completed-ceremony-activity {
+    display: grid;
+    gap: 0.75rem;
+    max-width: 58rem;
+    margin: 1.25rem auto 0;
+    padding: 1.25rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+}
+
+.completed-ceremony-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.completed-ceremony-kicker {
+    margin: 0 0 0.3rem;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.completed-ceremony-summary h2,
+.completed-ceremony-summary p:not(.completed-ceremony-kicker),
+.completed-ceremony-activity h2,
+.completed-ceremony-activity p {
+    margin: 0;
+}
+
+.completed-ceremony-summary h2,
+.completed-ceremony-activity h2 {
+    color: var(--color-text-primary);
+    font-size: 1.1rem;
+}
+
+.completed-ceremony-summary p:not(.completed-ceremony-kicker),
+.completed-ceremony-activity p {
+    margin-top: 0.25rem;
+    color: var(--color-text-secondary);
+    line-height: 1.45;
+}
+
+.completed-ceremony-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.completed-ceremony-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-width: 58rem;
+    margin: 1rem auto 0;
+    overflow: hidden;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+}
+
+.completed-ceremony-metrics div {
+    display: grid;
+    gap: 0.25rem;
+    padding: 1rem;
+    border-right: 1px solid var(--color-border);
+}
+
+.completed-ceremony-metrics div:last-child {
+    border-right: 0;
+}
+
+.completed-ceremony-metrics dt {
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+}
+
+.completed-ceremony-metrics dd {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 1.4rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+}
+
+.completed-ceremony-activity a {
+    color: var(--color-accent);
+    font-weight: 650;
+}
+
+@media (max-width: 48rem) {
+    .completed-ceremony-summary {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .completed-ceremony-actions .admin-button {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .completed-ceremony-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .completed-ceremony-metrics div:nth-child(2) {
+        border-right: 0;
+    }
+
+    .completed-ceremony-metrics div:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--color-border);
+    }
+}

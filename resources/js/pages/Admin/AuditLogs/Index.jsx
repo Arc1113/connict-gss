@@ -45,7 +45,7 @@ export default function AuditLogIndex({ canExport, filterOptions, filters, logs 
     const hasFilters = Object.values(filters).some(Boolean);
 
     return (
-        <AdminLayout>
+        <AdminLayout mode="technical">
             <Head title="Administrative audit history" />
             <PageHeader
                 actions={

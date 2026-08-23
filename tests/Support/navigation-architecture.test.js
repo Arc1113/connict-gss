@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildNavigation } from '../../resources/js/components/appNavigation.js';
+import {
+    buildCommandNavigation,
+    buildNavigation,
+} from '../../resources/js/components/appNavigation.js';
 
 function labels(navigation) {
     return navigation.map((group) => ({
@@ -38,7 +41,7 @@ const administratorAbilities = {
     view_pronunciation_rules: true,
 };
 
-test('administrator navigation uses the workflow-oriented group model', () => {
+test('administrator receives the complete high-level workflow navigation', () => {
     const navigation = buildNavigation(
         administratorAbilities,
         '/dashboard',
@@ -46,42 +49,27 @@ test('administrator navigation uses the workflow-oriented group model', () => {
     );
 
     assert.deepEqual(labels(navigation), [
+        { label: 'Home', items: ['Home'] },
+        { label: 'Graduates', items: ['Graduates'] },
+        { label: 'Preparation', items: ['Preparation', 'Import Graduates'] },
         {
-            label: 'OVERVIEW',
-            items: ['Overview'],
-        },
-        {
-            label: 'CEREMONY WORKSPACE',
-            items: [
-                'Ceremony Overview',
-                'Graduates',
-                'Import',
-                'QR & Media',
-                'Announcements',
-                'Pronunciation dictionary',
-                'Stage Design',
-            ],
-        },
-        {
-            label: 'LIVE OPERATIONS',
+            label: 'Run Ceremony',
             items: ['Scanner', 'Stage Control', 'Stage Display'],
         },
+        { label: 'Reports', items: ['Reports'] },
         {
-            label: 'REVIEW',
-            items: ['Ceremony Summary', 'Scan Logs', 'Stage Events'],
-        },
-        {
-            label: 'SYSTEM',
-            items: ['Connect Devices', 'Backups', 'Operator Accounts', 'Audit Logs'],
+            label: 'Settings',
+            items: ['Ceremonies', 'Device Connections', 'Backups'],
         },
     ]);
 });
 
-test('data encoder navigation only shows permitted preparation destinations', () => {
+test('data encoder sees only Home, Graduates, and Preparation in primary navigation', () => {
     const navigation = buildNavigation(
         {
             ...administratorAbilities,
             manage_users: false,
+            manage_ceremonies: false,
             operate_scanner: false,
             operate_stage: false,
             view_audit_logs: false,
@@ -101,26 +89,53 @@ test('data encoder navigation only shows permitted preparation destinations', ()
     );
 
     assert.deepEqual(labels(navigation), [
-        {
-            label: 'OVERVIEW',
-            items: ['Overview'],
-        },
-        {
-            label: 'CEREMONY WORKSPACE',
-            items: [
-                'Ceremony Overview',
-                'Graduates',
-                'Import',
-                'QR & Media',
-                'Announcements',
-                'Pronunciation dictionary',
-            ],
-        },
+        { label: 'Home', items: ['Home'] },
+        { label: 'Graduates', items: ['Graduates'] },
+        { label: 'Preparation', items: ['Preparation', 'Import Graduates'] },
     ]);
+
+    const commands = buildCommandNavigation(
+        administratorAbilities,
+        '/admin/students',
+        { workingCeremony: { id: 12 } },
+    );
+    const commandLabels = commands.flatMap((group) => group.items.map((entry) => entry.label));
+    assert.ok(commandLabels.includes('Import Graduates'));
+    assert.ok(commandLabels.includes('Pronunciation Dictionary'));
 });
 
-test('restricted live operator does not receive workspace or system ceremony administration links', () => {
-    const navigation = buildNavigation(
+test('scanner and stage operators receive only the relevant ceremony controls', () => {
+    const scanner = buildNavigation(
+        {
+            ...administratorAbilities,
+            manage_users: false,
+            operate_stage: false,
+            view_ceremonies: false,
+            manage_ceremonies: false,
+            view_students: false,
+            manage_students: false,
+            prepare_qr_codes: false,
+            import_students: false,
+            view_audit_logs: false,
+            view_ceremony_reports: false,
+            view_backups: false,
+            manage_device_connections: false,
+            view_operational_logs: false,
+            manage_announcement_settings: false,
+            manage_stage_designs: false,
+            manage_announcement_batches: false,
+            generate_announcement_candidates: false,
+            review_announcement_candidates: false,
+            view_pronunciation_rules: false,
+        },
+        '/scanner',
+    );
+    assert.deepEqual(labels(scanner), [
+        { label: 'Home', items: ['Home'] },
+        { label: 'Run Ceremony', items: ['Scanner'] },
+    ]);
+
+    const stage = buildNavigation(
         {
             ...administratorAbilities,
             manage_users: false,
@@ -130,16 +145,12 @@ test('restricted live operator does not receive workspace or system ceremony adm
             view_students: false,
             manage_students: false,
             prepare_qr_codes: false,
-            regenerate_qr_codes: false,
-            approve_audio: false,
             import_students: false,
-            delete_students: false,
             view_audit_logs: false,
             view_ceremony_reports: false,
             view_backups: false,
-            create_backups: false,
             manage_device_connections: false,
-            reset_ceremony_operations: false,
+            view_operational_logs: false,
             manage_announcement_settings: false,
             manage_stage_designs: false,
             manage_announcement_batches: false,
@@ -149,71 +160,60 @@ test('restricted live operator does not receive workspace or system ceremony adm
         },
         '/stage-control',
     );
-
-    assert.deepEqual(labels(navigation), [
-        {
-            label: 'OVERVIEW',
-            items: ['Overview'],
-        },
-        {
-            label: 'LIVE OPERATIONS',
-            items: ['Stage Control', 'Stage Display'],
-        },
-        {
-            label: 'REVIEW',
-            items: ['Scan Logs', 'Stage Events'],
-        },
+    assert.deepEqual(labels(stage), [
+        { label: 'Home', items: ['Home'] },
+        { label: 'Run Ceremony', items: ['Stage Control', 'Stage Display'] },
     ]);
 });
 
-test('ceremony overview links to the working ceremony when available and falls back safely', () => {
-    const withWorkingCeremony = buildNavigation(
-        administratorAbilities,
-        '/dashboard',
-        { workingCeremony: { id: 88 } },
+test('technical operator receives system-focused reports and settings', () => {
+    const navigation = buildNavigation(
+        {
+            ...administratorAbilities,
+            manage_users: false,
+            operate_scanner: false,
+            operate_stage: false,
+            view_ceremonies: false,
+            manage_ceremonies: false,
+            view_students: false,
+            manage_students: false,
+            prepare_qr_codes: false,
+            import_students: false,
+            view_ceremony_reports: false,
+            manage_announcement_settings: false,
+            manage_stage_designs: false,
+            manage_announcement_batches: false,
+            generate_announcement_candidates: false,
+            review_announcement_candidates: false,
+            view_pronunciation_rules: false,
+        },
+        '/admin/device-connections',
     );
-    const withoutWorkingCeremony = buildNavigation(
-        administratorAbilities,
-        '/dashboard',
-    );
-
-    assert.equal(
-        withWorkingCeremony[1].items[0].href,
-        '/admin/ceremonies/88',
-    );
-    assert.equal(
-        withoutWorkingCeremony[1].items[0].href,
-        '/admin/ceremonies',
-    );
+    assert.deepEqual(labels(navigation), [
+        { label: 'Home', items: ['Home'] },
+        { label: 'Reports', items: ['Reports'] },
+        { label: 'Settings', items: ['Device Connections', 'Backups'] },
+    ]);
 });
 
-test('active route matching prefers the specific primary workspace', () => {
-    const importNavigation = buildNavigation(
+test('primary and command navigation preserve role-aware active route matching', () => {
+    const primary = buildNavigation(
         administratorAbilities,
         '/admin/students/import',
         { workingCeremony: { id: 12 } },
     );
-    const studentDetailNavigation = buildNavigation(
+    const commands = buildCommandNavigation(
         administratorAbilities,
-        '/admin/students/123',
-        { workingCeremony: { id: 12 } },
-    );
-    const announcementsNavigation = buildNavigation(
-        administratorAbilities,
-        '/admin/ceremonies/12/announcements',
+        '/admin/students/import',
         { workingCeremony: { id: 12 } },
     );
 
     assert.equal(
-        importNavigation[1].items.find((item) => item.active)?.label,
-        'Import',
+        primary.find((group) => group.label === 'Preparation')?.items[0].active,
+        true,
     );
     assert.equal(
-        studentDetailNavigation[1].items.find((item) => item.active)?.label,
-        'Graduates',
-    );
-    assert.equal(
-        announcementsNavigation[1].items.find((item) => item.active)?.label,
-        'Announcements',
+        commands.flatMap((group) => group.items).find((item) => item.label === 'Import Graduates')?.active,
+        true,
     );
 });

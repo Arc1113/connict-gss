@@ -2,7 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { observeEchoConnection } from '../lib/echo';
 import AppIcon from './AppIcon';
-import { buildNavigation } from './appNavigation';
+import { buildCommandNavigation, buildNavigation } from './appNavigation';
 import BrandMark from './BrandMark';
 import CommandPalette from './CommandPalette';
 import SystemStatusBar from './SystemStatusBar';
@@ -41,7 +41,7 @@ function ceremonyCopy(ceremonyContext) {
     }[ceremonyContext.state];
 }
 
-export default function AppShell({ children }) {
+export default function AppShell({ children, mode = 'preparation' }) {
     const {
         application,
         auth,
@@ -71,16 +71,17 @@ export default function AppShell({ children }) {
         [auth.abilities, currentUrl, workingCeremony],
     );
     const commands = useMemo(
-        () =>
-            navigation.flatMap((group) =>
-                group.items.map((item) => ({ ...item, group: group.label })),
-            ),
-        [navigation],
+        () => buildCommandNavigation(
+            auth.abilities,
+            currentUrl,
+            { workingCeremony },
+        ).flatMap((group) =>
+            group.items.map((item) => ({ ...item, group: group.label })),
+        ),
+        [auth.abilities, currentUrl, workingCeremony],
     );
     const currentPage =
-        currentUrl === '/admin'
-            ? 'Ceremony readiness'
-            : commands.find((command) => command.active)?.label ?? 'Workspace';
+        commands.find((command) => command.active)?.label ?? 'Workspace';
     const liveCeremony = ceremonyCopy(liveCeremonyContext ?? ceremonyContext);
     const canSwitchWorkingCeremony = Boolean(workingCeremonyContext?.can_switch);
     const availableWorkingCeremonies = workingCeremonyContext?.available ?? [];
@@ -199,6 +200,7 @@ export default function AppShell({ children }) {
         if (!ceremonyId || ceremonyId === String(workingCeremony?.id ?? '')) {
             return;
         }
+
         setPendingWorkingCeremony(ceremonyId);
         setIsSwitchingWorkingCeremony(true);
         router.post(
@@ -221,8 +223,9 @@ export default function AppShell({ children }) {
 
     return (
         <div
-            className="app-shell"
+            className={`app-shell app-shell-${mode}`}
             data-collapsed={collapsed ? 'true' : 'false'}
+            data-shell-mode={mode}
             data-mobile-open={mobileOpen ? 'true' : 'false'}
         >
             <a className="skip-link" href="#app-content">Skip to page content</a>
@@ -301,11 +304,6 @@ export default function AppShell({ children }) {
                         </span>
                     </div>
 
-                    <div className={`app-toolbar-ceremony app-status-${liveCeremony.tone}`} title={`${liveCeremony.title}: ${liveCeremony.label}`}>
-                        <span className="app-status-symbol" aria-hidden="true" />
-                        <span className="app-ceremony-label">{liveCeremony.label}</span>
-                    </div>
-
                     <div className="app-toolbar-actions">
                         {canSwitchWorkingCeremony && (
                             <form
@@ -345,14 +343,16 @@ export default function AppShell({ children }) {
                                 )}
                             </form>
                         )}
-                        <div
-                            className={`app-connection app-status-${connection.tone}`}
-                            data-tour="application-connection"
-                            title={connection.label}
-                        >
-                            <span className="app-status-symbol" aria-hidden="true" />
-                            <span>{connection.label}</span>
-                        </div>
+                        {mode !== 'preparation' && (
+                            <div
+                                className={`app-connection app-status-${connection.tone}`}
+                                data-tour="application-connection"
+                                title={connection.label}
+                            >
+                                <span className="app-status-symbol" aria-hidden="true" />
+                                <span>{connection.label}</span>
+                            </div>
+                        )}
                         <button
                             className="app-command-trigger"
                             onClick={() => {
@@ -385,12 +385,14 @@ export default function AppShell({ children }) {
                 <main className="app-workspace" id="app-content">
                     {children}
                 </main>
-                <SystemStatusBar
-                    ceremony={liveCeremony}
-                    connection={connection}
-                    online={online}
-                    version={application?.version}
-                />
+                {mode !== 'preparation' && (
+                    <SystemStatusBar
+                        ceremony={liveCeremony}
+                        connection={connection}
+                        online={online}
+                        version={application?.version}
+                    />
+                )}
             </div>
 
             {paletteOpen && (

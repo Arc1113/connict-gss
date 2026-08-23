@@ -26,7 +26,7 @@ export default function StudentImportIndex({
 
     return (
         <AdminLayout>
-            <Head title="Import graduate records" />
+            <Head title="Import graduates" />
             <PageHeader
                 actions={
                     <Link
@@ -36,9 +36,8 @@ export default function StudentImportIndex({
                         Return to graduate records
                     </Link>
                 }
-                description="Inspect graduate data and optional local media before any records are created."
                 eyebrow={workspace ? 'Ceremony workspace' : 'Graduate data preparation'}
-                title="Import graduate records"
+                title="Import graduates"
             />
             <ImportProgress currentStep={1} />
 
@@ -50,31 +49,14 @@ export default function StudentImportIndex({
                 >
                     <ValidationSummary errors={form.errors} />
                     <fieldset className="admin-form-section">
-                        <legend>Destination and source file</legend>
+                        <legend>Upload files</legend>
                         <div className="admin-form-grid">
                             {workspace?.locked ? (
-                                <div className="admin-field admin-field-wide">
-                                    <label>Destination</label>
-                                    <div className="admin-readonly-field">
-                                        <strong>{workspace.ceremony.name}</strong>
-                                        <span>
-                                            {workspace.ceremony.academic_year} ·{' '}
-                                            {workspace.ceremony.status}
-                                        </span>
-                                    </div>
-                                    <input
-                                        name="ceremony_id"
-                                        type="hidden"
-                                        value={form.data.ceremony_id}
-                                    />
-                                    <p className="admin-field-hint">
-                                        The import creates new graduates in this ceremony only.
-                                    </p>
-                                </div>
+                                <input name="ceremony_id" type="hidden" value={form.data.ceremony_id} />
                             ) : (
                                 <div className="admin-field admin-field-wide">
                                     <label htmlFor="ceremony_id">
-                                        Destination ceremony <span aria-hidden="true">*</span>
+                                        Add graduates to <span aria-hidden="true">*</span>
                                     </label>
                                     <select
                                         aria-describedby="ceremony_id-hint ceremony_id-error"
@@ -97,7 +79,7 @@ export default function StudentImportIndex({
                                         ))}
                                     </select>
                                     <p className="admin-field-hint" id="ceremony_id-hint">
-                                        The import creates new graduates in this ceremony only.
+                                        New records will be added to this ceremony only.
                                     </p>
                                     <FieldError
                                         id="ceremony_id-error"
@@ -108,7 +90,7 @@ export default function StudentImportIndex({
 
                             <div className="admin-field admin-field-wide">
                                 <label htmlFor="media_package">
-                                    Photo and audio package <span>Optional</span>
+                                    Media package <span>Optional</span>
                                 </label>
                                 <input
                                     accept=".zip,application/zip"
@@ -125,11 +107,7 @@ export default function StudentImportIndex({
                                     type="file"
                                 />
                                 <p className="admin-field-hint" id="media_package-hint">
-                                    ZIP up to {limits.max_media_package_megabytes} MiB.
-                                    Put portraits in <code>photos/</code> and announcements
-                                    in <code>audio/</code>, then reference each filename in
-                                    the CSV. You may add or replace this ZIP after inspecting
-                                    the CSV.
+                                    ZIP with matching photos or audio.
                                 </p>
                                 <FieldError
                                     id="media_package-error"
@@ -156,10 +134,7 @@ export default function StudentImportIndex({
                                     type="file"
                                 />
                                 <p className="admin-field-hint" id="csv_file-hint">
-                                    UTF-8 CSV, up to {limits.max_file_megabytes} MiB and{' '}
-                                    {limits.max_rows.toLocaleString()} data rows. Comma,
-                                    semicolon, and tab delimiters are accepted. This file
-                                    supplies the paths used to match media in the ZIP.
+                                    One graduate per row.
                                 </p>
                                 <FieldError
                                     id="csv_file-error"
@@ -186,15 +161,19 @@ export default function StudentImportIndex({
                             }
                             type="submit"
                         >
-                            {form.processing ? 'Inspecting package…' : 'Inspect import'}
+                            {form.processing ? 'Checking file…' : 'Continue'}
                         </button>
                     </div>
                 </form>
 
                 <aside aria-labelledby="import-preparation-title" className="admin-import-help">
-                    <h2 id="import-preparation-title">Prepare the file</h2>
+                    <h2 id="import-preparation-title">Template</h2>
+                    <a className="admin-text-link" href={templateUrl}>
+                        Download the CSV template
+                    </a>
+                    <details className="admin-import-requirements">
+                        <summary>File requirements</summary>
                     <ol>
-                        <li>Use one header row and one graduate per following row.</li>
                         <li>
                             Include student number, first and last name, program,
                             sequence number, and eligibility.
@@ -204,19 +183,18 @@ export default function StudentImportIndex({
                             destination ceremony.
                         </li>
                         <li>
-                            For bulk media, add <code>photo_filename</code> and
+                            For media, add <code>photo_filename</code> and
                             <code>audio_filename</code> columns and upload one ZIP with
                             matching files in its <code>photos/</code> and <code>audio/</code>
                             folders.
                         </li>
                     </ol>
-                    <a className="admin-text-link" href={templateUrl}>
-                        Download the local CSV template
-                    </a>
-                    <p>
-                        This phase creates new records only. Existing graduate records
-                        are never overwritten by an import.
-                    </p>
+                        <p>
+                            CSV files may be comma, semicolon, or tab delimited, up to{' '}
+                            {limits.max_file_megabytes} MiB and {limits.max_rows.toLocaleString()}{' '}
+                            data rows. ZIP files may be up to {limits.max_media_package_megabytes} MiB.
+                        </p>
+                    </details>
                 </aside>
             </div>
         </AdminLayout>

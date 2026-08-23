@@ -47,7 +47,7 @@ export default function BackupIndex({ canCreate, destinationLabel, records }) {
     }
 
     return (
-        <AdminLayout>
+        <AdminLayout mode="technical">
             <Head title="Backups" />
             <PageHeader
                 actions={

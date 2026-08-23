@@ -1,0 +1,515 @@
+/* design.md page redesign: overview and ceremony readiness --------------- */
+
+.overview-readiness {
+    min-height: 3.5rem;
+    padding: 0.65rem 0.8rem;
+    color: var(--color-text-primary);
+    background: var(--color-bg-surface);
+    border-color: var(--color-border-default);
+    border-left-width: 4px;
+    border-radius: var(--radius-sm);
+}
+
+.overview-readiness strong {
+    color: var(--color-text-primary);
+    font-size: 0.78rem;
+    font-weight: 680;
+}
+
+.overview-readiness div span {
+    color: var(--color-text-secondary);
+    font-size: 0.68rem;
+}
+
+.overview-readiness a {
+    min-height: 2rem;
+    padding: 0.4rem 0.55rem;
+    color: var(--color-accent);
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    text-decoration: none;
+}
+
+.overview-readiness a:hover {
+    background: var(--color-bg-hover);
+}
+
+.overview-next-action {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 5rem;
+    margin-top: 0.75rem;
+    padding: 0.9rem 1rem;
+    color: var(--color-text-primary);
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-left: 4px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    box-shadow: none;
+}
+
+.overview-next-action > .app-icon {
+    color: var(--color-accent);
+}
+
+.overview-next-action span {
+    color: var(--color-text-tertiary);
+    font-size: 0.64rem;
+}
+
+.overview-next-action h2 {
+    color: var(--color-text-primary);
+    font-size: 0.95rem;
+    font-weight: 680;
+}
+
+.overview-next-action p {
+    max-width: 62ch;
+    color: var(--color-text-secondary);
+    font-size: 0.7rem;
+    line-height: 1.4;
+}
+
+.overview-next-action .primary-action {
+    min-height: 2.5rem;
+    color: #ffffff;
+    background: var(--color-accent);
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    transition:
+        background var(--motion-hover),
+        transform var(--motion-hover);
+}
+
+.overview-next-action .primary-action:hover {
+    background: var(--color-accent-hover);
+    transform: none;
+}
+
+.overview-next-action .primary-action:active {
+    transform: translateY(1px);
+}
+
+.overview-tools {
+    margin-top: 0.75rem;
+    background: var(--color-bg-surface);
+    border-color: var(--color-border-default);
+    border-radius: var(--radius-md);
+}
+
+.overview-tools > header {
+    min-height: 2.75rem;
+    padding: 0 0.8rem;
+    border-color: var(--color-border-default);
+}
+
+.overview-tools h2 {
+    color: var(--color-text-primary);
+    font-size: 0.78rem;
+    font-weight: 680;
+}
+
+.overview-tools > header span {
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+.overview-tools > ul > li > a {
+    min-height: 3.5rem;
+    color: var(--color-text-primary);
+    border-color: var(--color-border-default);
+}
+
+.overview-tools > ul > li > a:hover {
+    background: var(--color-bg-hover);
+}
+
+.overview-tools > ul > li > a:focus-visible {
+    position: relative;
+    z-index: 1;
+}
+
+.overview-tools a strong {
+    color: var(--color-text-primary);
+    font-size: 0.75rem;
+    font-weight: 650;
+}
+
+.overview-tools a small {
+    color: var(--color-text-secondary);
+    font-size: 0.66rem;
+    line-height: 1.4;
+}
+
+/* Phase 6: overview prioritizes ceremony state instead of a navigation grid. */
+.overview-ceremony-panel,
+.overview-attention {
+    display: grid;
+    grid-template-columns: minmax(10rem, 0.8fr) minmax(0, 1.5fr) auto;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    padding: 0.9rem 1rem;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+}
+
+.overview-ceremony-panel p,
+.overview-ceremony-panel h2,
+.overview-ceremony-panel span,
+.overview-attention p,
+.overview-attention h2 {
+    margin: 0;
+}
+
+.overview-ceremony-panel p {
+    color: var(--color-text-tertiary);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.overview-ceremony-panel h2,
+.overview-attention h2 {
+    margin-top: 0.2rem;
+    color: var(--color-text-primary);
+    font-size: 0.9rem;
+    font-weight: 680;
+}
+
+.overview-ceremony-panel-detail strong,
+.overview-ceremony-panel-detail span {
+    display: block;
+}
+
+.overview-ceremony-panel-detail strong {
+    color: var(--color-text-primary);
+    font-size: 0.82rem;
+}
+
+.overview-ceremony-panel-detail span,
+.overview-empty-state > div > span {
+    margin-top: 0.15rem;
+    color: var(--color-text-secondary);
+    font-size: 0.7rem;
+    line-height: 1.4;
+}
+
+.overview-ceremony-panel > a,
+.overview-relevant-actions a,
+.overview-attention li a {
+    color: var(--color-accent);
+    font-size: 0.72rem;
+    font-weight: 680;
+    text-decoration: none;
+}
+
+.overview-ceremony-panel > a:hover,
+.overview-relevant-actions a:hover,
+.overview-attention li a:hover {
+    text-decoration: underline;
+}
+
+.overview-attention {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+}
+
+.overview-attention > header {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.overview-attention p {
+    margin-top: 0.2rem;
+    color: var(--color-text-secondary);
+    font-size: 0.7rem;
+}
+
+.overview-attention ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.overview-attention li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.overview-attention li:last-child {
+    border-bottom: 0;
+}
+
+.overview-attention li strong,
+.overview-attention li small {
+    display: block;
+}
+
+.overview-attention li strong {
+    color: var(--color-text-primary);
+    font-size: 0.74rem;
+}
+
+.overview-attention li small {
+    margin-top: 0.12rem;
+    color: var(--color-text-secondary);
+    font-size: 0.66rem;
+    line-height: 1.35;
+}
+
+.overview-live-ceremony {
+    border-left: 4px solid var(--color-border-strong);
+}
+
+.overview-relevant-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    margin: 0.75rem 0 0;
+}
+
+.app-workspace .admin-blockers,
+.app-workspace .admin-readiness,
+.app-workspace .admin-task-list {
+    margin-top: 0.75rem;
+    padding: 0;
+    overflow: hidden;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+}
+
+.app-workspace .admin-blockers {
+    border-left: 4px solid var(--color-status-warning);
+}
+
+.app-workspace .admin-blockers .admin-section-heading,
+.app-workspace .admin-readiness .admin-section-heading {
+    min-height: 3.5rem;
+    padding: 0.7rem 0.9rem;
+    border-color: var(--color-border-default);
+}
+
+.app-workspace .admin-section-heading h2,
+.app-workspace .admin-task-list > h2 {
+    color: var(--color-text-primary);
+    font-size: 0.85rem;
+    font-weight: 680;
+}
+
+.admin-blockers .admin-section-heading p {
+    color: var(--color-text-secondary);
+    font-size: 0.7rem;
+}
+
+.admin-blockers ol {
+    border-color: var(--color-border-default);
+}
+
+.admin-blockers li {
+    min-height: 3.5rem;
+    padding: 0.6rem 0.9rem;
+    border-color: var(--color-border-default);
+}
+
+.admin-blockers li strong {
+    color: var(--color-text-primary);
+    font-size: 0.78rem;
+    font-weight: 650;
+}
+
+.admin-blockers li small {
+    color: var(--color-text-secondary);
+    font-size: 0.68rem;
+}
+
+.admin-blockers li a {
+    min-height: 2rem;
+    padding: 0.4rem 0.55rem;
+    color: var(--color-accent);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+}
+
+.admin-blockers li a:hover {
+    background: var(--color-bg-hover);
+}
+
+.admin-current-ceremony {
+    display: flex;
+    min-height: 3.5rem;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.8rem 0.9rem;
+    background: var(--color-bg-hover);
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.admin-current-ceremony strong {
+    color: var(--color-text-primary);
+    font-size: 0.86rem;
+    font-weight: 680;
+}
+
+.admin-current-ceremony span {
+    color: var(--color-text-secondary);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-readiness-list {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.admin-readiness-list > div {
+    min-height: 4.4rem;
+    padding: 0.7rem 0.8rem;
+    border-right: 1px solid var(--color-border-default);
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.admin-readiness-list > div:nth-child(6n) {
+    border-right: 0;
+}
+
+.admin-readiness-list dt {
+    color: var(--color-text-secondary);
+    font-size: 0.62rem;
+    font-weight: 650;
+    letter-spacing: 0;
+    line-height: 1.35;
+    text-transform: none;
+}
+
+.admin-readiness-list dd {
+    margin-top: 0.25rem;
+    color: var(--color-text-primary);
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 680;
+}
+
+.admin-readiness-list .is-warning {
+    background: var(--color-status-warning-bg);
+}
+
+.admin-readiness-list .is-warning dd,
+.admin-readiness-list .is-warning a {
+    color: var(--color-status-warning);
+}
+
+.admin-readiness-list .is-danger {
+    background: var(--color-status-error-bg);
+}
+
+.admin-readiness-list .is-danger dd,
+.admin-readiness-list .is-danger a {
+    color: var(--color-status-error);
+}
+
+.admin-blocking-message,
+.admin-inline-empty {
+    margin: 0.75rem 0.9rem;
+}
+
+.app-workspace .admin-task-list > h2 {
+    min-height: 2.85rem;
+    padding: 0.8rem 0.9rem;
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.admin-task-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-task-link {
+    min-height: 3.75rem;
+    padding: 0.65rem 0.9rem;
+    border-top: 0;
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.admin-task-link:nth-child(odd) {
+    border-right: 1px solid var(--color-border-default);
+}
+
+.admin-task-link:hover {
+    background: var(--color-bg-hover);
+}
+
+.admin-task-link strong {
+    color: var(--color-text-primary);
+    font-size: 0.76rem;
+    font-weight: 650;
+}
+
+.admin-task-link small {
+    margin-top: 0.15rem;
+    color: var(--color-text-secondary);
+    font-size: 0.67rem;
+    line-height: 1.35;
+}
+
+.admin-task-link > span:last-child {
+    color: var(--color-text-tertiary);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 72rem) {
+    .admin-readiness-list {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .admin-readiness-list > div:nth-child(6n) {
+        border-right: 1px solid var(--color-border-default);
+    }
+
+    .admin-readiness-list > div:nth-child(4n) {
+        border-right: 0;
+    }
+}
+
+@media (max-width: 48rem) {
+    .overview-next-action {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .overview-next-action .primary-action {
+        grid-column: 1 / -1;
+        justify-content: center;
+    }
+
+    .admin-readiness-list,
+    .admin-task-links {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-readiness-list > div,
+    .admin-readiness-list > div:nth-child(4n),
+    .admin-readiness-list > div:nth-child(6n),
+    .admin-task-link:nth-child(odd) {
+        border-right: 0;
+    }
+
+    .admin-current-ceremony {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .overview-ceremony-panel {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.5rem;
+    }
+
+    .overview-attention li {
+        align-items: start;
+    }
+}
