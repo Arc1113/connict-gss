@@ -25,7 +25,7 @@ foreach ($name in 'web', 'reverb', 'queue', 'tts') {
     Copy-Item -LiteralPath $xml -Destination ([IO.Path]::ChangeExtension($target, '.xml')) -Force
     & $target install
     if ($LASTEXITCODE -ne 0) { throw "Could not install Connict GSS service: $name" }
-    & sc.exe config $serviceName obj= 'NT AUTHORITY\LocalService' password= '' | Out-Null
+    & sc.exe config $serviceName obj= 'NT AUTHORITY\LocalService' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Could not restrict Connict GSS service identity: $name" }
 }
 
