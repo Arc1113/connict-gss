@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory)][string]$Version,
     [string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path,
     [string]$RuntimeInputDirectory = (Join-Path $PSScriptRoot '..\runtime-input'),
-    [string]$RuntimeManifest = (Join-Path $PSScriptRoot '..\runtime-input\runtime-manifest.json')
+    [string]$RuntimeManifest = (Join-Path $PSScriptRoot '..\runtime-input\runtime-manifest.json'),
+    [switch]$RequireCodeSigning
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,6 +16,35 @@ if (-not (Test-Path -LiteralPath $RuntimeInputDirectory) -or -not (Test-Path -Li
 function Assert-NativeCommandSucceeded([string]$Command) {
     if ($LASTEXITCODE -ne 0) {
         throw "$Command failed with exit code $LASTEXITCODE."
+    }
+}
+
+function Sign-ConnictGssBinary([string]$Path) {
+    if (-not $RequireCodeSigning) {
+        return
+    }
+
+    $certificatePath = $env:CONNICT_GSS_SIGNING_CERTIFICATE_PATH
+    $certificatePassword = $env:CONNICT_GSS_SIGNING_CERTIFICATE_PASSWORD
+    $timestampUrl = $env:CONNICT_GSS_SIGNING_TIMESTAMP_URL
+    if (-not $certificatePath -or -not $certificatePassword -or $timestampUrl -notmatch '^https://') {
+        throw 'Code signing requires a certificate path, certificate password, and HTTPS timestamp URL.'
+    }
+    if (-not (Test-Path -LiteralPath $certificatePath -PathType Leaf)) {
+        throw 'The configured code-signing certificate does not exist.'
+    }
+
+    $signTool = Get-Command signtool.exe -ErrorAction SilentlyContinue
+    if ($null -eq $signTool) {
+        throw 'signtool.exe is required to sign the Windows release.'
+    }
+
+    & $signTool.Source sign /fd SHA256 /f $certificatePath /p $certificatePassword /tr $timestampUrl /td SHA256 $Path
+    Assert-NativeCommandSucceeded "Signing $Path"
+
+    $signature = Get-AuthenticodeSignature -FilePath $Path
+    if ($signature.Status -ne 'Valid') {
+        throw "The Authenticode signature is invalid for $Path: $($signature.Status)"
     }
 }
 
@@ -120,6 +150,7 @@ Copy-Item -LiteralPath $RuntimeManifest -Destination $manifestTarget -Force
     Set-Content -LiteralPath (Join-Path $payload 'release-manifest.json') -NoNewline
 dotnet publish distribution\windows\launcher\ConnictGSS.csproj -c Release -o distribution\windows\launcher\publish
 Assert-NativeCommandSucceeded 'dotnet publish'
+Sign-ConnictGssBinary (Join-Path $RepositoryRoot 'distribution\windows\launcher\publish\ConnictGSS.exe')
 $env:CONNICT_GSS_VERSION = $Version
 & iscc distribution\windows\installer\connict-gss.iss
 Assert-NativeCommandSucceeded 'iscc'
@@ -127,4 +158,5 @@ $installer = Join-Path $RepositoryRoot "distribution\windows\installer\Output\Co
 if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
     throw "Inno Setup completed without producing the expected installer: $installer"
 }
+Sign-ConnictGssBinary $installer
 Get-FileHash -LiteralPath $installer -Algorithm SHA256 | Format-List

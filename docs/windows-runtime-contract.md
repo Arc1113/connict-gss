@@ -26,4 +26,34 @@ PostgreSQL is sourced as a binary archive suitable for bundling, not by running 
 4. Build only after a clean Windows VM smoke test of the staged runtime.
 5. Record runtime versions and hashes alongside the signed installer checksum.
 
+## GitHub release workflow
+
+The `.github/workflows/windows-release.yml` workflow is the only supported
+release builder. It validates the application on Ubuntu, then builds and signs
+the installer on `windows-2022` behind the protected `windows-release`
+environment.
+
+Configure these environment values before dispatching a release or pushing a
+`vX.Y.Z` tag:
+
+| Type | Name | Purpose |
+| --- | --- | --- |
+| Variable | `WINDOWS_RUNTIME_BUNDLE_URL` | Immutable HTTPS location of the approved `runtime-input.zip`. |
+| Variable | `WINDOWS_RUNTIME_BUNDLE_SHA256` | SHA-256 of that exact ZIP. |
+| Variable | `WINDOWS_SIGNING_TIMESTAMP_URL` | HTTPS RFC 3161 timestamp service. |
+| Secret | `WINDOWS_SIGNING_CERTIFICATE_BASE64` | Base64-encoded PFX used to Authenticode-sign the launcher and installer. |
+| Secret | `WINDOWS_SIGNING_CERTIFICATE_PASSWORD` | Password for that PFX. |
+| Secret (optional) | `WINDOWS_RUNTIME_BUNDLE_TOKEN` | Bearer token when the approved bundle location requires authentication. |
+
+Tag builds derive the installer version from the tag and require protected
+environment approval and signing credentials. Before an artifact can be
+published, the Windows runner silently installs it, completes first-run setup,
+checks PostgreSQL, HTTPS, Reverb, the queue worker and offline TTS, creates a
+verified backup, and uploads its validation evidence. Only then does the
+workflow upload the installer plus its `.sha256` file and create the
+corresponding GitHub Release. Manual dispatches use the same gates but upload a
+release-candidate artifact without publishing a GitHub Release. Both paths fail
+closed when runtime verification, code signing, installation, or health checks
+are incomplete.
+
 Do not upgrade PostgreSQL across a major version in an in-place application upgrade. Treat it as a separately rehearsed migration with a verified restore path.

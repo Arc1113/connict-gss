@@ -48,6 +48,7 @@ Thumbs.db
 /distribution/windows/launcher/publish/
 /distribution/windows/installer/Output/
 /distribution/windows/runtime-input.zip
+/distribution/windows/validation-evidence/
 
 # Ignore common picture and video assets.
 *.jpg

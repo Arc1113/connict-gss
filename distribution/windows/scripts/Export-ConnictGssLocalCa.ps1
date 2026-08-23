@@ -12,6 +12,14 @@ for ($attempt = 0; $attempt -lt 30; $attempt++) {
     if (Test-Path -LiteralPath $source) {
         New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
         Copy-Item -LiteralPath $source -Destination $target -Force
+
+        $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($target)
+        $trusted = Get-ChildItem Cert:\LocalMachine\Root |
+            Where-Object { $_.Thumbprint -eq $certificate.Thumbprint }
+        if (-not $trusted) {
+            Import-Certificate -FilePath $target -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+        }
+
         exit 0
     }
 
