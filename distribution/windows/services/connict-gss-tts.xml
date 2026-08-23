@@ -7,6 +7,5 @@
   <env name="HF_HOME" value="%BASE%\..\runtime\tts\models" />
   <env name="HF_HUB_OFFLINE" value="1" />
   <env name="TRANSFORMERS_OFFLINE" value="1" />
-  <env name="PATH" value="%BASE%\..\runtime\vclibs;%PATH%" />
   <onfailure action="restart" delay="10 sec" />
 </service>

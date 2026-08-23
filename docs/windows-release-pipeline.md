@@ -4,7 +4,9 @@ The Windows installer is built from an exact, clean Git commit, never by copying
 
 ## Prepare the verified runtime
 
-The workflow downloads and checksum-verifies the pinned FrankenPHP, PostgreSQL, and WinSW inputs:
+The workflow downloads and checksum-verifies the pinned FrankenPHP, PostgreSQL,
+WinSW, and Microsoft Visual C++ Redistributable inputs. It additionally verifies
+the redistributable's Microsoft Authenticode signature:
 
 ```powershell
 ./distribution/windows/scripts/Get-ConnictGssRuntimeInputs.ps1
@@ -28,7 +30,9 @@ The workflow generates a license inventory, records the workflow run and source 
 ./distribution/windows/scripts/New-ConnictGssRuntimeManifest.ps1
 ```
 
-The builder verifies every staged file against the manifest and refuses a runtime missing FrankenPHP, PHP, PostgreSQL, WinSW, the generated license inventory, or offline TTS.
+The builder verifies every staged file against the manifest and refuses a
+runtime missing FrankenPHP, PHP, PostgreSQL, WinSW, the Visual C++
+Redistributable, the generated license inventory, or offline TTS.
 
 ## Validate and package
 
@@ -44,6 +48,17 @@ The expected artifact is:
 distribution\windows\installer\Output\ConnictGSS-Setup-1.0.0.exe
 ```
 
-The [Windows release workflow](../.github/workflows/windows-release.yml) validates every pull request on Linux and creates a test-signed installer on a GitHub Windows runner, making the candidate downloadable before merge. A manual dispatch can also select `test` signing; both paths use an ephemeral self-signed certificate and do not require private secrets. Select `trusted` only after the environment contains an exportable Authenticode PFX, its password, and an RFC 3161 timestamp URL. A `vX.Y.Z` tag always requires trusted signing and publishes the GitHub Release only after all clean-machine checks pass.
+The [Windows release workflow](../.github/workflows/windows-release.yml)
+validates every pull request on Linux and creates an internal test-signed
+installer on a GitHub Windows runner. Those ephemeral self-signed artifacts are
+not public releases and are not accepted by Smart App Control on other
+machines. Production signing is being enrolled through SignPath Foundation as
+documented in the [code signing policy](../CODE_SIGNING_POLICY.md). A `vX.Y.Z`
+tag must remain fail-closed until that trusted signing path and clean-machine
+validation are complete.
 
-Install only the generated setup executable on a separate clean Windows VM and complete the [clean-machine acceptance procedure](windows-clean-machine-qa.md). Record the installer SHA-256 and source commit with the release artifact. Code-sign the launcher and installer before broad distribution.
+Install only the generated setup executable on a separate clean Windows VM and
+complete the [clean-machine acceptance procedure](windows-clean-machine-qa.md).
+Record the installer SHA-256 and source commit with the release artifact. Verify
+all first-party executable code and every runtime code path under Smart App
+Control before broad distribution.

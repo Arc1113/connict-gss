@@ -1,0 +1,6 @@
+# Release, signing, and security-sensitive changes require maintainer review.
+* @Aracena18
+/.github/workflows/ @Aracena18
+/distribution/windows/ @Aracena18
+/CODE_SIGNING_POLICY.md @Aracena18
+/PRIVACY.md @Aracena18

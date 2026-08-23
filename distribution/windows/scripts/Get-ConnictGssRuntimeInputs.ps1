@@ -6,14 +6,14 @@ param(
 $ErrorActionPreference = 'Stop'
 $frankenPhpVersion = '1.12.7'
 $frankenPhpArchive = 'frankenphp-windows-x86_64.zip'
-$frankenPhpHash = 'c382cf6169d5175c30d918ba7a09d6eb8601c6c339470e7fbb87f0b40d9bf254'
-$frankenPhpExecutableHash = '4b1584f3a1f5162c9fab5b7dc75ecdb59b16fb0ec3e4b5ed667d63474ce44783'
+$frankenPhpHash = '52fb7d1d8ca785599189789f813dd5cd2c29892ed2eaa3fdaab07e938e551870'
+$frankenPhpExecutableHash = '6497ba22c7916fe757dc2979f3bedf10ec28b6e9bdb685bec25b8f9bb12fe18e'
 $phpExecutableHash = '9151fca722979afbef1178adfdfee96f502fbc5f1c7e1227f42013c5dcd329ac'
 $winSwVersion = '2.12.0'
 $winSwHash = '05b82d46ad331cc16bdc00de5c6332c1ef818df8ceefcd49c726553209b3a0da'
-$vcRuntimeVersion = '14.0.33321.0'
-$vcRuntimeUrl = 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx'
-$vcRuntimeHash = 'b56a9101f706f9d95f815f5b7fa6efbac972e86573d378b96a07cff5540c5961'
+$vcRuntimeVersion = '14.44.35211.0'
+$vcRuntimeUrl = 'https://aka.ms/vs/17/release/vc_redist.x64.exe'
+$vcRuntimeHash = 'cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b'
 $postgresVersion = '16.15-1'
 $postgresArchive = 'postgresql-16.15-1-windows-x64-binaries.zip'
 $postgresHash = '25e6fcdfb8caec38691bf461125e7564508760666f7b8e5dc6a5f0818f58f81e'
@@ -50,19 +50,19 @@ try {
     New-Item -ItemType Directory -Path $winSwTarget -Force | Out-Null
     Get-VerifiedFile "https://github.com/winsw/winsw/releases/download/v$winSwVersion/WinSW-x64.exe" (Join-Path $winSwTarget 'WinSW-x64.exe') $winSwHash
 
-    $vcRuntimeArchive = Join-Path $temporaryDirectory 'Microsoft.VCLibs.x64.14.00.Desktop.appx'
-    Get-VerifiedFile $vcRuntimeUrl $vcRuntimeArchive $vcRuntimeHash
-    $vcRuntimeZip = Join-Path $temporaryDirectory 'Microsoft.VCLibs.x64.14.00.Desktop.zip'
-    Copy-Item -LiteralPath $vcRuntimeArchive -Destination $vcRuntimeZip
-    $vcRuntimeExtracted = Join-Path $temporaryDirectory 'vclibs'
-    Expand-Archive -LiteralPath $vcRuntimeZip -DestinationPath $vcRuntimeExtracted
-    $vcRuntimeTarget = Join-Path $RuntimeInputDirectory 'vclibs'
+    # Install the supported Microsoft redistributable before any bundled PHP,
+    # PostgreSQL, or TTS process starts. The older Desktop VCLibs APPX contains
+    # VC 14.39 and cannot load the current PHP build, which requires VC 14.44.
+    $legacyVclibs = Join-Path $RuntimeInputDirectory 'vclibs'
+    if (Test-Path -LiteralPath $legacyVclibs) { Remove-Item -LiteralPath $legacyVclibs -Recurse -Force }
+    $vcRuntimeTarget = Join-Path $RuntimeInputDirectory 'vcredist'
     if (Test-Path -LiteralPath $vcRuntimeTarget) { Remove-Item -LiteralPath $vcRuntimeTarget -Recurse -Force }
     New-Item -ItemType Directory -Path $vcRuntimeTarget -Force | Out-Null
-    Get-ChildItem -LiteralPath $vcRuntimeExtracted -Filter '*.dll' -File |
-        Copy-Item -Destination $vcRuntimeTarget
-    foreach ($binary in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
-        if (-not (Test-Path -LiteralPath (Join-Path $vcRuntimeTarget $binary) -PathType Leaf)) { throw "Microsoft Visual C++ runtime is missing expected binary: $binary" }
+    $vcRuntimeInstaller = Join-Path $vcRuntimeTarget 'vc_redist.x64.exe'
+    Get-VerifiedFile $vcRuntimeUrl $vcRuntimeInstaller $vcRuntimeHash
+    $vcRuntimeSignature = Get-AuthenticodeSignature -LiteralPath $vcRuntimeInstaller
+    if ($vcRuntimeSignature.Status -ne 'Valid' -or $vcRuntimeSignature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') {
+        throw 'The Microsoft Visual C++ Redistributable signature is not valid.'
     }
 
     $postgresArchivePath = Join-Path $temporaryDirectory $postgresArchive
@@ -77,17 +77,10 @@ try {
     foreach ($binary in 'createdb.exe', 'initdb.exe', 'pg_ctl.exe', 'pg_dump.exe', 'postgres.exe', 'psql.exe') {
         if (-not (Test-Path -LiteralPath (Join-Path $postgresTarget "bin\\$binary") -PathType Leaf)) { throw "PostgreSQL archive is missing expected binary: $binary" }
     }
-    foreach ($binary in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
-        Copy-Item -LiteralPath (Join-Path $vcRuntimeTarget $binary) -Destination (Join-Path $postgresTarget "bin\\$binary") -Force
-    }
-
     @{
         schema_version = 1
         sources = @(
-            @{ prefix = 'postgres/bin/msvcp140.dll'; version = $vcRuntimeVersion; source_url = $vcRuntimeUrl; license = 'Microsoft Visual C++ Redistributable terms'; verification = "archive-sha256:$vcRuntimeHash" },
-            @{ prefix = 'postgres/bin/vcruntime140.dll'; version = $vcRuntimeVersion; source_url = $vcRuntimeUrl; license = 'Microsoft Visual C++ Redistributable terms'; verification = "archive-sha256:$vcRuntimeHash" },
-            @{ prefix = 'postgres/bin/vcruntime140_1.dll'; version = $vcRuntimeVersion; source_url = $vcRuntimeUrl; license = 'Microsoft Visual C++ Redistributable terms'; verification = "archive-sha256:$vcRuntimeHash" },
-            @{ prefix = 'vclibs/'; version = $vcRuntimeVersion; source_url = $vcRuntimeUrl; license = 'Microsoft Visual C++ Redistributable terms'; verification = "archive-sha256:$vcRuntimeHash" },
+            @{ prefix = 'vcredist/'; version = $vcRuntimeVersion; source_url = $vcRuntimeUrl; license = 'Microsoft Visual C++ Redistributable terms'; verification = "sha256:$vcRuntimeHash; authenticode:Microsoft Corporation" },
             @{ prefix = 'frankenphp/'; version = $frankenPhpVersion; source_url = "https://github.com/php/frankenphp/releases/download/v$frankenPhpVersion/$frankenPhpArchive"; license = 'FrankenPHP and bundled PHP licenses; see included license and SBOM'; verification = "archive-sha256:$frankenPhpHash" },
             @{ prefix = 'winsw/'; version = $winSwVersion; source_url = "https://github.com/winsw/winsw/releases/download/v$winSwVersion/WinSW-x64.exe"; license = 'MIT'; verification = "sha256:$winSwHash" },
             @{ prefix = 'postgres/'; version = $postgresVersion; source_url = "https://get.enterprisedb.com/postgresql/$postgresArchive"; license = 'PostgreSQL'; verification = "archive-sha256:$postgresHash" }

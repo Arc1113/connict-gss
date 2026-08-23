@@ -133,6 +133,7 @@ function Assert-VerifiedRuntime([string]$Root, [string]$ManifestPath) {
         'tts/bundle-manifest.json',
         'tts/THIRD_PARTY_NOTICES.txt',
         'tts/licenses/license-inventory.json',
+        'vcredist/vc_redist.x64.exe',
         'winsw/WinSW-x64.exe'
     )
     $missingArtifacts = @($requiredArtifacts | Where-Object { $_ -notin $manifestPaths })

@@ -6,7 +6,8 @@ Every Windows installer is assembled on a Windows x64 release runner from a veri
 
 | Component | Initial release input | Verification |
 | --- | --- | --- |
-| Web/PHP runtime | FrankenPHP `v1.12.7`, `frankenphp-windows-x86_64.zip` | SHA-256 `d01e39f9aec75cf9522830e424d9f76f081c1d8b5ec4cc0897a7fdccc8391bb7` from the [official release](https://github.com/php/frankenphp/releases/tag/v1.12.7) |
+| Web/PHP runtime | FrankenPHP `v1.12.7`, `frankenphp-windows-x86_64.zip` | SHA-256 `52fb7d1d8ca785599189789f813dd5cd2c29892ed2eaa3fdaab07e938e551870`, matching the GitHub release asset digest published on 2026-08-23, from the [official release](https://github.com/php/frankenphp/releases/tag/v1.12.7) |
+| Native runtime prerequisite | Microsoft Visual C++ Redistributable x64 `14.44.35211.0` | SHA-256 `cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b` and valid Microsoft Authenticode signature |
 | Service wrapper | WinSW `v2.12.0`, `WinSW-x64.exe` | SHA-256 `05b82d46ad331cc16bdc00de5c6332c1ef818df8ceefcd49c726553209b3a0da` from the [official release](https://github.com/winsw/winsw/releases/tag/v2.12.0) |
 | Database | PostgreSQL `16.15-1` x64 binary archive from EDB | SHA-256 `25e6fcdfb8caec38691bf461125e7564508760666f7b8e5dc6a5f0818f58f81e`; PostgreSQL 16 remains aligned with development/QA |
 | TTS | CI-built Windows x64 offline Kokoro bundle | Build attestation, per-file SHA-256, model revision `f3ff3571791e39611d31c381e3a41a3af07b4987`, generated license inventory, and production license review |
@@ -19,7 +20,7 @@ PostgreSQL is sourced as a binary archive suitable for bundling, not by running 
 ## Release admission requirements
 
 1. The GitHub `windows-2022` runner stages files below the ignored `distribution/windows/runtime-input/` directory.
-2. `Get-ConnictGssRuntimeInputs.ps1` downloads the approved FrankenPHP, PostgreSQL, and WinSW releases and verifies their pinned hashes.
+2. `Get-ConnictGssRuntimeInputs.ps1` downloads the approved FrankenPHP, PostgreSQL, WinSW, and Microsoft Visual C++ Redistributable releases, verifies their pinned hashes, and verifies the redistributable's Microsoft signature.
 3. `Build-ConnictGssOfflineTts.ps1` produces the offline Windows speech server from pinned Python dependencies and the pinned Kokoro model revision, then exercises both supported voices without network access.
 4. `Register-ConnictGssTtsRuntime.ps1` records the workflow run and source commit. `New-ConnictGssRuntimeManifest.ps1` then hashes every staged file; the release builder rejects missing, changed, or unlisted files.
 5. The workflow installs the completed setup executable on the same clean Windows runner, validates every service and offline speech, and creates a verified backup before admitting the artifact.
@@ -33,8 +34,13 @@ environment.
 
 Pull-request and manually dispatched test builds require no private runtime
 bundle and no signing secrets. They use an ephemeral self-signed certificate
-that is trusted only on the CI validation runner; Windows will correctly show
-an unknown-publisher warning when that test artifact is installed elsewhere.
+that is trusted only on the CI validation runner. These are internal development
+artifacts and are blocked by Smart App Control when copied to another machine.
+
+Public Windows releases will use SignPath Foundation open-source signing after
+the project is accepted and its GitHub workflow integration is configured. The
+current PFX-based trusted mode remains a fail-closed compatibility path; it is
+not the planned source of the SignPath certificate.
 
 Configure these environment values before selecting `trusted` signing or
 pushing a `vX.Y.Z` production tag:

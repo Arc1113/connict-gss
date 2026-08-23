@@ -1,4 +1,5 @@
 *.log
+ConnictGSS-Diagnostics-*.zip
 __pycache__/
 *.py[cod]
 .DS_Store

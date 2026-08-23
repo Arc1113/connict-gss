@@ -2,6 +2,13 @@
 
 Status: **ENH-TTS-8 software gate complete; physical readiness remains CONDITIONAL GO**
 
+Connict GSS is free and open-source software released under the
+[MIT License](LICENSE). Windows releases follow the documented
+[code signing policy](CODE_SIGNING_POLICY.md) and the installed system follows
+the local-only [privacy policy](PRIVACY.md).
+
+Free code signing provided by SignPath.io, certificate by SignPath Foundation.
+
 The Graduation Stage System is a local-network-only application for reliable,
 QR-driven graduation presentation. Phase 3 established the complete operational
 path:

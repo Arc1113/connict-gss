@@ -39,8 +39,10 @@ class WindowsDistributionTest extends TestCase
         $setupWizard = File::get(base_path('distribution/windows/launcher/SetupWizard.cs'));
         $launcherProject = File::get(base_path('distribution/windows/launcher/ConnictGSS.csproj'));
         $network = File::get(base_path('distribution/windows/scripts/Update-ConnictGssNetworkConfiguration.ps1'));
+        $installer = File::get(base_path('distribution/windows/installer/connict-gss.iss'));
         $runtimeBuild = File::get(base_path('distribution/windows/scripts/Build-ConnictGssRelease.ps1'));
         $runtimeBootstrap = File::get(base_path('distribution/windows/scripts/Get-ConnictGssRuntimeInputs.ps1'));
+        $phpConfiguration = File::get(base_path('distribution/windows/config/php.ini'));
         $runtimeManifest = File::get(base_path('distribution/windows/scripts/New-ConnictGssRuntimeManifest.ps1'));
         $ttsRegistration = File::get(base_path('distribution/windows/scripts/Register-ConnictGssTtsRuntime.ps1'));
         $ttsBuild = File::get(base_path('distribution/windows/scripts/Build-ConnictGssOfflineTts.ps1'));
@@ -61,10 +63,16 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('<ImplicitUsings>enable</ImplicitUsings>', $launcherProject);
         $this->assertStringNotContainsString("password= ''", File::get(base_path('distribution/windows/scripts/Install-ConnictGssServices.ps1')));
         $this->assertStringNotContainsString("password= ''", $setup);
-        $this->assertStringContainsString('runtime\\vclibs', $setup);
+        $this->assertStringNotContainsString('runtime\\vclibs', $setup);
         $this->assertStringContainsString('PostgreSQL cluster initialization failed', $setup);
         $this->assertStringContainsString('setup-error.json', $setup.$diagnostics);
-        $this->assertStringContainsString('Microsoft.VCLibs.x64.14.00.Desktop.appx', $runtimeBootstrap);
+        $this->assertStringContainsString('vc_redist.x64.exe', $runtimeBootstrap);
+        $this->assertStringContainsString('14.44.35211.0', $runtimeBootstrap);
+        $this->assertStringContainsString('vc_redist.x64.exe', $installer);
+        $this->assertStringContainsString('config\\php.ini', $installer);
+        foreach (['openssl', 'pdo_pgsql', 'pgsql', 'intl', 'mbstring', 'zip'] as $extension) {
+            $this->assertStringContainsString("extension = {$extension}", $phpConfiguration);
+        }
         foreach (['reverb', 'queue', 'tts'] as $service) {
             $this->assertStringContainsString('<description>', File::get(base_path("distribution/windows/services/connict-gss-{$service}.xml")));
         }
@@ -92,7 +100,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('tts/licenses/license-inventory.json', $runtimeBuild);
         $this->assertStringContainsString('winsw/WinSW-x64.exe', $runtimeBuild);
         $this->assertStringContainsString('runtime-manifest.json', $runtimeBuild);
-        $this->assertStringContainsString('c382cf6169d5175c30d918ba7a09d6eb8601c6c339470e7fbb87f0b40d9bf254', $runtimeBootstrap);
+        $this->assertStringContainsString('52fb7d1d8ca785599189789f813dd5cd2c29892ed2eaa3fdaab07e938e551870', $runtimeBootstrap);
         $this->assertStringContainsString('25e6fcdfb8caec38691bf461125e7564508760666f7b8e5dc6a5f0818f58f81e', $runtimeBootstrap);
         $this->assertStringContainsString('runtime-provenance.json', $runtimeManifest);
         $this->assertStringContainsString('tts-server.exe', $ttsRegistration);

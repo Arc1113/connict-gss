@@ -6,7 +6,6 @@
   <arguments>run --config C:\ProgramData\ConnictGSS\configuration\Caddyfile</arguments>
   <env name="GSS_DATA_DIR" value="C:\ProgramData\ConnictGSS" />
   <env name="GSS_ENV_FILE" value="C:\ProgramData\ConnictGSS\configuration\runtime.env" />
-  <env name="PATH" value="%BASE%\..\runtime\vclibs;%PATH%" />
   <logpath>C:\ProgramData\ConnictGSS\logs</logpath>
   <log mode="roll-by-size-time"><sizeThreshold>10485760</sizeThreshold><pattern>yyyy-MM-dd</pattern></log>
   <onfailure action="restart" delay="10 sec" />

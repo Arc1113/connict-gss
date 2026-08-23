@@ -23,6 +23,7 @@ UninstallDisplayName=Connict GSS
 Source: "..\payload\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs ignoreversion
 Source: "..\payload\runtime\*"; DestDir: "{app}\runtime"; Flags: recursesubdirs ignoreversion
 Source: "..\payload\config\*"; DestDir: "{app}\config"; Flags: recursesubdirs ignoreversion
+Source: "..\config\php.ini"; DestDir: "{app}\runtime\frankenphp"; Flags: ignoreversion
 Source: "..\payload\runtime-manifest.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\payload\release-manifest.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\services\*"; DestDir: "{app}\services"; Flags: recursesubdirs ignoreversion
@@ -45,6 +46,7 @@ Name: "{autodesktop}\Connict GSS"; Filename: "{app}\ConnictGSS.exe"; Tasks: desk
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: unchecked
 
 [Run]
+Filename: "{app}\runtime\vcredist\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing the Microsoft Visual C++ runtime..."; Flags: runhidden waituntilterminated
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\scripts\Install-ConnictGssServices.ps1"" -InstallRoot ""{app}"""; Flags: runhidden waituntilterminated
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\scripts\Set-ConnictGssFirewallRules.ps1"""; Flags: runhidden waituntilterminated
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\scripts\Upgrade-ConnictGss.ps1"" -InstallRoot ""{app}"" -Mode Apply"; Flags: runhidden waituntilterminated

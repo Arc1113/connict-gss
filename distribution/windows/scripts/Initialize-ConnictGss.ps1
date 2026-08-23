@@ -57,7 +57,6 @@ function New-Secret([int]$Bytes = 32) {
 }
 
 $postgres = Join-Path $InstallRoot 'runtime\postgres\bin'
-$env:Path = (Join-Path $InstallRoot 'runtime\vclibs') + [IO.Path]::PathSeparator + $env:Path
 $php = Join-Path $InstallRoot 'runtime\frankenphp\php.exe'
 $artisan = Join-Path $InstallRoot 'app\artisan'
 $environmentFile = Join-Path $DataRoot 'configuration\runtime.env'
