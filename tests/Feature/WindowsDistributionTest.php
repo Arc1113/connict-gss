@@ -100,6 +100,8 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('Verify PHP packaging extensions', $releaseWorkflow);
         $this->assertStringContainsString('Required PHP extension is unavailable', $releaseWorkflow);
         $this->assertStringContainsString("foreach (\$relative in 'status.json', 'logs', 'diagnostics')", $releaseWorkflow);
+        $this->assertStringContainsString('-Verb RunAs -Wait -PassThru', $releaseWorkflow);
+        $this->assertStringContainsString('if ($initialization.ExitCode -ne 0)', $releaseWorkflow);
         $this->assertStringContainsString("'pgAdmin 4', 'StackBuilder'", $runtimeBootstrap);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $runtimeBuild);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $ttsBuild);

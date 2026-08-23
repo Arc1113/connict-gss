@@ -193,8 +193,10 @@ jobs:
           if ($process.ExitCode -ne 0) { throw "Installer exited with code $($process.ExitCode)." }
 
           $installRoot = Join-Path $env:ProgramFiles 'Connict GSS'
-          & (Join-Path $installRoot 'scripts/Initialize-ConnictGss.ps1') -InstallRoot $installRoot
-          if ($LASTEXITCODE -ne 0) {
+          $initializeScript = Join-Path $installRoot 'scripts/Initialize-ConnictGss.ps1'
+          $initializeArguments = "-NoProfile -ExecutionPolicy Bypass -File `"$initializeScript`" -InstallRoot `"$installRoot`""
+          $initialization = Start-Process -FilePath 'powershell.exe' -ArgumentList $initializeArguments -Verb RunAs -Wait -PassThru
+          if ($initialization.ExitCode -ne 0) {
             $setupError = Join-Path $env:ProgramData 'ConnictGSS/logs/setup-error.json'
             if (Test-Path -LiteralPath $setupError) {
               Get-Content -LiteralPath $setupError -Raw | Write-Error
