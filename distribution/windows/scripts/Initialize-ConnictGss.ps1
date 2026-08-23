@@ -103,8 +103,10 @@ if (-not (Test-Path -LiteralPath (Join-Path $cluster 'PG_VERSION'))) {
     $passwordFile = Join-Path $env:TEMP ('connict-postgres-' + [guid]::NewGuid().ToString('N') + '.txt')
     try {
         [IO.File]::WriteAllText($passwordFile, $databasePassword, [Text.UTF8Encoding]::new($false))
-        & (Join-Path $postgres 'initdb.exe') -D $cluster -U postgres --pwfile=$passwordFile --auth-host=scram-sha-256 --auth-local=scram-sha-256 | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL cluster initialization failed. Verify the bundled native runtime.' }
+        $initdbOutput = @(& (Join-Path $postgres 'initdb.exe') -D $cluster -U postgres --pwfile=$passwordFile --auth-host=scram-sha-256 --auth-local=scram-sha-256 2>&1)
+        if ($LASTEXITCODE -ne 0) {
+            throw "PostgreSQL cluster initialization failed: $($initdbOutput -join ' ')"
+        }
     } finally { Remove-Item -LiteralPath $passwordFile -Force -ErrorAction SilentlyContinue }
     Add-Content -LiteralPath (Join-Path $cluster 'postgresql.conf') "listen_addresses = '127.0.0.1'`nport = 5432"
     & (Join-Path $postgres 'pg_ctl.exe') register -N ConnictGSS-PostgreSQL -D $cluster -o '-h 127.0.0.1 -p 5432' | Out-Null

@@ -170,6 +170,8 @@ jobs:
           }
           if ($env:SIGNING_MODE -eq 'trusted') {
             $releaseParameters.RequireCodeSigning = $true
+          } else {
+            $env:CONNICT_GSS_FAST_BUILD = '1'
           }
           ./distribution/windows/scripts/Build-ConnictGssRelease.ps1 @releaseParameters
       - name: Install and initialize release candidate

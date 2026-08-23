@@ -14,7 +14,11 @@ OutputBaseFilename=ConnictGSS-Setup-{#AppVersion}
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
+#if GetEnv('CONNICT_GSS_FAST_BUILD') == "1"
+Compression=lzma2/fast
+#else
 Compression=lzma2/ultra64
+#endif
 SolidCompression=yes
 DisableProgramGroupPage=yes
 UninstallDisplayName=Connict GSS

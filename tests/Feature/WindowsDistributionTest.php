@@ -30,6 +30,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString("\$rendered = \$template.Replace('__GSS_HTTPS_HOST__'", $configureCaddy);
         $this->assertStringNotContainsString("\n    .Replace(", $configureCaddy);
         $this->assertStringContainsString('Set-ConnictGssFirewallRules.ps1', $installer);
+        $this->assertStringContainsString("GetEnv('CONNICT_GSS_FAST_BUILD')", $installer);
     }
 
     public function test_first_run_and_upgrade_scripts_use_controlled_workflows(): void
@@ -71,6 +72,8 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringNotContainsString("password= ''", $setup);
         $this->assertStringNotContainsString('runtime\\vclibs', $setup);
         $this->assertStringContainsString('PostgreSQL cluster initialization failed', $setup);
+        $this->assertStringContainsString('$initdbOutput', $setup);
+        $this->assertStringContainsString('WindowsIdentity]::GetCurrent().User.Value', File::get(base_path('distribution/windows/scripts/Protect-ConnictGssData.ps1')));
         $this->assertStringContainsString('setup-error.json', $setup.$diagnostics);
         $this->assertStringContainsString('Connict GSS initialization failed:', $setup);
         $this->assertStringContainsString('vc_redist.x64.exe', $runtimeBootstrap);
@@ -105,6 +108,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString("foreach (\$relative in 'status.json', 'logs', 'diagnostics')", $releaseWorkflow);
         $this->assertStringContainsString('-Verb RunAs -Wait -PassThru', $releaseWorkflow);
         $this->assertStringContainsString('if ($initialization.ExitCode -ne 0)', $releaseWorkflow);
+        $this->assertStringContainsString("\$env:CONNICT_GSS_FAST_BUILD = '1'", $releaseWorkflow);
         $this->assertStringContainsString("'pgAdmin 4', 'StackBuilder'", $runtimeBootstrap);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $runtimeBuild);
         $this->assertStringContainsString("Join-Path \$PSScriptRoot '..\\..\\..'", $ttsBuild);
