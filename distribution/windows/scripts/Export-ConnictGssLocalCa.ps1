@@ -14,10 +14,23 @@ for ($attempt = 0; $attempt -lt 30; $attempt++) {
         Copy-Item -LiteralPath $source -Destination $target -Force
 
         $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($target)
-        $trusted = Get-ChildItem Cert:\LocalMachine\Root |
-            Where-Object { $_.Thumbprint -eq $certificate.Thumbprint }
-        if (-not $trusted) {
-            Import-Certificate -FilePath $target -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+        $store = [Security.Cryptography.X509Certificates.X509Store]::new(
+            [Security.Cryptography.X509Certificates.StoreName]::Root,
+            [Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine
+        )
+        $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+        try {
+            $trusted = $store.Certificates.Find(
+                [Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
+                $certificate.Thumbprint,
+                $false
+            )
+            if ($trusted.Count -eq 0) {
+                $store.Add($certificate)
+            }
+        } finally {
+            $store.Close()
+            $certificate.Dispose()
         }
 
         exit 0

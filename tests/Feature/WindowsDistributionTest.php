@@ -87,6 +87,8 @@ class WindowsDistributionTest extends TestCase
             $this->assertStringContainsString('<description>', File::get(base_path("distribution/windows/services/connict-gss-{$service}.xml")));
         }
         $this->assertStringContainsString('ProtectedData.Protect', $setupWizard);
+        $this->assertStringContainsString('X509Store]::new', File::get(base_path('distribution/windows/scripts/Export-ConnictGssLocalCa.ps1')));
+        $this->assertStringNotContainsString('Cert:\\LocalMachine', File::get(base_path('distribution/windows/scripts/Export-ConnictGssLocalCa.ps1')));
         $this->assertStringContainsString('File.Delete(requestPath)', $setupWizard);
         $this->assertStringContainsString('WaitForReadiness', $setupWizard);
         $this->assertStringContainsString('Test-ConnictGssHealth.ps1', $setupWizard);
