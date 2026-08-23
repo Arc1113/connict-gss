@@ -14,10 +14,9 @@ if ($uri.Scheme -ne 'https' -or [string]::IsNullOrWhiteSpace($uri.Host)) {
 $template = Get-Content -LiteralPath (Join-Path $InstallRoot 'config\Caddyfile') -Raw
 $publicDirectory = Join-Path $InstallRoot 'app\public'
 $caddyDataDirectory = Join-Path $DataRoot 'caddy'
-$rendered = $template
-    .Replace('__GSS_HTTPS_HOST__', $uri.Host)
-    .Replace('__GSS_APP_PUBLIC__', $publicDirectory)
-    .Replace('__GSS_CADDY_DATA__', $caddyDataDirectory)
+$rendered = $template.Replace('__GSS_HTTPS_HOST__', $uri.Host)
+$rendered = $rendered.Replace('__GSS_APP_PUBLIC__', $publicDirectory)
+$rendered = $rendered.Replace('__GSS_CADDY_DATA__', $caddyDataDirectory)
 
 New-Item -ItemType Directory -Path (Join-Path $DataRoot 'configuration'), $caddyDataDirectory -Force | Out-Null
 [IO.File]::WriteAllText(

@@ -27,6 +27,8 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('__GSS_HTTPS_HOST__', $caddy);
         $this->assertStringContainsString('http://__GSS_HTTPS_HOST__', $caddy);
         $this->assertStringContainsString('WriteAllText', $configureCaddy);
+        $this->assertStringContainsString("\$rendered = \$template.Replace('__GSS_HTTPS_HOST__'", $configureCaddy);
+        $this->assertStringNotContainsString("\n    .Replace(", $configureCaddy);
         $this->assertStringContainsString('Set-ConnictGssFirewallRules.ps1', $installer);
     }
 
