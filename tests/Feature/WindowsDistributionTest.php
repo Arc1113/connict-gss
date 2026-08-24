@@ -109,6 +109,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertSame(2, substr_count($releaseWorkflow, "extensions: 'fileinfo, pgsql, mbstring, intl, zip, bcmath'"));
         $this->assertStringContainsString('Verify PHP packaging extensions', $releaseWorkflow);
         $this->assertStringContainsString('Required PHP extension is unavailable', $releaseWorkflow);
+        $this->assertStringContainsString('__GSS_HTTPS_HOST__:8081', $releaseWorkflow);
         $this->assertStringContainsString("foreach (\$relative in 'status.json', 'logs', 'diagnostics')", $releaseWorkflow);
         $this->assertStringContainsString('-Verb RunAs -Wait -PassThru', $releaseWorkflow);
         $this->assertStringContainsString('if ($initialization.ExitCode -ne 0)', $releaseWorkflow);

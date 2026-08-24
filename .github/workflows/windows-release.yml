@@ -195,6 +195,12 @@ jobs:
           if ($process.ExitCode -ne 0) { throw "Installer exited with code $($process.ExitCode)." }
 
           $installRoot = Join-Path $env:ProgramFiles 'Connict GSS'
+          # GitHub-hosted Windows runners reserve port 80. Keep the production
+          # Caddy template on port 80, but use a high HTTP redirect port for CI.
+          $caddyTemplatePath = Join-Path $installRoot 'config/Caddyfile'
+          $caddyTemplate = Get-Content -LiteralPath $caddyTemplatePath -Raw
+          $caddyTemplate = $caddyTemplate.Replace('http://__GSS_HTTPS_HOST__ {', 'http://__GSS_HTTPS_HOST__:8081 {')
+          [IO.File]::WriteAllText($caddyTemplatePath, $caddyTemplate, [Text.UTF8Encoding]::new($false))
           $initializeScript = Join-Path $installRoot 'scripts/Initialize-ConnictGss.ps1'
           $initializeArguments = "-NoProfile -ExecutionPolicy Bypass -File `"$initializeScript`" -InstallRoot `"$installRoot`""
           $initialization = Start-Process -FilePath 'powershell.exe' -ArgumentList $initializeArguments -Verb RunAs -Wait -PassThru
