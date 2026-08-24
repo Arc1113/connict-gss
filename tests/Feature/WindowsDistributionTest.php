@@ -59,7 +59,7 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('gss:bootstrap-install', $setup);
         $this->assertStringContainsString('migrate --force', $setup);
         $this->assertStringContainsString('GSS_INITIAL_ADMIN_PASSWORD', $setup);
-        $this->assertStringContainsString("'GSS_POSTGRES_BIN=' = \"GSS_POSTGRES_BIN=\$postgres\"", $setup);
+        $this->assertStringContainsString("'GSS_POSTGRES_BIN=' = \"GSS_POSTGRES_BIN='\$postgres'\"", $setup);
         $this->assertStringContainsString('RandomNumberGenerator]::Create()', $setup);
         $this->assertStringNotContainsString('RandomNumberGenerator]::Fill', $setup);
         $this->assertStringNotContainsString('[Convert]::ToHexString', $setup);
