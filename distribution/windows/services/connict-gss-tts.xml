@@ -7,5 +7,7 @@
   <env name="HF_HOME" value="%BASE%\..\runtime\tts\models" />
   <env name="HF_HUB_OFFLINE" value="1" />
   <env name="TRANSFORMERS_OFFLINE" value="1" />
+  <logpath>C:\ProgramData\ConnictGSS\logs</logpath>
+  <log mode="roll-by-size-time"><sizeThreshold>10485760</sizeThreshold><pattern>yyyy-MM-dd</pattern></log>
   <onfailure action="restart" delay="10 sec" />
 </service>

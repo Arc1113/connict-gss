@@ -111,6 +111,8 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('Required PHP extension is unavailable', $releaseWorkflow);
         $this->assertStringContainsString('__GSS_HTTPS_HOST__:8081', $releaseWorkflow);
         $this->assertStringContainsString('auto_https disable_redirects', $releaseWorkflow);
+        $this->assertStringContainsString('127.0.0.1:18080', $releaseWorkflow);
+        $this->assertStringContainsString('REVERB_SERVER_PORT=18080', $releaseWorkflow);
         $this->assertStringContainsString("foreach (\$relative in 'status.json', 'logs', 'diagnostics')", $releaseWorkflow);
         $this->assertStringContainsString('-Verb RunAs -Wait -PassThru', $releaseWorkflow);
         $this->assertStringContainsString('if ($initialization.ExitCode -ne 0)', $releaseWorkflow);
