@@ -111,8 +111,6 @@ class WindowsDistributionTest extends TestCase
         $this->assertStringContainsString('Required PHP extension is unavailable', $releaseWorkflow);
         $this->assertStringContainsString('__GSS_HTTPS_HOST__:8081', $releaseWorkflow);
         $this->assertStringContainsString('auto_https disable_redirects', $releaseWorkflow);
-        $this->assertStringContainsString('127.0.0.1:18080', $releaseWorkflow);
-        $this->assertStringContainsString('REVERB_SERVER_PORT=18080', $releaseWorkflow);
         $this->assertStringContainsString('"%BASE%\\..\\app\\artisan" reverb:start', File::get(base_path('distribution/windows/services/connict-gss-reverb.xml')));
         $this->assertStringContainsString('"%BASE%\\..\\app\\artisan" queue:work', File::get(base_path('distribution/windows/services/connict-gss-queue.xml')));
         $this->assertStringContainsString("foreach (\$relative in 'status.json', 'logs', 'diagnostics')", $releaseWorkflow);

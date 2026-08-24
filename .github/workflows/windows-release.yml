@@ -202,21 +202,7 @@ jobs:
           $caddyTemplate = Get-Content -LiteralPath $caddyTemplatePath -Raw
           $caddyTemplate = $caddyTemplate.Replace("{`n    storage file_system", "{`n    auto_https disable_redirects`n    storage file_system")
           $caddyTemplate = $caddyTemplate.Replace('http://__GSS_HTTPS_HOST__ {', 'http://__GSS_HTTPS_HOST__:8081 {')
-          $caddyTemplate = $caddyTemplate.Replace('127.0.0.1:8080', '127.0.0.1:18080')
           [IO.File]::WriteAllText($caddyTemplatePath, $caddyTemplate, [Text.UTF8Encoding]::new($false))
-          $reverbServicePath = Join-Path $installRoot 'services/connict-gss-reverb.xml'
-          $reverbService = Get-Content -LiteralPath $reverbServicePath -Raw
-          $reverbService = $reverbService.Replace('--port=8080', '--port=18080')
-          [IO.File]::WriteAllText($reverbServicePath, $reverbService, [Text.UTF8Encoding]::new($false))
-          $runtimeEnvironmentPath = Join-Path $installRoot 'config/runtime.env.example'
-          $runtimeEnvironment = Get-Content -LiteralPath $runtimeEnvironmentPath -Raw
-          $runtimeEnvironment = $runtimeEnvironment.Replace('REVERB_SERVER_PORT=8080', 'REVERB_SERVER_PORT=18080')
-          $runtimeEnvironment = $runtimeEnvironment.Replace('REVERB_PORT=8080', 'REVERB_PORT=18080')
-          [IO.File]::WriteAllText($runtimeEnvironmentPath, $runtimeEnvironment, [Text.UTF8Encoding]::new($false))
-          $healthScriptPath = Join-Path $installRoot 'scripts/Test-ConnictGssHealth.ps1'
-          $healthScript = Get-Content -LiteralPath $healthScriptPath -Raw
-          $healthScript = $healthScript.Replace('-Port 8080', '-Port 18080')
-          [IO.File]::WriteAllText($healthScriptPath, $healthScript, [Text.UTF8Encoding]::new($false))
           $initializeScript = Join-Path $installRoot 'scripts/Initialize-ConnictGss.ps1'
           $initializeArguments = "-NoProfile -ExecutionPolicy Bypass -File `"$initializeScript`" -InstallRoot `"$installRoot`""
           $initialization = Start-Process -FilePath 'powershell.exe' -ArgumentList $initializeArguments -Verb RunAs -Wait -PassThru
